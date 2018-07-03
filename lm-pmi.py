@@ -64,7 +64,7 @@ def parameters():
        for param in module.parameters():
             yield param
 
-optim = torch.optim.SGD(parameters(), lr=0.1, momentum=0.0)
+optim = torch.optim.SGD(parameters(), lr=0.1, momentum=0.0) # 0.02, 0.9
 
 named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
 
@@ -133,7 +133,7 @@ def backward(loss, printHere):
 
 
 
-for epoch in range(100):
+for epoch in range(10000):
    print(epoch)
    random.shuffle(partitions)
    cutoff = random.randint(0,len(training_data)-1)

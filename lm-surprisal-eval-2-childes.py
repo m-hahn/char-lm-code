@@ -1,4 +1,7 @@
 
+# final product from Friday
+
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--load-from", dest="load_from", type=str)
@@ -8,19 +11,19 @@ print(args)
 
 import random
 
-with open("/private/home/mhahn/data/UD_English-EWT/en_ewt-ud-train.conllu", "r") as inFile:
-    data = inFile.read().split("\n\n")
+with open("/private/home/mhahn/data/br-data/br-phono.txt", "r") as inFile:
+    data = inFile.read().split("\n")
     random.Random(6598).shuffle(data) # now the sentences are arranged in random order
 
 #    print([[y.split("\t")[1].lower() for y in x.split("\n") if len(y) > 1 and y[0][0] is not "#"] for x in data])
 
-    data = [[y.split("\t")[1].lower() for y in x.split("\n") if len(y) > 1 and y[0][0] is not "#"] for x in data]
+    data = [y.split(" ") for y in data]
     joined = []
     for sent in data:
        joined += sent
     joined = " ".join(joined)
     training_data = joined[10000:]
-    dev_data = joined[:10000]
+    dev_data = joined[:100000]
 #    data = [x.split("\t")[1].lower() for x in inFile.read().split("\n") if len(x) > 1 and not x.startswith("#")]
     #print(data)
     #data = "".join(data)
@@ -80,6 +83,7 @@ future_surprisal_with = [None for _ in dev_data]
 future_surprisal_without = [None for _ in dev_data]
 
 char_surprisal = [None for _ in dev_data]
+char_entropy = [None for _ in dev_data]
 
 numeric_with_blanks = [stoi[x]+1 for x in dev_data]
 
@@ -108,6 +112,9 @@ for start in range(0, len(numeric_full)-sequenceLength, batchSize):
       out, _ = rnn(embedded, None)
       logits = output(out) 
       log_probs = logsoftmax(logits)
+
+      entropy = (- log_probs * torch.exp(log_probs)).sum(2).view((maxLength-1), batchSize).data.cpu().numpy()
+
       loss = print_loss(log_probs.view(-1, len(itos)+1), target_tensor.view(-1)).view((maxLength-1), batchSize)
       losses = loss.data.cpu().numpy()
 #      for i in range(len(numeric[0])-1):
@@ -120,6 +127,7 @@ for start in range(0, len(numeric_full)-sequenceLength, batchSize):
          if i+halfSequenceLength < len(future_surprisal_with):
             future_surprisal_with[i+halfSequenceLength] = surprisalAtMid
             char_surprisal[i+halfSequenceLength] = losses[halfSequenceLength, i-start]
+            char_entropy[i+halfSequenceLength] = entropy[halfSequenceLength, i-start]
          future_surprisal_without[i] = surprisalAtStart
              
 def mi(x,y):
@@ -140,21 +148,28 @@ for i in range(len(numeric_full)):
    print((itos[numeric_full[i]-1], char_surprisal[i], pmiFuturePast, pmiFuturePast < 0 if pmiFuturePast is not None else None, boundary)) # pmiFuturePast < 2 if pmiFuturePast is not None else None,
    if pmiFuturePast is not None:
      chars.append(itos[numeric_full[i]-1])
-     predictor.append([pmiFuturePast]) #char_surprisal[i], pmiFuturePast]) #pmiFuturePast])
+     predictor.append([pmiFuturePast, char_surprisal[i], char_entropy[i]]) #char_surprisal[i], pmiFuturePast]) #pmiFuturePast])
      dependent.append(1 if boundary else 0)
+
+
+# , char_surprisal[i], char_entropy[i]
+
+# char_surprisal[i], 
 
 #print(predictor)
 #print(dependent)
 
-predictorShiftedP1 = predictor[1:]+[[0]]
-predictorShiftedP2 = predictor[2:]+[[0],[0]]
-predictorShiftedP3 = predictor[3:]+[[0],[0],[0]]
-predictorShiftedP4 = predictor[4:]+[[0],[0],[0],[0]]
+zeroPredictor = [0]*len(predictor[0])
 
-predictorShiftedM1 = [[0]]+predictor[:-1]
-predictorShiftedM2 = [[0],[0]]+predictor[:-2]
-predictorShiftedM3 = [[0],[0],[0]]+predictor[:-3]
-predictorShiftedM4 = [[0],[0],[0],[0]]+predictor[:-4]
+predictorShiftedP1 = predictor[1:]+[zeroPredictor]
+predictorShiftedP2 = predictor[2:]+[zeroPredictor,zeroPredictor]
+predictorShiftedP3 = predictor[3:]+[zeroPredictor,zeroPredictor,zeroPredictor]
+predictorShiftedP4 = predictor[4:]+[zeroPredictor,zeroPredictor,zeroPredictor,zeroPredictor]
+
+predictorShiftedM1 = [zeroPredictor]+predictor[:-1]
+predictorShiftedM2 = [zeroPredictor,zeroPredictor]+predictor[:-2]
+predictorShiftedM3 = [zeroPredictor,zeroPredictor,zeroPredictor]+predictor[:-3]
+predictorShiftedM4 = [zeroPredictor,zeroPredictor,zeroPredictor,zeroPredictor]+predictor[:-4]
 
 predictor = [a+b+c+d+e+f+g for a, b, c, d, e, f, g in zip(predictor, predictorShiftedP1, predictorShiftedP2, predictorShiftedP3, predictorShiftedM1, predictorShiftedM2, predictorShiftedM3)]
 
@@ -180,6 +195,7 @@ predictions = logisticRegr.predict(x_test)
 for char, predicted, real, predictor in zip(chars_test, predictions, y_test, x_test):
     print((char, predicted, real, predictor[0]))
 
+realLexicon = set()
 extractedLexicon = {}
 currentWord = ""
 currentWordReal = ""
@@ -191,6 +207,7 @@ for char, predicted, real in zip(chars_test, predictions, y_test):
        realWords += 1
        if predicted == 1 and currentWord == currentWordReal:
            agreement += 1
+       realLexicon.add(currentWordReal)
        currentWordReal = char
    else:
        currentWordReal += char
@@ -202,6 +219,13 @@ for char, predicted, real in zip(chars_test, predictions, y_test):
        currentWord += char
 
 print(sorted(list(extractedLexicon.items()), key=lambda x:x[1]))
+
+correctWords = set(list(extractedLexicon)).intersection(realLexicon)
+print(correctWords)
+print(len(correctWords)/len(extractedLexicon))
+print(len(correctWords)/len(realLexicon))
+print("..")
+
 
 print(agreement/realWords)
 print(agreement/predictedWords)
