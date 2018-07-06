@@ -105,7 +105,8 @@ if args.load_from is not None:
   for name, module in named_modules.items():
       print(name)
       module.load_state_dict(checkpoint[name])
-
+else:
+   assert False
 ####################################
 
 baseline_rnn_encoder = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num, bidirectional=True).cuda()
@@ -131,11 +132,12 @@ optim = torch.optim.SGD(baseline_parameters(), lr=args.learning_rate, momentum=0
 
 baseline_named_modules = {"rnn_encoder" : baseline_rnn_encoder,  "output" : baseline_output, "char_embeddings" : baseline_char_embeddings}
 
-if args.load_from is not None:
+if args.load_from_baseline is not None:
   checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from_baseline+".pth.tar")
   for name, module in baseline_named_modules.items():
       module.load_state_dict(checkpoint[name])
-
+else:
+   assert False
 
 
 
@@ -200,6 +202,20 @@ def encodeSequenceBatch(numeric):
       out, hidden = rnn_drop(embedded, None)
       return out[-1], hidden[0][0], hidden[1][0]
 
+def encodeBaselineSequenceBatch(numeric):
+      input_tensor = Variable(torch.LongTensor(numeric).transpose(0,1)[1:-1].cuda(), requires_grad=False)
+#      target_tensor_forward = Variable(torch.LongTensor(numeric).transpose(0,1)[2:].cuda(), requires_grad=False).view(args.sequence_length+1, len(numeric), 1, 1)
+#      target_tensor_backward = Variable(torch.LongTensor(numeric).transpose(0,1)[:-2].cuda(), requires_grad=False).view(args.sequence_length+1, len(numeric), 1, 1)
+#      target_tensor = torch.cat([target_tensor_forward, target_tensor_backward], dim=2)
+#
+      embedded = baseline_char_embeddings(input_tensor)
+
+      out, encoded = baseline_rnn_encoder_drop(embedded, None)
+      out = out.view(len(numeric[0])-2, len(numeric), 2, -1)
+      out1 = out[-1, 0, 0, :] # forward encoding
+      out2 = out[0, -1, 1, :] # backward encoding
+      return out1.view(-1), out2.view(-1), encoded[0].view(-1) #, encoded[1].view(-1)
+
 
 import numpy as np
 
@@ -244,16 +260,25 @@ def padWords(words):
 # TODO train ght eRNN so that it is actually used to seeing 0's in the beginning of a sequence
 
 def getEncodingsForList(wordsToBeEncoded):
+    return getEncodingsForListGeneral(wordsToBeEncoded, encodeSequenceBatch)
+
+
+def getEncodingsForListBaseline(wordsToBeEncoded):
+    return getEncodingsForListGeneral(wordsToBeEncoded, encodeBaselineSequenceBatch)
+
+
+
+def getEncodingsForListGeneral(wordsToBeEncoded, encodingFunction):
     modelVectors = []
-    byLength = sorted(list(wordsToBeEncoded))
+    byLength = sorted(list(wordsToBeEncoded), reverse=True)
 
     for offset in range(0, len(wordsToBeEncoded), 100):
 #      print(offset)
-      codes1, codes2, codes3 = encodeSequenceBatch(padWords([encodeWord(word)[0] for word in byLength[offset:offset+100]]))
+      codes1, codes2, codes3 = encodingFunction(padWords([encodeWord(word)[0] for word in byLength[offset:offset+100]]))
       for index, word in enumerate(byLength[offset:offset+100]):
-         code1 = codes1[index]#,len(word)]
-         code2 = codes2[index]#,len(word)]
-         code3 = codes3[index]#,len(word)]
+         code1 = codes1[index].cpu()#,len(word)]
+         code2 = codes2[index].cpu()#,len(word)]
+         code3 = codes3[index].cpu()#,len(word)]
          modelVectors.append((code1, code2, code3))
     #     print((code1,code2,code3))
     return modelVectors
@@ -344,8 +369,8 @@ baselineVectors = []
 print(len(genders["Gender=Fem"]))
 print(len(genders["Gender=Masc"]))
 
-fem = getEncodingsForList(genders["Gender=Fem"])
-masc = getEncodingsForList(genders["Gender=Masc"])
+fem = getEncodingsForListBaseline(random.sample(genders["Gender=Fem"], 1000))
+masc = getEncodingsForListBaseline(random.sample(genders["Gender=Masc"], 1000))
 
 ## so initial 0 will look like dropout
 #char_embeddings.data[0] = 0 * char_embeddings.data[0]
