@@ -194,6 +194,12 @@ def encodeSequence(numeric):
       out, hidden = rnn_drop(embedded, None)
       return out[-1].view(-1), hidden[0].view(-1), hidden[1].view(-1)
 
+def encodeSequenceBatch(numeric):
+      input_tensor = Variable(torch.LongTensor(numeric).transpose(0,1).cuda(), requires_grad=False)
+      embedded = char_embeddings(input_tensor)
+      out, hidden = rnn_drop(embedded, None)
+      return out[-1], hidden[0][0], hidden[1][0]
+
 
 import numpy as np
 
@@ -227,6 +233,34 @@ print(predictNext(encodeWord("zweikatze")))
 print(predictNext(encodeWord("derkater")))
 print(predictNext(encodeWord("deskater")))
 
+def padWords(words):
+   maxLength = max([len(x) for x in words])
+   for i, word in enumerate(words):
+      if len(word) < maxLength:
+         words[i] = ([0] * (maxLength - len(word))) + word #word.append(0)
+   return words
+
+
+# TODO train ght eRNN so that it is actually used to seeing 0's in the beginning of a sequence
+
+def getEncodingsForList(wordsToBeEncoded):
+    modelVectors = []
+    byLength = sorted(list(wordsToBeEncoded))
+
+    for offset in range(0, len(wordsToBeEncoded), 100):
+#      print(offset)
+      codes1, codes2, codes3 = encodeSequenceBatch(padWords([encodeWord(word)[0] for word in byLength[offset:offset+100]]))
+      for index, word in enumerate(byLength[offset:offset+100]):
+         code1 = codes1[index]#,len(word)]
+         code2 = codes2[index]#,len(word)]
+         code3 = codes3[index]#,len(word)]
+         modelVectors.append((code1, code2, code3))
+    #     print((code1,code2,code3))
+    return modelVectors
+
+
+
+
 
 plurals = set()
 
@@ -247,11 +281,108 @@ for sentence in training.iterator():
 print(plurals)
 
 
+#pluralWords = []
+#singularWords = []
+#for word in plurals:
+#   singularWords.append(word[0])
+#   pluralWords.append(word[1])
+#
+#plur = getEncodingsForList(pluralWords)
+#sing = getEncodingsForList(singularWords)
+#
+#
+#print("Concatenating")
+#
+#predictors = []
+#dependent = []
+#for vectors in plus(sing, plur):
+#     code = vectors[0] #torch.cat(vectors, dim=0)
+#    # print(code)
+#     predictors.append(code.data.cpu().numpy())
+#for _ in sing:
+#  dependent.append(0)
+#for _ in plur:
+#  dependent.append(1)
+# 
+#
+## create logistic regression for gender
+#
+#from sklearn.model_selection import train_test_split
+#x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=0.1, random_state=0, shuffle=True)
+#
+#
+#from sklearn.linear_model import LogisticRegression
+#
+#print("regression")
+#
+#logisticRegr = LogisticRegression()
+#
+#logisticRegr.fit(x_train, y_train)
+#
+#predictions = logisticRegr.predict(x_test)
+#
+#
+#score = logisticRegr.score(x_test, y_test)
+#print(score)
+#
+
+
+
+
+######################################
+
 print(genders)
 
 # create a dictionary of encodings of all words
 
 # then see whether things are more predictable from LM than from baseline
+
+wordsToBeEncoded = genders["Gender=Neut"]
+
+baselineVectors = []
+
+print(len(genders["Gender=Fem"]))
+print(len(genders["Gender=Masc"]))
+
+fem = getEncodingsForList(genders["Gender=Fem"])
+masc = getEncodingsForList(genders["Gender=Masc"])
+
+## so initial 0 will look like dropout
+#char_embeddings.data[0] = 0 * char_embeddings.data[0]
+
+print("Concatenating")
+
+predictors = []
+dependent = []
+for vectors in plus(fem, masc):
+     code = vectors[0] #torch.cat(vectors, dim=0)
+    # print(code)
+     predictors.append(code.data.cpu().numpy())
+for _ in fem:
+  dependent.append(0)
+for _ in masc:
+  dependent.append(1)
+     
+
+# create logistic regression for gender
+
+from sklearn.model_selection import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=0.1, random_state=0, shuffle=True)
+
+
+from sklearn.linear_model import LogisticRegression
+
+print("regression")
+
+logisticRegr = LogisticRegression()
+
+logisticRegr.fit(x_train, y_train)
+
+predictions = logisticRegr.predict(x_test)
+
+
+score = logisticRegr.score(x_test, y_test)
+print(score)
 
 
 
