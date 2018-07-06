@@ -249,6 +249,11 @@ print(plurals)
 
 print(genders)
 
+# create a dictionary of encodings of all words
+
+# then see whether things are more predictable from LM than from baseline
+
+
 
 
 
