@@ -189,6 +189,7 @@ def encodeSequenceBaseline(numeric):
       return out1.view(-1), out2.view(-1), encoded[0].view(-1), encoded[1].view(-1)
 
 rnn_drop.train(False)
+baseline_rnn_encoder_drop.train(False)
 
 def encodeSequence(numeric):
       input_tensor = Variable(torch.LongTensor(numeric).transpose(0,1).cuda(), requires_grad=False)
@@ -204,17 +205,18 @@ def encodeSequenceBatch(numeric):
 
 def encodeBaselineSequenceBatch(numeric):
       input_tensor = Variable(torch.LongTensor(numeric).transpose(0,1)[1:-1].cuda(), requires_grad=False)
-#      target_tensor_forward = Variable(torch.LongTensor(numeric).transpose(0,1)[2:].cuda(), requires_grad=False).view(args.sequence_length+1, len(numeric), 1, 1)
-#      target_tensor_backward = Variable(torch.LongTensor(numeric).transpose(0,1)[:-2].cuda(), requires_grad=False).view(args.sequence_length+1, len(numeric), 1, 1)
-#      target_tensor = torch.cat([target_tensor_forward, target_tensor_backward], dim=2)
-#
+
       embedded = baseline_char_embeddings(input_tensor)
 
       out, encoded = baseline_rnn_encoder_drop(embedded, None)
       out = out.view(len(numeric[0])-2, len(numeric), 2, -1)
-      out1 = out[-1, 0, 0, :] # forward encoding
-      out2 = out[0, -1, 1, :] # backward encoding
-      return out1.view(-1), out2.view(-1), encoded[0].view(-1) #, encoded[1].view(-1)
+ #     print(out)
+      out1 = out[-1, :, 0, :] # forward encoding
+      out2 = out[0, :, 1, :] # backward encoding
+      out3 = encoded[0][0,:, :]
+#      print(out1)
+ #     print(len(numeric))
+      return out1, out2, out3 #, encoded[1].view(-1)
 
 
 import numpy as np
@@ -277,6 +279,8 @@ def getEncodingsForListGeneral(wordsToBeEncoded, encodingFunction):
       codes1, codes2, codes3 = encodingFunction(padWords([encodeWord(word)[0] for word in byLength[offset:offset+100]]))
       for index, word in enumerate(byLength[offset:offset+100]):
          code1 = codes1[index].cpu()#,len(word)]
+    #     print("CODES")
+    #     print(code1)
          code2 = codes2[index].cpu()#,len(word)]
          code3 = codes3[index].cpu()#,len(word)]
          modelVectors.append((code1, code2, code3))
@@ -295,10 +299,11 @@ for sentence in training.iterator():
     for line in sentence:
      if line["posUni"] == "NOUN":
       morph = line["morph"]
-      if "Number=Sing" in morph:
-        gender = [x for x in morph if x.startswith("Gender=")]
-        if len(gender) > 0:
-          genders[gender[0]].add(line["word"].lower())
+      if "Number=Sing" in morph and "Case=Nom" in morph:
+#        if not line["word"].endswith("e"):
+          gender = [x for x in morph if x.startswith("Gender=")]
+          if len(gender) > 0:
+            genders[gender[0]].add(line["word"].lower())
 
       if "Number=Plur" in  morph and "Case=Dat" not in morph:
         if "|" not in line["lemma"] and line["lemma"].lower() != line["word"]:
@@ -369,8 +374,22 @@ baselineVectors = []
 print(len(genders["Gender=Fem"]))
 print(len(genders["Gender=Masc"]))
 
-fem = getEncodingsForListBaseline(random.sample(genders["Gender=Fem"], 1000))
-masc = getEncodingsForListBaseline(random.sample(genders["Gender=Masc"], 1000))
+femWords = random.sample(genders["Gender=Fem"], 1000)
+mascWords = random.sample(genders["Gender=Masc"], 1000)
+
+
+## sanity check (currently failing)
+#words = femWords+mascWords
+#random.shuffle(words)
+#femWords = words[:1000]
+#mascWords = words[1000:]
+#
+
+
+
+
+fem = getEncodingsForList(femWords)
+masc = getEncodingsForList(mascWords) #sanity check
 
 ## so initial 0 will look like dropout
 #char_embeddings.data[0] = 0 * char_embeddings.data[0]
@@ -382,21 +401,26 @@ dependent = []
 for vectors in plus(fem, masc):
      code = vectors[0] #torch.cat(vectors, dim=0)
     # print(code)
-     predictors.append(code.data.cpu().numpy())
+     predictors.append(code.data.cpu().numpy()) #.tolist())
 for _ in fem:
-  dependent.append(0)
+  dependent.append(0)# if random.random() > 0.5 else 1) # sanity check
 for _ in masc:
-  dependent.append(1)
+  dependent.append(1) # if random.random() > 0.5 else 1) # sanity check
      
 
 # create logistic regression for gender
 
 from sklearn.model_selection import train_test_split
-x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=0.1, random_state=0, shuffle=True)
+x_train, x_test, y_train, y_test, words_train, words_test = train_test_split(predictors, dependent, femWords+mascWords, test_size=0.1, random_state=random.randint(0,50), shuffle=True)
 
+
+#quit()
 
 from sklearn.linear_model import LogisticRegression
 
+print(list(zip(words_train, y_train)))
+print(list(zip(words_test, y_test)))
+#print(x_train)
 print("regression")
 
 logisticRegr = LogisticRegression()
@@ -405,9 +429,11 @@ logisticRegr.fit(x_train, y_train)
 
 predictions = logisticRegr.predict(x_test)
 
-
 score = logisticRegr.score(x_test, y_test)
+print(predictions)
+print(y_test)
 print(score)
+print(set(words_train).intersection(set(words_test)))
 
 
 

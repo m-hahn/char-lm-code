@@ -55,6 +55,7 @@ except FileNotFoundError:
     with open("/checkpoint/mhahn/char-vocab-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
+itos.append(" ")
 print(itos)
 stoi = dict([(itos[i],i) for i in range(len(itos))])
 
@@ -71,7 +72,7 @@ print(torch.__version__)
 from weight_drop import WeightDrop
 
 
-rnn = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num).cuda()
+rnn = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num, bidirectional=True).cuda()
 
 rnn_parameter_names = [name for name, _ in rnn.named_parameters()]
 print(rnn_parameter_names)
@@ -84,7 +85,7 @@ output = torch.nn.Linear(args.hidden_dim, len(itos)+3).cuda()
 
 char_embeddings = torch.nn.Embedding(num_embeddings=len(itos)+3, embedding_dim=args.char_embedding_size).cuda()
 
-logsoftmax = torch.nn.LogSoftmax(dim=2)
+logsoftmax = torch.nn.LogSoftmax(dim=3)
 
 train_loss = torch.nn.NLLLoss(ignore_index=0)
 print_loss = torch.nn.NLLLoss(size_average=False, reduce=False, ignore_index=0)
@@ -100,6 +101,7 @@ optim = torch.optim.SGD(parameters(), lr=args.learning_rate, momentum=0.0) # 0.0
 
 named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
 
+print("Loading model")
 if args.load_from is not None:
   checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
   for name, module in named_modules.items():
@@ -153,12 +155,6 @@ from torch.autograd import Variable
 
 #from embed_regularize import embedded_dropout
 
-def encodeWord(word):
-      numeric = [[0]]
-      for char in word:
-                numeric[-1].append((stoi[char]+3 if char in stoi else 2) if True else 2+random.randint(0, len(itos)))
-      return numeric
-
 def encodeWordBidirectional(word):
       numeric = [[0,0]]
       for char in word:
@@ -194,14 +190,24 @@ baseline_rnn_encoder_drop.train(False)
 def encodeSequence(numeric):
       input_tensor = Variable(torch.LongTensor(numeric).transpose(0,1).cuda(), requires_grad=False)
       embedded = char_embeddings(input_tensor)
-      out, hidden = rnn_drop(embedded, None)
-      return out[-1].view(-1), hidden[0].view(-1), hidden[1].view(-1)
+      out, encoded = rnn_drop(embedded, None)
+      out = out.view(len(numeric[0])-2, len(numeric), 2, -1)
+      out1 = out[-1, 0, 0, :] # forward encoding
+      out2 = out[0, -1, 1, :] # backward encoding
+      return out1.view(-1), out2.view(-1), encoded[0].view(-1) #, encoded[1].view(-1)
+
+
 
 def encodeSequenceBatch(numeric):
       input_tensor = Variable(torch.LongTensor(numeric).transpose(0,1).cuda(), requires_grad=False)
       embedded = char_embeddings(input_tensor)
-      out, hidden = rnn_drop(embedded, None)
-      return out[-1], hidden[0][0], hidden[1][0]
+      out, encoded = rnn_drop(embedded, None)
+      out = out.view(len(numeric[0])-2, len(numeric), 2, -1)
+      out1 = out[-1, 0, 0, :] # forward encoding
+      out2 = out[0, -1, 1, :] # backward encoding
+      assert False, "The view(-1) seems wrong?"
+      return out1.view(-1), out2.view(-1), encoded[0].view(-1) #, encoded[1].view(-1)
+
 
 def encodeBaselineSequenceBatch(numeric):
       input_tensor = Variable(torch.LongTensor(numeric).transpose(0,1)[1:-1].cuda(), requires_grad=False)
@@ -214,7 +220,6 @@ def encodeBaselineSequenceBatch(numeric):
       out, encoded = baseline_rnn_encoder_drop(embedded, None)
       out = out.view(len(numeric[0])-2, len(numeric), 2, -1)
       out1 = out[-1, 0, 0, :] # forward encoding
-      assert False
       out2 = out[0, -1, 1, :] # backward encoding
       return out1.view(-1), out2.view(-1), encoded[0].view(-1) #, encoded[1].view(-1)
 
@@ -286,48 +291,132 @@ def getEncodingsForListGeneral(wordsToBeEncoded, encodingFunction):
     return modelVectors
 
 
-wordFrequencies = {}
+
+
+
+plurals = set()
+
+genders = dict([("Gender="+x, set()) for x in ["Masc", "Fem", "Neut"]])
+
 for sentence in training.iterator():
-   for line in sentence:
-      wordFrequencies[line["word"]] = wordFrequencies.get(line["word"], 0) + 1
-wordFrequencies = sorted(list(wordFrequencies.items()),key=lambda x:x[1], reverse=True)
+    for line in sentence:
+     if line["posUni"] == "NOUN":
+      morph = line["morph"]
+      if "Number=Sing" in morph:
+        gender = [x for x in morph if x.startswith("Gender=")]
+        if len(gender) > 0:
+          genders[gender[0]].add(line["word"].lower())
+
+      if "Number=Plur" in  morph and "Case=Dat" not in morph:
+        if "|" not in line["lemma"] and line["lemma"].lower() != line["word"]:
+          plurals.add((line["lemma"].lower(), line["word"]))
+print(plurals)
 
 
-first_n = 50
-wordFrequencies = wordFrequencies[100:]
-frequentWords = [x for x, y in wordFrequencies[:first_n]]
+#pluralWords = []
+#singularWords = []
+#for word in plurals:
+#   singularWords.append(word[0])
+#   pluralWords.append(word[1])
+#
+#plur = getEncodingsForList(pluralWords)
+#sing = getEncodingsForList(singularWords)
+#
+#
+#print("Concatenating")
+#
+#predictors = []
+#dependent = []
+#for vectors in plus(sing, plur):
+#     code = vectors[0] #torch.cat(vectors, dim=0)
+#    # print(code)
+#     predictors.append(code.data.cpu().numpy())
+#for _ in sing:
+#  dependent.append(0)
+#for _ in plur:
+#  dependent.append(1)
+# 
+#
+## create logistic regression for gender
+#
+#from sklearn.model_selection import train_test_split
+#x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=0.1, random_state=0, shuffle=True)
+#
+#
+#from sklearn.linear_model import LogisticRegression
+#
+#print("regression")
+#
+#logisticRegr = LogisticRegression()
+#
+#logisticRegr.fit(x_train, y_train)
+#
+#predictions = logisticRegr.predict(x_test)
+#
+#
+#score = logisticRegr.score(x_test, y_test)
+#print(score)
+#
 
-import numpy as np
-
-encoded = np.array([x[0].cpu().data.numpy() for x in getEncodingsForList(frequentWords)])
-print("Collected words")
-
-import torch
-import tsne
-
-import json
-
-import sys
 
 
-import pylab
 
-import matplotlib.pyplot as plt
-plt.switch_backend('agg')
+######################################
 
-X = encoded
-print(X)
-Y = tsne.tsne(X=X, no_dims=2, initial_dims=10, perplexity=30.0)
-labels = frequentWords
-fig, ax = plt.subplots()
-for i in range(first_n):
-   ax.annotate(frequentWords[i], (Y[i,0], Y[i,1]))
-ax.scatter(Y[:, 0], Y[:, 1], 20, [5.0 for _ in range(first_n)])
+print(genders)
 
-plt.show()
-plt.savefig("t-sne-medium.png") 
-        #pylab.scatter(Y[:, 0], Y[:, 1], 20, [5.0 for _ in range(50)])
-        #pylab.show()
+# create a dictionary of encodings of all words
+
+# then see whether things are more predictable from LM than from baseline
+
+wordsToBeEncoded = genders["Gender=Neut"]
+
+baselineVectors = []
+
+print(len(genders["Gender=Fem"]))
+print(len(genders["Gender=Masc"]))
+
+fem = getEncodingsForListBaseline(random.sample(genders["Gender=Fem"], 1000))
+masc = getEncodingsForListBaseline(random.sample(genders["Gender=Masc"], 1000))
+
+## so initial 0 will look like dropout
+#char_embeddings.data[0] = 0 * char_embeddings.data[0]
+
+print("Concatenating")
+
+predictors = []
+dependent = []
+for vectors in plus(fem, masc):
+     code = vectors[0] #torch.cat(vectors, dim=0)
+    # print(code)
+     predictors.append(code.data.cpu().numpy())
+for _ in fem:
+  dependent.append(0)
+for _ in masc:
+  dependent.append(1)
+     
+
+# create logistic regression for gender
+
+from sklearn.model_selection import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=0.1, random_state=0, shuffle=True)
+
+
+from sklearn.linear_model import LogisticRegression
+
+print("regression")
+
+logisticRegr = LogisticRegression()
+
+logisticRegr.fit(x_train, y_train)
+
+predictions = logisticRegr.predict(x_test)
+
+
+score = logisticRegr.score(x_test, y_test)
+print(score)
+
+
 
 
 
