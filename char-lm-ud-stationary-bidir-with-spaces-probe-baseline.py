@@ -219,9 +219,17 @@ def encodeBaselineSequenceBatch(numeric):
 
       out, encoded = baseline_rnn_encoder_drop(embedded, None)
       out = out.view(len(numeric[0])-2, len(numeric), 2, -1)
-      out1 = out[-1, 0, 0, :] # forward encoding
-      out2 = out[0, -1, 1, :] # backward encoding
-      return out1.view(-1), out2.view(-1), encoded[0].view(-1) #, encoded[1].view(-1)
+ #     print(out)
+      out1 = out[-1, :, 0, :] # forward encoding
+      out2 = out[0, :, 1, :] # backward encoding
+      out3 = encoded[0][0,:, :]
+      out4 = encoded[1][0, :, :]
+      out5 = encoded[0][1, :, :]
+      out6 = encoded[1][1, :, :]
+#      print(out1)
+ #     print(len(numeric))
+      out1 = torch.cat([out3, out4, out5, out6], dim=1)
+      return out1, out2, out3 #, encoded[1].view(-1)
 
 
 import numpy as np

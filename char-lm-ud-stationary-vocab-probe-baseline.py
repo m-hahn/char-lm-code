@@ -175,6 +175,7 @@ def encodeWordBidirectional(word):
 
 
 def encodeSequenceBaseline(numeric):
+      assert False
       input_tensor = Variable(torch.LongTensor(numeric).transpose(0,1)[1:-1].cuda(), requires_grad=False)
       target_tensor_forward = Variable(torch.LongTensor(numeric).transpose(0,1)[2:].cuda(), requires_grad=False).view(args.sequence_length+1, len(numeric), 1, 1)
       target_tensor_backward = Variable(torch.LongTensor(numeric).transpose(0,1)[:-2].cuda(), requires_grad=False).view(args.sequence_length+1, len(numeric), 1, 1)
@@ -214,8 +215,12 @@ def encodeBaselineSequenceBatch(numeric):
       out1 = out[-1, :, 0, :] # forward encoding
       out2 = out[0, :, 1, :] # backward encoding
       out3 = encoded[0][0,:, :]
+      out4 = encoded[1][0, :, :]
+      out5 = encoded[0][1, :, :]
+      out6 = encoded[1][1, :, :]
 #      print(out1)
  #     print(len(numeric))
+      out1 = torch.cat([out3, out4, out5, out6], dim=1)
       return out1, out2, out3 #, encoded[1].view(-1)
 
 
