@@ -27,9 +27,9 @@ print(args)
 
 
 
-from corpusIterator import CorpusIterator
-training = CorpusIterator(args.language, partition="train", storeMorph=False, removePunctuation=True)
-dev = CorpusIterator(args.language, partition="dev", storeMorph=False, removePunctuation=True)
+import corpusIteratorWiki
+
+
 
 def plus(it1, it2):
    for x in it1:
@@ -38,19 +38,21 @@ def plus(it1, it2):
       yield x
 
 try:
-   with open("/checkpoint/mhahn/char-vocab-"+args.language, "r") as inFile:
+   with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
 except FileNotFoundError:
     print("Creating new vocab")
     char_counts = {}
     # get symbol vocabulary
-    for sentence in plus(training.iterator(), dev.iterator()):
-       for line in sentence:
-           for char in line["word"]:
-              char_counts[char] = char_counts.get(char, 0) + 1
+
+    with open("/private/home/mhahn/data/WIKIPEDIA/"+args.language+"-vocab.txt", "r") as inFile:
+      words = inFile.read().strip().split("\n")
+      for word in words:
+         for char in word:
+            char_counts[char] = char_counts.get(char, 0) + 1
     char_counts = [(x,y) for x, y in char_counts.items()]
     itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
-    with open("/checkpoint/mhahn/char-vocab-"+args.language, "w") as outFile:
+    with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
 itos.append(" ")
@@ -113,31 +115,19 @@ from torch.autograd import Variable
 
 
 def prepareDataset(data, train=True):
-      data = list(data)
-      random.shuffle(data)
-      boundaries = [[]]
-      numeric = [[0]]
-      for sentence in data:
-         for word in sentence:
-             for char in (word["word"]+" "):
-                numeric[-1].append((stoi[char]+3 if char in stoi else 2) if (not train) or random.random() > args.char_noise_prob else 2+random.randint(0, len(itos)))
-                if len(numeric[-1]) > args.sequence_length:
-                   numeric.append([0])
-                   boundaries.append([])
-             boundaries[-1].append(len(numeric[-1]))
-         numeric[-1].append(1)
-         if len(numeric[-1]) > args.sequence_length:
-            numeric.append([0])
-            boundaries.append([])
-         boundaries[-1].append(len(numeric[-1]))
-      numeric[-1] = numeric[-1] + ([0]*(args.sequence_length + 1 - len(numeric[-1])))
-      result= list(zip(numeric, boundaries))
-      random.shuffle(result)
-      return result
+      numeric = [0]
+      count = 0
+      for char in data:
+         count += 1
+#         if count % 100000 == 0:
+#             print(count/len(data))
+         numeric.append((stoi[char]+3 if char in stoi else 2) if (not train) or random.random() > args.char_noise_prob else 2+random.randint(0, len(itos)))
+         if len(numeric) > args.sequence_length:
+            yield numeric
+            numeric = []
 
-def forward(numericAndBoundaries, train=True, printHere=False):
-     # print(numeric)
-      numeric, boundaries = zip(*numericAndBoundaries)
+
+def forward(numeric, train=True, printHere=False):
       input_tensor = Variable(torch.LongTensor(numeric).transpose(0,1)[:-1].cuda(), requires_grad=False)
       target_tensor = Variable(torch.LongTensor(numeric).transpose(0,1)[1:].cuda(), requires_grad=False)
 
@@ -165,14 +155,14 @@ def forward(numericAndBoundaries, train=True, printHere=False):
       if printHere:
          lossTensor = print_loss(log_probs.view(-1, len(itos)+3), target_tensor.view(-1)).view(args.sequence_length, len(numeric))
          losses = lossTensor.data.cpu().numpy()
-         boundaries_index = [0 for _ in numeric]
+#         boundaries_index = [0 for _ in numeric]
          for i in range((args.sequence_length-1)-1):
-            if boundaries_index[0] < len(boundaries[0]) and i+1 == boundaries[0][boundaries_index[0]]:
-               boundary = True
-               boundaries_index[0] += 1
-            else:
-               boundary = False
-            print((losses[i][0], itos[numeric[0][i+1]-3], boundary))
+ #           if boundaries_index[0] < len(boundaries[0]) and i+1 == boundaries[0][boundaries_index[0]]:
+  #             boundary = True
+   #            boundaries_index[0] += 1
+    #        else:
+     #          boundary = False
+            print((losses[i][0], itos[numeric[0][i+1]-3]))
       return loss, len(numeric) * args.sequence_length
 
 def backward(loss, printHere):
@@ -190,46 +180,50 @@ import time
 devLosses = []
 for epoch in range(10000):
    print(epoch)
-   training_data = training.iterator()
-   numericAndBoundaries = prepareDataset(training_data, train=True)
+   training_data = corpusIteratorWiki.training("italian")
+   print("Got data")
+   training_chars = prepareDataset(training_data, train=True)
 
-
-
-
-#   oldParameters = {}
-#   for name, param in rnn.named_parameters():
-#      oldParameters[name] = param
-#      setattr(rnn, name, torch.nn.functional.dropout(param, p=weight_dropout))
-#      print(name, param.size())
-#
 
    rnn_drop.train(True)
    startTime = time.time()
    trainChars = 0
-   for offset in range(0, len(numericAndBoundaries), args.batchSize):
-      printHere = (int(offset/args.batchSize) % 50 == 0)
-      loss, charCounts = forward(numericAndBoundaries[offset:offset+args.batchSize], printHere=printHere, train=True)
+   counter = 0
+   while True:
+      counter += 1
+      try:
+         numeric = [next(training_chars) for _ in range(args.batchSize)]
+      except StopIteration:
+         break
+      printHere = (counter % 50 == 0)
+      loss, charCounts = forward(numeric, printHere=printHere, train=True)
       backward(loss, printHere)
       trainChars += charCounts 
       if printHere:
           print("Dev losses")
           print(devLosses)
           print("Chars per sec "+str(trainChars/(time.time()-startTime)))
-
    rnn_drop.train(False)
-#   for name, param in rnn.named_parameters():
-#      setattr(rnn, name, oldParameters[name])
+
+
+   dev_data = corpusIteratorWiki.dev("italian")
+   print("Got data")
+   dev_chars = prepareDataset(dev_data, train=True)
 
 
      
    dev_loss = 0
    dev_char_count = 0
-   dev_data = dev.iterator()
-   numericAndBoundaries = prepareDataset(dev_data, train=False)
+   counter = 0
 
-   for offset in range(0, len(numericAndBoundaries), args.batchSize):
-       printHere = (int(offset/args.batchSize) % 10 == 0)
-       loss, numberOfCharacters = forward(numericAndBoundaries[offset:offset+args.batchSize], printHere=printHere, train=False)
+   while True:
+       counter += 1
+       try:
+          numeric = [next(dev_chars) for _ in range(args.batchSize)]
+       except StopIteration:
+          break
+       printHere = (counter % 50 == 0)
+       loss, numberOfCharacters = forward(numeric, printHere=printHere, train=False)
        dev_loss += numberOfCharacters * loss.cpu().data.numpy()[0]
        dev_char_count += numberOfCharacters
    devLosses.append(dev_loss/dev_char_count)
