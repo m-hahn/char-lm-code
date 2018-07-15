@@ -96,6 +96,8 @@ def parameters():
        for param in module.parameters():
             yield param
 
+parameters_cached = [x for x in parameters()]
+
 optim = torch.optim.SGD(parameters(), lr=args.learning_rate, momentum=0.0) # 0.02, 0.9
 
 named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
@@ -191,6 +193,7 @@ def backward(loss, printHere):
       if printHere:
          print(loss)
       loss.backward()
+      torch.nn.utils.clip_grad_value_(parameters_cached, 5.0) #, norm_type="inf")
       optim.step()
 
 

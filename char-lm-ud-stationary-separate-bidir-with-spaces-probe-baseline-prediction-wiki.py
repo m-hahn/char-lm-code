@@ -138,11 +138,54 @@ rnn_drop.train(False)
 
 #baseline_rnn_encoder_drop.train(False)
 
+lossModule = torch.nn.NLLLoss(size_average=False, reduce=False, ignore_index=0)
 
-#def choice(numeric1, numeric2)
+
+def choice(numeric1, numeric2):
+     assert len(numeric1) == 1
+     assert len(numeric2) == 1
+     numeric = [numeric1[0], numeric2[0]]
+     maxLength = max([len(x) for x in numeric])
+     for i in range(len(numeric)):
+        while len(numeric[i]) < maxLength:
+              numeric[i].append(0)
+     input_tensor_forward = Variable(torch.LongTensor([[0]+x for x in numeric]).transpose(0,1).cuda(), requires_grad=False)
+     
+     target = input_tensor_forward[1:]
+     input_cut = input_tensor_forward[:-1]
+     embedded_forward = char_embeddings(input_cut)
+     out_forward, hidden_forward = rnn_drop(embedded_forward, None)
+
+     prediction = logsoftmax(output(out_forward)) #.data.cpu().view(-1, 3+len(itos)).numpy() #.view(1,1,-1))).view(3+len(itos)).data.cpu().numpy()
+     losses = lossModule(prediction.view(-1, len(itos)+3), target.view(-1)).view(maxLength, 2)
+     losses = losses.sum(0).data.cpu().numpy()
+     return losses
+
+
+
+def choiceList(numeric):
+     for x in numeric:
+       assert len(x) == 1
 #     assert len(numeric1) == 1
-#     assert len(numeric2) == 1
-#     numeric = [numeric1[0], numeric2[0]]
+ #    assert len(numeric2) == 1
+     numeric = [x[0] for x in numeric] #, numeric2[0]]
+     maxLength = max([len(x) for x in numeric])
+     for i in range(len(numeric)):
+        while len(numeric[i]) < maxLength:
+              numeric[i].append(0)
+     input_tensor_forward = Variable(torch.LongTensor([[0]+x for x in numeric]).transpose(0,1).cuda(), requires_grad=False)
+     
+     target = input_tensor_forward[1:]
+     input_cut = input_tensor_forward[:-1]
+     embedded_forward = char_embeddings(input_cut)
+     out_forward, hidden_forward = rnn_drop(embedded_forward, None)
+
+     prediction = logsoftmax(output(out_forward)) #.data.cpu().view(-1, 3+len(itos)).numpy() #.view(1,1,-1))).view(3+len(itos)).data.cpu().numpy()
+     losses = lossModule(prediction.view(-1, len(itos)+3), target.view(-1)).view(maxLength, len(numeric))
+     losses = losses.sum(0).data.cpu().numpy()
+     return losses
+
+
 
 def encodeSequenceBatchForward(numeric):
       input_tensor_forward = Variable(torch.LongTensor([[0]+x for x in numeric]).transpose(0,1).cuda(), requires_grad=False)
@@ -229,11 +272,89 @@ print(keepGenerating(encodeSequenceBatchForward(encodeWord(".siemach"))))
 print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esmach"))))
 print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esdenk"))))
 
+def doChoiceList(xs):
+    for x in xs:
+       print(x)
+    losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
+    print(losses)
+    return np.argmin(losses)
 
 
-#print(choice(encodeWord(".ichmachedas", ".ichmachstdas")))
-#print(choice(encodeWord(".dumachedas", ".dumachstdas")))
+def doChoice(x, y):
+    print(x)
+    print(y)
+    losses = choice(encodeWord(x), encodeWord(y))
+    print(losses)
+    return 0 if losses[0] < losses[1] else 1
 
+doChoice(".ichmachedas.", ".ichmachstdas.")
+doChoice(".dumachendas.", ".dumachstdas.")
+doChoice(".ermachendas.", ".ermachtdas.")
+doChoice(".wirmachendas.", ".wirmachtdas.")
+
+doChoice(".ichvergeigedas.", ".ichvergeigstdas.")
+doChoice(".duvergeigendas.", ".duvergeigstdas.")
+doChoice(".ervergeigendas.", ".ervergeigtdas.")
+doChoice(".wirvergeigendas.", ".wirvergeigtdas.")
+
+
+
+
+
+doChoice(".ichwilldas.", ".ichwillstdas.")
+doChoice(".duwollendas.", ".duwillstdas.")
+doChoice(".erwollendas.", ".erwilldas.")
+doChoice(".wirwollendas.", ".wirwilldas.")
+
+
+doChoice("indashaus.", "indiehaus.")
+doChoice("indascomputermaus.", "indiecomputermaus.")
+
+doChoice(".ichgeheindashaus.", ".ichgeheindemhaus.")
+doChoice(".ichlebeindashaus.", ".ichlebeindemhaus.")
+
+
+doChoice(".ichlebeindashausmeisterzimmer.", ".ichlebeindemhausmeisterzimmer.")
+
+
+doChoice(".zweihaus.", ".zweihäuser.")
+doChoice(".zweilampen.", ".zweilampe.")
+doChoice(".zweilampenpfahl.", ".zweilampenpfähle.")
+doChoice(".zweihauspfähle.", ".zweihäuserpfähle.")
+doChoice(".zweinasenbär.", ".zweinasenbären.")
+
+doChoice(".einhaus.", ".einhäuser.")
+doChoice(".einlampenpfahl.", ".einlampenpfähle.")
+doChoice(".einhauspfähle.", ".einhäuserpfähle.")
+doChoice(".einnasenbär.", ".einnasenbären.")
+
+
+from corpusIterator import CorpusIterator
+
+def genderTest():
+   training = CorpusIterator("German", partition="train", storeMorph=True, removePunctuation=True)
+   genders = dict([("Gender="+x, set()) for x in ["Masc", "Fem", "Neut"]])
+   for sentence in training.iterator():
+       for line in sentence:
+        if line["posUni"] == "NOUN":
+         morph = line["morph"]
+         if "Number=Sing" in morph:
+           gender = [x for x in morph if x.startswith("Gender=")]
+           if len(gender) > 0:
+             genders[gender[0]].add(line["word"].lower())
+   print(genders)
+   counter = 0
+   results = [0,0,0] 
+   for noun in genders["Gender=Masc"].union(genders["Gender=Neut"]):
+       counter += 1
+#       results[doChoiceList([".der"+noun+".", ".die"+noun+".", ".das"+noun+"."])] += 1
+       results[doChoiceList([".ein"+noun+".", ".eine"+noun+"."])] += 1
+       print([x/counter for x in results])
+
+#genderTest()
+
+
+quit()
 
 
 print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ichwillmach"))))
