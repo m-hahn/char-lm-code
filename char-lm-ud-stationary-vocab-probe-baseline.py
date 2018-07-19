@@ -171,6 +171,61 @@ def encodeWordBidirectional(word):
 
 
 
+def encodeSequenceBaseline(numeric):
+      assert False
+      input_tensor = Variable(torch.LongTensor(numeric).transpose(0,1)[1:-1].cuda(), requires_grad=False)
+      target_tensor_forward = Variable(torch.LongTensor(numeric).transpose(0,1)[2:].cuda(), requires_grad=False).view(args.sequence_length+1, len(numeric), 1, 1)
+      target_tensor_backward = Variable(torch.LongTensor(numeric).transpose(0,1)[:-2].cuda(), requires_grad=False).view(args.sequence_length+1, len(numeric), 1, 1)
+      target_tensor = torch.cat([target_tensor_forward, target_tensor_backward], dim=2)
+
+      embedded = baseline_char_embeddings(input_tensor)
+
+      out, encoded = baseline_rnn_encoder_drop(embedded, None)
+      out = out.view(args.sequence_length+1, len(numeric), 2, -1)
+      out1 = out[-1, 0, 0, :] # forward encoding
+      out2 = out[0, -1, 1, :] # backward encoding
+      return out1.view(-1), out2.view(-1), encoded[0].view(-1), encoded[1].view(-1)
+
+rnn_drop.train(False)
+baseline_rnn_encoder_drop.train(False)
+
+def encodeSequence(numeric):
+      input_tensor = Variable(torch.LongTensor(numeric).transpose(0,1).cuda(), requires_grad=False)
+      embedded = char_embeddings(input_tensor)
+      out, hidden = rnn_drop(embedded, None)
+      return out[-1].view(-1), hidden[0].view(-1), hidden[1].view(-1)
+
+def encodeSequenceBatch(numeric):
+      input_tensor = Variable(torch.LongTensor(numeric).transpose(0,1).cuda(), requires_grad=False)
+      embedded = char_embeddings(input_tensor)
+      out, hidden = rnn_drop(embedded, None)
+      return out[-1], hidden[0][0], hidden[1][0]
+
+def encodeBaselineSequenceBatch(numeric):
+      input_tensor = Variable(torch.LongTensor(numeric).transpose(0,1)[1:-1].cuda(), requires_grad=False)
+
+      embedded = baseline_char_embeddings(input_tensor)
+
+      out, encoded = baseline_rnn_encoder_drop(embedded, None)
+      out = out.view(len(numeric[0])-2, len(numeric), 2, -1)
+ #     print(out)
+      out1 = out[-1, :, 0, :] # forward encoding
+      out2 = out[0, :, 1, :] # backward encoding
+      out3 = encoded[0][0,:, :]
+      out4 = encoded[1][0, :, :]
+      out5 = encoded[0][1, :, :]
+      out6 = encoded[1][1, :, :]
+#      print(out1)
+ #     print(len(numeric))
+      out1 = torch.cat([out3, out4, out5, out6], dim=1)
+      return out1, out2, out3 #, encoded[1].view(-1)
+
+
+
+
+
+
+
 
 
 

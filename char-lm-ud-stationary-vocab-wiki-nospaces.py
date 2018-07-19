@@ -255,7 +255,7 @@ for epoch in range(10000):
           break
        printHere = (counter % 50 == 0)
        loss, numberOfCharacters = forward(numeric, printHere=printHere, train=False)
-       dev_loss += numberOfCharacters * loss.cpu().data.numpy()[0]
+       dev_loss += numberOfCharacters * loss.cpu().data.numpy()
        dev_char_count += numberOfCharacters
    devLosses.append(dev_loss/dev_char_count)
    print(devLosses)

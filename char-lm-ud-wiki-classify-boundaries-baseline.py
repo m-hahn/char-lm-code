@@ -192,13 +192,14 @@ def forward(numeric, train=True, printHere=False):
          if true == 0:
             continue
          soFar = 0
-         for j in range(len(boundaries[i])):
-           if j < int(len(boundaries[i])/2):
-               continue
+         for j in range(int(len(boundaries[i])/2), len(boundaries)):
            if (lambda x:((x is None if target == False else x not in wordsSoFar)))(boundaries[i][j]):
  #             print(i, target, true,soFar)
               if random.random() < 1/(true-soFar):
-                  hidden_states.append(out[j,i].detach().data.cpu().numpy())
+#                  print(j-5)
+ #                 print(input_tensor[j-5:j,i])
+                  featurized = {"".join([itos[x-3] for x in input_tensor[j-dist:j+1,i]]) : 1 for dist in range(1, 2)}
+                  hidden_states.append(featurized) #    out[j,i].detach().data.cpu().numpy())
                   labels.append(1 if target else 0)
                   labels_sum += labels[-1]
                   if target:
@@ -231,6 +232,7 @@ def forward(numeric, train=True, printHere=False):
          print((labels_sum, len(labels)))
      # return loss, len(numeric) * args.sequence_length
 
+print(hidden_states)
 
 
 import time
@@ -266,7 +268,13 @@ if True:
       if len(labels) > 10000:
          break
 
-predictors = hidden_states
+
+
+
+from sklearn.feature_extraction import DictVectorizer
+vec = DictVectorizer()
+predictors = vec.fit_transform(hidden_states).toarray()
+
 dependent = labels
 
 from sklearn.model_selection import train_test_split
@@ -289,35 +297,3 @@ print("Balance ",sum(y_test)/len(y_test))
 print(score)
 
 
-
-
-
-
-#   dev_data = corpusIteratorWiki.dev(args.language)
-#   print("Got data")
-#   dev_chars = prepareDataset(dev_data, train=True) if args.language == "italian" else prepareDatasetChunks(dev_data, train=True)
-#
-#
-#     
-#   dev_loss = 0
-#   dev_char_count = 0
-#   counter = 0
-#
-#   while True:
-#       counter += 1
-#       try:
-#          numeric = [next(dev_chars) for _ in range(args.batchSize)]
-#       except StopIteration:
-#          break
-#       printHere = (counter % 50 == 0)
-#       loss, numberOfCharacters = forward(numeric, printHere=printHere, train=False)
-#       dev_loss += numberOfCharacters * loss.cpu().data.numpy()[0]
-#       dev_char_count += numberOfCharacters
-#   devLosses.append(dev_loss/dev_char_count)
-#   print(devLosses)
-#   with open("/checkpoint/mhahn/"+args.language+"_"+__file__+"_"+str(args.myID), "w") as outFile:
-#      print(" ".join([str(x) for x in devLosses]), file=outFile)
-#
-#   if len(devLosses) > 1 and devLosses[-1] > devLosses[-2]:
-#      break
-#

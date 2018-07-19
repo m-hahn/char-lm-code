@@ -218,6 +218,8 @@ def forward(numeric, train=True, printHere=False):
             continue
          soFar = 0
          for j in range(len(boundaries[i])):
+           if j < int(len(boundaries[i])/2):
+               continue
            if accepted(boundaries[i][j]):
  #             print(i, target, true,soFar)
               if random.random() < 1/(true-soFar):
@@ -303,9 +305,9 @@ for i in range(len(labels)):
     if pos[i] == None:
         partition = ("test" if random.random() < 0.1 else "train")
     elif pos[i] == "VERB":
-        partition = "train"
+        partition = "test"
     elif pos[i]:
-         partition = "test"
+         partition = "train"
     else:
            assert False
     if partition == "test":

@@ -351,7 +351,7 @@ def genderTest():
        results[doChoiceList([".ein"+noun+".", ".eine"+noun+"."])] += 1
        print([x/counter for x in results])
 
-#genderTest()
+genderTest()
 
 
 quit()
