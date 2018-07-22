@@ -1,0 +1,111 @@
+import os
+import random
+#import accessISWOCData
+#import accessTOROTData
+import sys
+ 
+
+import csv
+
+def readTSV(paths, language=None):
+   result = []
+   header = None
+   assert len(paths) < 10
+   paths = sorted(paths)
+   print(paths)
+   for path in paths:
+      print(path)
+      with open(path, "r") as inFile:
+#         data = csv.reader(inFile, delimiter=",", quotechar='"')
+         data = [x.split("\t") for x in inFile.read().strip().split("\n")]
+ #        headerNew = data[0]
+         if header is None:
+            headerNew = data[0]
+            data = data[1:]
+            header = headerNew
+
+         if language is not None:
+            languageIndex = header.index("language")
+            print(languageIndex)
+            for line in data:
+              assert len(line) <= len(header), (header, line)
+              if len(line) > len(header):
+                print((line, header))
+              assert languageIndex < len(line), (header, line)
+            data = [x for x in data if x[languageIndex] == language]
+         result += data
+         assert header == headerNew, (header, headerNew)
+   return (header, result)
+
+
+
+def readCSV(paths):
+   result = []
+   header = None
+   assert len(paths) < 10
+   paths = sorted(paths)
+   print(paths)
+   for path in paths:
+      print(path)
+      with open(path, "r") as inFile:
+         data = csv.reader(inFile, delimiter=",", quotechar='"')
+#         data = [x.split("\t") for x in inFile.read().strip().split("\n")]
+ #        headerNew = data[0]
+         if header is None:
+            headerNew = next(data)
+            header = headerNew
+
+         result += list(data)
+         assert header == headerNew, (header, headerNew)
+   return (header, result)
+
+def printTSV(table, path):
+   header, data = table
+   with open(path, "w") as outFile:
+       outFile.write("\t".join(header)+"\n")
+       for line in data:
+           outFile.write("\t".join(line)+"\n")
+
+class AcqdivReader():
+   def __init__(self, language):
+      basePath = "/private/home/mhahn/data/acqdiv-database/tsv/"+language.lower()+"/"
+      self.morphemes = readTSV([basePath+x for x in os.listdir(basePath) if x.startswith("morphemes") and x.endswith(".tsv")])
+#      printTSV("/private/home/mhahn/data/acqdiv-database/tsv/"
+
+      self.speakers = readTSV([basePath+x for x in os.listdir(basePath) if x.startswith("speakers") and x.endswith(".tsv")])
+      self.utterances = readTSV([basePath+x for x in os.listdir(basePath) if x.startswith("utterances") and x.endswith(".tsv")])
+      self.words = readTSV([basePath+x for x in os.listdir(basePath) if x.startswith("words") and x.endswith(".tsv")])
+      self.uniquespeakers = readTSV([basePath+x for x in os.listdir(basePath) if x.startswith("uniquespeakers") and x.endswith(".tsv")])
+     
+      random.Random(4656).shuffle(self.utterances[1])
+      self.language = language
+
+   
+   def length(self):
+      return len(self.utterances)
+
+   def iterator(self):
+     utterance_raw_index = self.utterances[0].index("utterance_raw")
+     for sentence in self.utterances[1]:
+        yield sentence[utterance_raw_index]
+
+class AcqdivReaderPartition():
+   def __init__(self, reader, partition="train"):
+        self.corpus = reader
+        self.partition = partition
+   def iterator(self):
+        iterator = self.corpus.iterator()
+        for _ in range(10000):
+            x = next(iterator)
+            if self.partition == "dev":
+                 yield x
+        if self.partition == "train":
+          for x in iterator:
+              yield x
+
+
+reader = AcqdivReaderPartition(AcqdivReader("Japanese"), "train").iterator()
+
+print(next(reader))
+
+
