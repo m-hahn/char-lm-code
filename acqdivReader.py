@@ -84,17 +84,17 @@ class AcqdivReader():
    def length(self):
       return len(self.utterances)
 
-   def iterator(self):
+   def iterator(self, markUtteranceBoundaries=True, blankBeforeEOS=True):
      utterance_raw_index = self.utterances[0].index("utterance_raw")
      for sentence in self.utterances[1]:
-        yield sentence[utterance_raw_index]
+        yield sentence[utterance_raw_index]+((" " if blankBeforeEOS else "")+"\n" if markUtteranceBoundaries else "")
 
 class AcqdivReaderPartition():
    def __init__(self, reader, partition="train"):
         self.corpus = reader
         self.partition = partition
-   def iterator(self):
-        iterator = self.corpus.iterator()
+   def iterator(self, markUtteranceBoundaries=True, blankBeforeEOS=True):
+        iterator = self.corpus.iterator(markUtteranceBoundaries=markUtteranceBoundaries, blankBeforeEOS=blankBeforeEOS)
         for _ in range(10000):
             x = next(iterator)
             if self.partition == "dev":
@@ -104,8 +104,8 @@ class AcqdivReaderPartition():
               yield x
 
 
-reader = AcqdivReaderPartition(AcqdivReader("Japanese"), "train").iterator()
-
-print(next(reader))
-
+#reader = AcqdivReaderPartition(AcqdivReader("Japanese"), "train").iterator()
+#
+#print(next(reader))
+#
 
