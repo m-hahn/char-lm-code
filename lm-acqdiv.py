@@ -52,7 +52,7 @@ except FileNotFoundError:
          for char in word.lower():
             char_counts[char] = char_counts.get(char, 0) + 1
     char_counts = [(x,y) for x, y in char_counts.items()]
-    itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 5]
+    itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1]))]
     with open("/checkpoint/mhahn/char-vocab-acqdiv-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
@@ -206,7 +206,7 @@ import time
 devLosses = []
 for epoch in range(10000):
    print(epoch)
-   training_data = AcqdivReaderPartition(acqdivCorpusReader, "train").iterator()
+   training_data = AcqdivReaderPartition(acqdivCorpusReader, "train").reshuffledIterator()
    print("Got data")
    training_chars = prepareDatasetChunks(training_data, train=True)
 

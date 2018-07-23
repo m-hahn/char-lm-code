@@ -17,7 +17,7 @@ parser.add_argument("--char_dropout_prob", type=float, default=0.33)
 parser.add_argument("--char_noise_prob", type = float, default= 0.01)
 parser.add_argument("--learning_rate", type = float, default= 0.1)
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
-parser.add_argument("--sequence_length", type=int, default=50)
+parser.add_argument("--sequence_length", type=int, default=20)
 
 
 args=parser.parse_args()
@@ -52,7 +52,7 @@ except FileNotFoundError:
          for char in word.lower():
             char_counts[char] = char_counts.get(char, 0) + 1
     char_counts = [(x,y) for x, y in char_counts.items()]
-    itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 5]
+    itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1]))] # if y > 5]
     with open("/checkpoint/mhahn/char-vocab-acqdiv-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
@@ -114,27 +114,33 @@ if args.load_from is not None:
 from torch.autograd import Variable
 
 
-data = acqdivCorpusReader.iterator(blankBeforeEOS=False)
+data = AcqdivReaderPartition(acqdivCorpusReader, partition="dev").reshuffledIterator(blankBeforeEOS=False)
 
 
 numeric_with_blanks = []
 count = 0
 print("Prepare chunks")
 for chunk in data:
-  numeric_with_blanks.append(stoi[" "])
+  numeric_with_blanks.append(stoi[" "]+3)
   for char in chunk:
+#    print((char if char != "\n" else "\\n", stoi[char]+3 if char in stoi else 2))
     count += 1
+    assert char in stoi
     numeric_with_blanks.append(stoi[char]+3 if char in stoi else 2)
 
+
+# select a portion
+numeric_with_blanks = numeric_with_blanks[:10000]
 
 boundaries = []
 numeric_full = []
 for entry in numeric_with_blanks:
+ # print((entry-3, itos[entry-3]))
+  assert entry > 3
   if entry > 3 and itos[entry-3] == " ":
      boundaries.append(len(numeric_full))
   else:
      numeric_full.append(entry)
-
 
 
 future_surprisal_with = [None for _ in numeric_full]
@@ -144,9 +150,7 @@ char_surprisal = [None for _ in numeric_full]
 char_entropy = [None for _ in numeric_full]
 
 
-
 for start in range(0, len(numeric_full)-args.sequence_length, args.batchSize):
-      print(start/len(numeric_full))
       numeric = [([0] + numeric_full[b:b+args.sequence_length]) for b in range(start, start+args.batchSize)]
       maxLength = max([len(x) for x in numeric])
       for i in range(len(numeric)):
@@ -166,9 +170,16 @@ for start in range(0, len(numeric_full)-args.sequence_length, args.batchSize):
 
       # 
       loss = print_loss(log_probs.view(-1, len(itos)-1+3), target_tensor.view(-1)).view((maxLength-1), args.batchSize)
-      print(loss.mean())
       losses = loss.data.cpu().numpy()
 #      for i in range(len(numeric[0])-1):
+
+#         boundaries_index = [0 for _ in numeric]
+      if random.random() > 0.95:
+        print(start/len(numeric_full))
+        print(loss.mean())
+        for i in range((args.sequence_length-1)-1):
+           print((losses[i][0], itos[numeric[0][i+1]-3]))
+
 #         print((i,losses[i][0], itos[numeric[0][i+1]-1]))
       for i in range(start, start+args.batchSize):
          #print(losses[:int(halfSequenceLength),i-start].sum())
@@ -179,7 +190,8 @@ for start in range(0, len(numeric_full)-args.sequence_length, args.batchSize):
             future_surprisal_with[i+halfSequenceLength] = surprisalAtMid
             char_surprisal[i+halfSequenceLength] = losses[halfSequenceLength, i-start]
             char_entropy[i+halfSequenceLength] = entropy[halfSequenceLength, i-start]
-         future_surprisal_without[i] = surprisalAtStart
+         if i < len(future_surprisal_without):
+            future_surprisal_without[i] = surprisalAtStart
              
 def mi(x,y):
   return   x-y if x is not None and y is not None else None
@@ -187,6 +199,9 @@ def mi(x,y):
 chars = []
 predictor = []
 dependent = []
+
+utteranceBoundaries = []
+lastWasUtteranceBoundary = False
 
 boundaries_index = 0
 for i in range(len(numeric_full)):
@@ -196,11 +211,20 @@ for i in range(len(numeric_full)):
    else:
       boundary = False
    pmiFuturePast = mi(future_surprisal_without[i], future_surprisal_with[i])
-   print((itos[numeric_full[i]-1], char_surprisal[i], pmiFuturePast, pmiFuturePast < 0 if pmiFuturePast is not None else None, boundary)) # pmiFuturePast < 2 if pmiFuturePast is not None else None,
+   print((itos[numeric_full[i]-3], char_surprisal[i], pmiFuturePast, pmiFuturePast < 0 if pmiFuturePast is not None else None, boundary)) # pmiFuturePast < 2 if pmiFuturePast is not None else None,
    if pmiFuturePast is not None:
-     chars.append(itos[numeric_full[i]-1])
-     predictor.append([pmiFuturePast, char_surprisal[i], char_entropy[i]]) #char_surprisal[i], pmiFuturePast]) #pmiFuturePast])
-     dependent.append(1 if boundary else 0)
+     character = itos[numeric_full[i]-3]
+     assert character != " "
+     if character == "\n":
+        lastWasUtteranceBoundary = True
+     else:
+       chars.append(character)
+       predictor.append([pmiFuturePast, char_surprisal[i], char_entropy[i], 1 if lastWasUtteranceBoundary else 0]) #char_surprisal[i], pmiFuturePast]) #pmiFuturePast])
+       dependent.append(1 if boundary else 0)
+       lastWasUtteranceBoundary = False
+
+
+# TODO exclude utterance boundaries from the logistic classification, and record where they were
 
 
 # , char_surprisal[i], char_entropy[i]
@@ -254,6 +278,7 @@ realWords = 0
 predictedWords = 0
 agreement = 0
 for char, predicted, real in zip(chars_test, predictions, y_test):
+   assert char != " "
    if real ==1:
        realWords += 1
        if predicted == 1 and currentWord == currentWordReal:
@@ -269,15 +294,21 @@ for char, predicted, real in zip(chars_test, predictions, y_test):
    else:
        currentWord += char
 
-print(sorted(list(extractedLexicon.items()), key=lambda x:x[1]))
+print("Extracted lexicon")
+lexicon = sorted(list(extractedLexicon.items()), key=lambda x:x[1])
+print(lexicon)
 
 correctWords = set(list(extractedLexicon)).intersection(realLexicon)
+print("Correct words")
 print(correctWords)
+print("Incorrect words")
+
+print("Lexicon")
 print(len(correctWords)/len(extractedLexicon))
 print(len(correctWords)/len(realLexicon))
 print("..")
 
-
+print("quality")
 print(agreement/realWords)
 print(agreement/predictedWords)
 
@@ -288,6 +319,7 @@ realBoundariesTotal = 0
 predictedAndReal = len([1 for x, y in zip(predictions, y_test) if x==1 and x==y])
 predictedCount = sum(predictions)
 targetCount = sum(y_test)
+print("Boundaries")
 print(predictedAndReal/predictedCount)
 print(predictedAndReal/targetCount)
 

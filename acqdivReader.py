@@ -87,12 +87,17 @@ class AcqdivReader():
    def iterator(self, markUtteranceBoundaries=True, blankBeforeEOS=True):
      utterance_raw_index = self.utterances[0].index("utterance_raw")
      for sentence in self.utterances[1]:
-        yield sentence[utterance_raw_index]+((" " if blankBeforeEOS else "")+"\n" if markUtteranceBoundaries else "")
+        yield (sentence[utterance_raw_index]+((" " if blankBeforeEOS else "")+"\n" if markUtteranceBoundaries else "")).lower()
 
 class AcqdivReaderPartition():
    def __init__(self, reader, partition="train"):
         self.corpus = reader
         self.partition = partition
+   def reshuffledIterator(self, markUtteranceBoundaries=True, blankBeforeEOS=True):
+      results = list(self.iterator(markUtteranceBoundaries=markUtteranceBoundaries, blankBeforeEOS=blankBeforeEOS))
+      random.shuffle(results)
+      for utterance in results:
+        yield utterance
    def iterator(self, markUtteranceBoundaries=True, blankBeforeEOS=True):
         iterator = self.corpus.iterator(markUtteranceBoundaries=markUtteranceBoundaries, blankBeforeEOS=blankBeforeEOS)
         for _ in range(10000):
