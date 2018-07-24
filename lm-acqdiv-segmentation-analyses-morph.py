@@ -114,34 +114,47 @@ if args.load_from is not None:
 from torch.autograd import Variable
 
 
-data = AcqdivReaderPartition(acqdivCorpusReader, partition="train").reshuffledIterator(blankBeforeEOS=False)
+data = AcqdivReaderPartition(acqdivCorpusReader, partition="train").reshuffledIterator(blankBeforeEOS=False, originalIterator=AcqdivReader.iteratorMorph)
 
 
 numeric_with_blanks = []
+
+indices_with_blanks = []
 count = 0
 print("Prepare chunks")
 for chunk in data:
+  indices_with_blanks.append((chunk, -1))
   numeric_with_blanks.append(stoi[" "]+3)
-  for char in chunk:
+  countInChunk = 0
+
+  for char in chunk[0]:
 #    print((char if char != "\n" else "\\n", stoi[char]+3 if char in stoi else 2))
+    indices_with_blanks.append((chunk, countInChunk))
+
     count += 1
+    countInChunk += 1
     if char not in stoi:
         print(char)
     numeric_with_blanks.append(stoi[char]+3 if char in stoi else 2)
-
+ #   print((char, chunk))
+#quit()
 # select a portion
 numeric_with_blanks = numeric_with_blanks[:100000]
+indices_with_blanks = indices_with_blanks[:100000]
 
 boundaries = []
 numeric_full = []
-for entry in numeric_with_blanks:
+indices_full = []
+for entry in zip(numeric_with_blanks, indices_with_blanks):
  # print((entry-3, itos[entry-3]))
   #assert entry > 3
-  if entry > 3 and itos[entry-3] == " ":
+  if entry[0] > 3 and itos[entry[0]-3] == " ":
      boundaries.append(len(numeric_full))
   else:
-     numeric_full.append(entry)
-
+     numeric_full.append(entry[0])
+     indices_full.append(entry[1])
+ #    print(itos[entry[0]-3],entry[1])
+#quit()
 
 future_surprisal_with = [None for _ in numeric_full]
 future_surprisal_without = [None for _ in numeric_full]
@@ -203,6 +216,7 @@ dependent = []
 utteranceBoundaries = []
 lastWasUtteranceBoundary = False
 
+indices_without_boundaries = []
 boundaries_index = 0
 for i in range(len(numeric_full)):
    if boundaries_index < len(boundaries) and i == boundaries[boundaries_index]:
@@ -222,7 +236,7 @@ for i in range(len(numeric_full)):
        predictor.append([pmiFuturePast, char_surprisal[i], char_entropy[i], 1 if lastWasUtteranceBoundary else 0]) #char_surprisal[i], pmiFuturePast]) #pmiFuturePast])
        dependent.append(1 if boundary else 0)
        lastWasUtteranceBoundary = False
-
+       indices_without_boundaries.append(indices_full[i])
 
 # TODO exclude utterance boundaries from the logistic classification, and record where they were
 
@@ -251,7 +265,7 @@ predictor = [a+b+c+d+e+f+g for a, b, c, d, e, f, g in zip(predictor, predictorSh
 
 
 from sklearn.model_selection import train_test_split
-x_train, x_test, y_train, y_test, chars_train, chars_test = train_test_split(predictor, dependent, chars, test_size=0.5, random_state=0, shuffle=False)
+x_train, x_test, y_train, y_test, chars_train, chars_test, indices_train, indices_test = train_test_split(predictor, dependent, chars, indices_without_boundaries, test_size=0.5, random_state=0, shuffle=False)
 
 
 from sklearn.linear_model import LogisticRegression
@@ -272,30 +286,115 @@ for char, predicted, real, predictor in zip(chars_test, predictions, y_test, x_t
 
 realLexicon = set()
 extractedLexicon = {}
+extractedLexiconWithReal = {}
 currentWord = ""
 currentWordReal = ""
 realWords = 0
 predictedWords = 0
+
+# for each predicted word, count whether it is an example of:
 agreement = 0
+oversegmented = 0
+undersegmented = 0
+missegmented = 0
+
+# for each REAL word
+wasOversegmented = 0
+wasUndersegmented = 0
 
 
-for char, predicted, real in zip(chars_test, predictions, y_test):
+lastPredictedStartCoincidedWithRealStart = True
+lastRealStartCoincidedWithPredictedStart = True
+
+lastIndex = None
+for char, predicted, real, indices in zip(chars_test, predictions, y_test, indices_test):
    assert char != " "
+
+#   print(indices)
+   if predicted == 1:
+     print(currentWord)
+
+
+   if indices[0] is not lastIndex:
+#     print((lastPredictedStartCoincidedWithRealStart, currentWord, currentWordReal, indices))
+     print("")
+     print(list(indices[0][-1]))
+     lastIndex = indices[0]
+   
    if real ==1:
-       realWords += 1
        if predicted == 1 and currentWord == currentWordReal:
            agreement += 1
+       elif predicted == 1 and lastPredictedStartCoincidedWithRealStart:
+         wasUndersegmented += 1
+       elif predicted == 1 and lastRealStartCoincidedWithPredictedStart:
+         wasOversegmented += 1
+# oversegmentation:
+       # wasOversegmented
+       #  wasUndersegmented
+       # wasMissegmented
+
+
+
+#       realLexicon.add(currentWordReal)
+ #      currentWordReal = char
+   #else:
+  #     currentWordReal += char
+
+   if predicted == 1:
+       if real == 1 and lastPredictedStartCoincidedWithRealStart:
+           # correct or undersegmented
+          if currentWord == currentWordReal:
+             _ = _
+          elif len(currentWord) == len(currentWordReal):
+              assert currentWord == currentWordReal, (currentWord, currentWordReal)
+          elif len(currentWord) < len(currentWordReal):
+              print(currentWord, currentWordReal)
+              assert False
+          else:
+             assert len(currentWord) > len(currentWordReal)
+             undersegmented += 1
+       elif real == 1 and not lastPredictedStartCoincidedWithRealStart:
+          if len(currentWord) > len(currentWordReal): # missegmented
+             missegmented += 1
+          else:
+             assert len(currentWord) < len(currentWordReal), (currentWord, currentWordReal)
+             oversegmented += 1
+       elif real == 0 and len(currentWord) <= len(currentWordReal):
+             oversegmented += 1
+       elif real == 0 and len(currentWord) > len(currentWordReal):
+            missegmented += 1
+
+       if real == 1:
+          lastPredictedStartCoincidedWithRealStart = True
+       else:
+          lastPredictedStartCoincidedWithRealStart = False
+  
+   if real == 1:
+       if predicted == 1:
+          lastRealStartCoincidedWithPredictedStart = True
+       else:
+          lastRealStartCoincidedWithPredictedStart = False
+ 
+   if predicted == 1:
+       predictedWords += 1
+       extractedLexicon[currentWord] = extractedLexicon.get(currentWord, 0) + 1
+       extractedLexiconWithReal[(currentWord, currentWordReal, real==1)] = extractedLexiconWithReal.get((currentWord, currentWordReal, real==1), 0) + 1
+
+       currentWord = char
+   else:
+       currentWord += char
+
+
+   if real ==1:
+       realWords += 1
        realLexicon.add(currentWordReal)
        currentWordReal = char
    else:
        currentWordReal += char
+   #print(currentWord, currentWordReal, lastPredictedStartCoincidedWithRealStart)
 
-   if predicted == 1:
-       predictedWords += 1
-       extractedLexicon[currentWord] = extractedLexicon.get(currentWord, 0) + 1
-       currentWord = char
-   else:
-       currentWord += char
+
+assert agreement + oversegmented + undersegmented + missegmented == predictedWords
 
 print("Extracted words")
 print(sorted(list(extractedLexicon.items()), key=lambda x:x[1]))
@@ -305,13 +404,17 @@ print(sorted(incorrectWords, key=lambda x:x[1]))
 print("Correct words")
 correctWords = [(x,y) for (x,y) in extractedLexicon.items() if x in set(list(extractedLexicon)).intersection(realLexicon)]
 print(sorted(correctWords, key=lambda x:x[1]))
+annotatedWords = [(x,y) for (x,y) in extractedLexiconWithReal.items()]
+print(sorted(annotatedWords, key=lambda x:x[1]))
+
 print("Lexicon")
 print("Precision")
 print(len(correctWords)/len(extractedLexicon))
 print("Recall")
 print(len(correctWords)/len(realLexicon))
 print("..")
-
+print("Classifying the predicted words", ["Agreement", agreement, "Oversegmented", oversegmented, "Undersegmented", undersegmented, "Missegmented", missegmented])
+print("Classifying the real endpoints", ["over", wasOversegmented, "under", wasUndersegmented])
 print("quality")
 print("Precision")
 print(agreement/predictedWords)

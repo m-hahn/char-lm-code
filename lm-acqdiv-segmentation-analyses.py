@@ -130,7 +130,7 @@ for chunk in data:
     numeric_with_blanks.append(stoi[char]+3 if char in stoi else 2)
 
 # select a portion
-numeric_with_blanks = numeric_with_blanks[:100000]
+numeric_with_blanks = numeric_with_blanks[:10000]
 
 boundaries = []
 numeric_full = []
@@ -272,30 +272,102 @@ for char, predicted, real, predictor in zip(chars_test, predictions, y_test, x_t
 
 realLexicon = set()
 extractedLexicon = {}
+extractedLexiconWithReal = {}
 currentWord = ""
 currentWordReal = ""
 realWords = 0
 predictedWords = 0
-agreement = 0
 
+# for each predicted word, count whether it is an example of:
+agreement = 0
+oversegmented = 0
+undersegmented = 0
+missegmented = 0
+
+# for each REAL word
+wasOversegmented = 0
+wasUndersegmented = 0
+
+
+lastPredictedStartCoincidedWithRealStart = True
 
 for char, predicted, real in zip(chars_test, predictions, y_test):
    assert char != " "
    if real ==1:
-       realWords += 1
        if predicted == 1 and currentWord == currentWordReal:
            agreement += 1
+       elif predicted == 1 and lastPredictedStartCoincidedWithRealStart:
+         wasUndersegmented += 1
+       elif predicted == 1 and lastRealStartCoincidedWithPredictedStart:
+         wasOversegmented += 1
+# oversegmentation:
+       # wasOversegmented
+       #  wasUndersegmented
+       # wasMissegmented
+
+
+
+#       realLexicon.add(currentWordReal)
+ #      currentWordReal = char
+   #else:
+  #     currentWordReal += char
+
+   if predicted == 1:
+       if real == 1 and lastPredictedStartCoincidedWithRealStart:
+           # correct or undersegmented
+          if currentWord == currentWordReal:
+             _ = _
+          elif len(currentWord) == len(currentWordReal):
+              assert currentWord == currentWordReal, (currentWord, currentWordReal)
+          elif len(currentWord) < len(currentWordReal):
+              print(currentWord, currentWordReal)
+              quit()
+          else:
+             assert len(currentWord) > len(currentWordReal)
+             undersegmented += 1
+       elif real == 1 and not lastPredictedStartCoincidedWithRealStart:
+          if len(currentWord) > len(currentWordReal): # missegmented
+             missegmented += 1
+          else:
+             assert len(currentWord) < len(currentWordReal), (currentWord, currentWordReal)
+             oversegmented += 1
+       elif real == 0 and len(currentWord) <= len(currentWordReal):
+             oversegmented += 1
+       elif real == 0 and len(currentWord) > len(currentWordReal):
+            missegmented += 1
+
+       if real == 1:
+          lastPredictedStartCoincidedWithRealStart = True
+       else:
+          lastPredictedStartCoincidedWithRealStart = False
+  
+   if real == 1:
+       if predicted == 1:
+          lastRealStartCoincidedWithPredictedStart = True
+       else:
+          lastRealStartCoincidedWithPredictedStart = False
+ 
+   if predicted == 1:
+       predictedWords += 1
+       extractedLexicon[currentWord] = extractedLexicon.get(currentWord, 0) + 1
+       extractedLexiconWithReal[(currentWord, currentWordReal, real==1)] = extractedLexiconWithReal.get((currentWord, currentWordReal, real==1), 0) + 1
+
+       currentWord = char
+   else:
+       currentWord += char
+
+
+   if real ==1:
+       realWords += 1
        realLexicon.add(currentWordReal)
        currentWordReal = char
    else:
        currentWordReal += char
+   print((lastPredictedStartCoincidedWithRealStart, currentWord, currentWordReal))
 
-   if predicted == 1:
-       predictedWords += 1
-       extractedLexicon[currentWord] = extractedLexicon.get(currentWord, 0) + 1
-       currentWord = char
-   else:
-       currentWord += char
+
+
+assert agreement + oversegmented + undersegmented + missegmented == predictedWords
 
 print("Extracted words")
 print(sorted(list(extractedLexicon.items()), key=lambda x:x[1]))
@@ -305,13 +377,17 @@ print(sorted(incorrectWords, key=lambda x:x[1]))
 print("Correct words")
 correctWords = [(x,y) for (x,y) in extractedLexicon.items() if x in set(list(extractedLexicon)).intersection(realLexicon)]
 print(sorted(correctWords, key=lambda x:x[1]))
+annotatedWords = [(x,y) for (x,y) in extractedLexiconWithReal.items()]
+print(sorted(annotatedWords, key=lambda x:x[1]))
+
 print("Lexicon")
 print("Precision")
 print(len(correctWords)/len(extractedLexicon))
 print("Recall")
 print(len(correctWords)/len(realLexicon))
 print("..")
-
+print("Classifying the predicted words", ["Agreement", agreement, "Oversegmented", oversegmented, "Undersegmented", undersegmented, "Missegmented", missegmented])
+print("Classifying the real endpoints", ["over", wasOversegmented, "under", wasUndersegmented])
 print("quality")
 print("Precision")
 print(agreement/predictedWords)

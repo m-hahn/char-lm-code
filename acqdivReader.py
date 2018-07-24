@@ -89,17 +89,37 @@ class AcqdivReader():
      for sentence in self.utterances[1]:
         yield (sentence[utterance_raw_index]+((" " if blankBeforeEOS else "")+"\n" if markUtteranceBoundaries else "")).lower()
 
+   def iteratorMorph(self, markUtteranceBoundaries=True, blankBeforeEOS=True):
+     utterance_raw_index = self.utterances[0].index("utterance_raw")
+     morpheme_index = self.utterances[0].index("morpheme")
+     gloss_raw_index = self.utterances[0].index("gloss_raw")
+     pos_raw_index = self.utterances[0].index("pos_raw")
+     for sentence in self.utterances[1]:
+        utterance_raw = (sentence[utterance_raw_index]).lower()
+        utterance_for_return = utterance_raw+((" " if blankBeforeEOS else "")+"\n" if markUtteranceBoundaries else "")
+        utterance = utterance_raw.lower().split(" ")
+        morpheme = sentence[morpheme_index].split(" ")
+        gloss_raw = sentence[gloss_raw_index].split(" ")
+        pos_raw = sentence[pos_raw_index].split(" ")
+        for l in [morpheme, gloss_raw, pos_raw]:
+          while len(l) < len(utterance):
+            l.append("")
+        annotated = list(zip(utterance, morpheme, gloss_raw, pos_raw))
+        yield (utterance_for_return, annotated)
+
+
+
 class AcqdivReaderPartition():
    def __init__(self, reader, partition="train"):
         self.corpus = reader
         self.partition = partition
-   def reshuffledIterator(self, markUtteranceBoundaries=True, blankBeforeEOS=True):
-      results = list(self.iterator(markUtteranceBoundaries=markUtteranceBoundaries, blankBeforeEOS=blankBeforeEOS))
+   def reshuffledIterator(self, markUtteranceBoundaries=True, blankBeforeEOS=True, originalIterator = AcqdivReader.iterator):
+      results = list(self.iterator(markUtteranceBoundaries=markUtteranceBoundaries, blankBeforeEOS=blankBeforeEOS, originalIterator = originalIterator))
       random.shuffle(results)
       for utterance in results:
         yield utterance
-   def iterator(self, markUtteranceBoundaries=True, blankBeforeEOS=True):
-        iterator = self.corpus.iterator(markUtteranceBoundaries=markUtteranceBoundaries, blankBeforeEOS=blankBeforeEOS)
+   def iterator(self, markUtteranceBoundaries=True, blankBeforeEOS=True, originalIterator = AcqdivReader.iterator):
+        iterator = originalIterator(self.corpus, markUtteranceBoundaries=markUtteranceBoundaries, blankBeforeEOS=blankBeforeEOS)
         for _ in range(10000):
             x = next(iterator)
             if self.partition == "dev":
