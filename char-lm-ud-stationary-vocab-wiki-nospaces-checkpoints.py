@@ -7,15 +7,15 @@ parser.add_argument("--save-to", dest="save_to", type=str)
 
 import random
 
-parser.add_argument("--batchSize", type=int, default=64)
+parser.add_argument("--batchSize", type=int, default=16)
 parser.add_argument("--char_embedding_size", type=int, default=100)
-parser.add_argument("--hidden_dim", type=int, default=2048)
-parser.add_argument("--layer_num", type=int, default=2)
-parser.add_argument("--weight_dropout_in", type=float, default=0.3)
-parser.add_argument("--weight_dropout_hidden", type=float, default=0.25)
-parser.add_argument("--char_dropout_prob", type=float, default=0.05)
-parser.add_argument("--char_noise_prob", type = float, default= 0.0)
-parser.add_argument("--learning_rate", type = float, default= 0.4)
+parser.add_argument("--hidden_dim", type=int, default=1024)
+parser.add_argument("--layer_num", type=int, default=1)
+parser.add_argument("--weight_dropout_in", type=float, default=0.01)
+parser.add_argument("--weight_dropout_hidden", type=float, default=0.1)
+parser.add_argument("--char_dropout_prob", type=float, default=0.33)
+parser.add_argument("--char_noise_prob", type = float, default= 0.01)
+parser.add_argument("--learning_rate", type = float, default= 0.1)
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
 parser.add_argument("--sequence_length", type=int, default=50)
 
@@ -27,9 +27,7 @@ print(args)
 
 
 
-from acqdivReader import AcqdivReader, AcqdivReaderPartition
-
-acqdivCorpusReader = AcqdivReader(args.language)
+import corpusIteratorWiki
 
 
 
@@ -40,23 +38,23 @@ def plus(it1, it2):
       yield x
 
 try:
-   with open("/checkpoint/mhahn/char-vocab-acqdiv-"+args.language, "r") as inFile:
+   with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
 except FileNotFoundError:
     print("Creating new vocab")
     char_counts = {}
     # get symbol vocabulary
-    with open("/private/home/mhahn/data/acqdiv/"+args.language+"-vocab.txt", "r") as inFile:
+
+    with open("/private/home/mhahn/data/WIKIPEDIA/"+args.language+"-vocab.txt", "r") as inFile:
       words = inFile.read().strip().split("\n")
       for word in words:
          for char in word.lower():
             char_counts[char] = char_counts.get(char, 0) + 1
     char_counts = [(x,y) for x, y in char_counts.items()]
-    itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1]))]
-    with open("/checkpoint/mhahn/char-vocab-acqdiv-"+args.language, "w") as outFile:
+    itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
+    with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
-itos.append("\n")
 print(itos)
 stoi = dict([(itos[i],i) for i in range(len(itos))])
 
@@ -122,7 +120,7 @@ def prepareDatasetChunks(data, train=True):
       count = 0
       print("Prepare chunks")
       for chunk in data:
-#       print(len(chunk))
+       print(len(chunk))
        for char in chunk:
          if char == " ":
            continue
@@ -203,17 +201,21 @@ def backward(loss, printHere):
 
 import time
 
+
+checkpointCount = 0
+
 devLosses = []
 for epoch in range(10000):
    print(epoch)
-   training_data = AcqdivReaderPartition(acqdivCorpusReader, "train").reshuffledIterator()
+   training_data = corpusIteratorWiki.training(args.language)
    print("Got data")
-   training_chars = prepareDatasetChunks(training_data, train=True)
+   training_chars = prepareDataset(training_data, train=True) if args.language == "italian" else prepareDatasetChunks(training_data, train=True)
 
 
 
    rnn_drop.train(True)
    startTime = time.time()
+   lastSaved = time.time()
    trainChars = 0
    counter = 0
    while True:
@@ -227,21 +229,24 @@ for epoch in range(10000):
       backward(loss, printHere)
       trainChars += charCounts 
       if printHere:
-          print((epoch,counter))
+          print((epoch,counter, checkpointCount))
           print("Dev losses")
           print(devLosses)
           print("Chars per sec "+str(trainChars/(time.time()-startTime)))
       if counter % 20000 == 0 and epoch == 0:
         if args.save_to is not None:
            torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), "/checkpoint/mhahn/"+args.save_to+".pth.tar")
-
-
+      if time.time() - lastSaved > 1800:
+        if args.save_to is not None:
+           torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), "/checkpoint/mhahn/"+args.save_to+"_CHECKPOINT"+str(checkpointCount)+".pth.tar")
+           checkpointCount += 1
+           lastSaved = time.time()
    rnn_drop.train(False)
 
 
-   dev_data = AcqdivReaderPartition(acqdivCorpusReader, "dev").iterator()
+   dev_data = corpusIteratorWiki.dev(args.language)
    print("Got data")
-   dev_chars = prepareDatasetChunks(dev_data, train=True)
+   dev_chars = prepareDataset(dev_data, train=True) if args.language == "italian" else prepareDatasetChunks(dev_data, train=True)
 
 
      
@@ -267,6 +272,6 @@ for epoch in range(10000):
    if len(devLosses) > 1 and devLosses[-1] > devLosses[-2]:
       break
    if args.save_to is not None:
-      torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), "/checkpoint/mhahn/"+args.save_to+"_EPOCH_"+str(epoch)+".pth.tar")
+      torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), "/checkpoint/mhahn/"+args.save_to+".pth.tar")
 
 

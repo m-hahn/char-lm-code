@@ -1,9 +1,11 @@
+# Heuristic syllabifier for Japanese
 
-vowels = ['a','e','i','o','u']
+
+vowels = ['a','e','i','o','u', "ɘ"]
 validCodas = ['n', "q", "m", "ŋ"]
 
 # phonotactic rule: mb reflects Nb
-validInitials = ["tch", "tʃ","ts", "ch", "sh", "ky", "gy", "ry", "ny", "hy", "by", "py", "ty"]
+validInitials = ["tch", "ʃ", "tʃ","ts", "zh", "ch", "sh", "ky", "gy", "ry", "my","ny", "hy", "by", "py", "ty", "k", "t"]
 
 def validSyllable(x):
    if x in ["^", "_"]:
@@ -19,7 +21,7 @@ def validSyllable(x):
       nucleus.append(x[i])
       i += 1
 #   print((x, initial, nucleus))
-   if len(set(initial)) > 1 and "".join(initial) not in validInitials and not (initial[0] == initial[1] and "".join(initial[1:]) in validInitials) and not (initial[0] == "d" and initial[1] == "t"):
+   if len(set(initial)) > 1 and "".join(initial) not in validInitials and not (initial[0] == initial[1] and "".join(initial[1:]) in validInitials) and not (initial[0] == "d" and initial[1] == "t") and not (("".join(initial)).replace(":", "") in validInitials):
        return None 
    if len(set(nucleus)) > 1 and not (len(nucleus) == 2 and nucleus[1] == ":"):
        return None
@@ -35,6 +37,11 @@ def validSyllable(x):
    
     
 def syllabify(word):
+          word = word.replace("^", "")
+          if word.endswith("t") or word.endswith("k"):
+             return None # hopeless
+          if word in validCodas:
+             return None
           lastEnd = len(word)
           i = len(word)-1
           syllabification = []

@@ -45,19 +45,21 @@ def printTSV(table, path):
        for line in data:
            outFile.write("\t".join(line)+"\n")
 
+import sys
+language = sys.argv[1]
 
 
 # extract data for specific language
 basePath = "/private/home/mhahn/data/acqdiv-database/tsv/"
-basePathOut = "/private/home/mhahn/data/acqdiv-database/tsv/japanese/"
+basePathOut = "/private/home/mhahn/data/acqdiv-database/tsv/"+language.lower()+"/"
 names = ["speakers","morphemes",  "utterances", "words", "uniquespeakers"]
 
 
 for name in names:
-  dataset = readTSV([basePath+name+".tsv"], language="Japanese")
+  dataset = readTSV([basePath+name+".tsv"], language=language)
   printTSV(dataset, basePathOut+name+".tsv")
 
 
-#reader = AcqdivReader("Japanese")
+#reader = AcqdivReader(language)
 
 

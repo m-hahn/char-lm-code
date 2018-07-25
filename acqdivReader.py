@@ -79,18 +79,18 @@ class AcqdivReader():
      
       random.Random(4656).shuffle(self.utterances[1])
       self.language = language
-
+      self.UTTERANCE_COLNAME = {"Japanese" : "utterance_raw", "Indonesian" : "utterance", "Sesotho" : "utterance"}[self.language]
    
    def length(self):
       return len(self.utterances)
 
    def iterator(self, markUtteranceBoundaries=True, blankBeforeEOS=True):
-     utterance_raw_index = self.utterances[0].index("utterance_raw")
+     utterance_raw_index = self.utterances[0].index(self.UTTERANCE_COLNAME)
      for sentence in self.utterances[1]:
         yield (sentence[utterance_raw_index]+((" " if blankBeforeEOS else "")+"\n" if markUtteranceBoundaries else "")).lower()
 
    def iteratorMorph(self, markUtteranceBoundaries=True, blankBeforeEOS=True):
-     utterance_raw_index = self.utterances[0].index("utterance_raw")
+     utterance_raw_index = self.utterances[0].index(self.UTTERANCE_COLNAME)
      morpheme_index = self.utterances[0].index("morpheme")
      gloss_raw_index = self.utterances[0].index("gloss_raw")
      pos_raw_index = self.utterances[0].index("pos_raw")
