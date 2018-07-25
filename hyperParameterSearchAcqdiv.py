@@ -31,7 +31,7 @@ if priorKnowledge == "NONE":
    priorKnowledge = None
   
   
-noiseVariance = float(sys.argv[6]) if len(sys.argv) > 6 else 0.0025
+noiseVariance = float(sys.argv[5]) if len(sys.argv) > 6 else 0.0005
   
   
 import numpy as np
@@ -85,16 +85,16 @@ bounds = []
 
 
 
-bounds.append(["batchSize", int] + [32, 64])
-bounds.append(["char_embedding_size", int, 100, 200])
+bounds.append(["batchSize", int] + [32, 64, 128])
+bounds.append(["char_embedding_size", int, 50, 100, 200])
 bounds.append(["hidden_dim", int, 1024, 2048])
-bounds.append(["layer_num", int, 1, 2])
+bounds.append(["layer_num", int, 1, 2, 3])
 bounds.append(["weight_dropout_in", float] + [x/20.0 for x in range(8)])
 bounds.append(["weight_dropout_hidden", float] + [x/20.0 for x in range(10)])
 bounds.append(["char_dropout_prob", float] + [x/40.0 for x in range(15)])
 bounds.append(["char_noise_prob",  float] + [0.0, 0.01, 0.02, 0.05])
-bounds.append(["learning_rate", float, 0.05, 0.1, 0.2, 0.3, 0.4])
-bounds.append(["sequence_length", int, 50, 80]) #, 100, 200])
+bounds.append(["learning_rate", float, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8])
+bounds.append(["sequence_length", int, 30, 40, 50, 80]) #, 100, 200])
 #bounds.append(["momentum", type = float, 0.0, 0.5, 0.9])
 
 
