@@ -344,14 +344,37 @@ def genderTest():
              genders[gender[0]].add(line["word"].lower())
    print(genders)
    counter = 0
-   results = [0,0,0] 
-   for noun in genders["Gender=Masc"].union(genders["Gender=Neut"]):
-       counter += 1
-#       results[doChoiceList([".der"+noun+".", ".die"+noun+".", ".das"+noun+"."])] += 1
-       results[doChoiceList([".ein"+noun+".", ".eine"+noun+"."])] += 1
-       print([x/counter for x in results])
 
-genderTest()
+
+   results = [[0,0,0] for _ in range(3)]
+   for genderIndex, gender in enumerate(["Gender="+x for x in ["Masc", "Fem", "Neut"]]):
+     counter = 0
+     for noun in genders[gender]:
+       counter += 1
+       results[genderIndex][doChoiceList([".der"+noun+".", ".die"+noun+".", ".das"+noun+"."])] += 1
+#       results[doChoiceList([".ein"+noun+".", ".eine"+noun+"."])] += 1
+       print([[x/counter for x in resultsx] for resultsx in results])
+     results[genderIndex] = [x/counter for x in results[genderIndex]]
+   return results
+
+
+#   # test separation of feminine from masc/neuter via indefinite
+#   results = [0,0,0] 
+#   for noun in genders["Gender=Masc"].union(genders["Gender=Neut"]):
+#       counter += 1
+##       results[doChoiceList([".der"+noun+".", ".die"+noun+".", ".das"+noun+"."])] += 1
+#       results[doChoiceList([".ein"+noun+".", ".eine"+noun+"."])] += 1
+#       print([x/counter for x in results])
+#   return [x/counter for x in results]
+#
+confusion = genderTest()
+
+#quantities = {"agreement" : agreement, "oversegmented" : oversegmented, "undersegmented" : undersegmented, "missegmented" : missegmented, "over" : wasOversegmented, "under" : wasUndersegmented, "lexical_precision" : len(correctWords)/len(extractedLexicon), "lexical_recall" : len(correctWords)/len(realLexicon), "token_precision" : agreement/predictedWords, "token_recall" : agreement/realWords, "boundary_precision" : predictedAndReal/predictedCount, "boundary_recall" : predictedAndReal/targetCount, "boundary_accuracy" : score}
+
+with open("/checkpoint/mhahn/trajectories/"+__file__+"_"+args.load_from, "w") as outFile:
+   for line in confusion:
+     outFile.write("\t".join(list(map(str, (line))))+"\n")
+
 
 
 quit()

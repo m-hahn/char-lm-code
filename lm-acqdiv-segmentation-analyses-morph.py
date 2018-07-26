@@ -7,17 +7,17 @@ parser.add_argument("--load-from", dest="load_from", type=str)
 
 import random
 
-parser.add_argument("--batchSize", type=int, default=16)
+parser.add_argument("--batchSize", type=int, default=64)
 parser.add_argument("--char_embedding_size", type=int, default=100)
-parser.add_argument("--hidden_dim", type=int, default=1024)
-parser.add_argument("--layer_num", type=int, default=1)
-parser.add_argument("--weight_dropout_in", type=float, default=0.01)
-parser.add_argument("--weight_dropout_hidden", type=float, default=0.1)
-parser.add_argument("--char_dropout_prob", type=float, default=0.33)
-parser.add_argument("--char_noise_prob", type = float, default= 0.01)
-parser.add_argument("--learning_rate", type = float, default= 0.1)
+parser.add_argument("--hidden_dim", type=int, default=2048)
+parser.add_argument("--layer_num", type=int, default=2)
+parser.add_argument("--weight_dropout_in", type=float, default=0.3)
+parser.add_argument("--weight_dropout_hidden", type=float, default=0.25)
+parser.add_argument("--char_dropout_prob", type=float, default=0.05)
+parser.add_argument("--char_noise_prob", type = float, default= 0.0)
+parser.add_argument("--learning_rate", type = float, default= 0.4)
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
-parser.add_argument("--sequence_length", type=int, default=20)
+parser.add_argument("--sequence_length", type=int, default=50)
 
 
 args=parser.parse_args()
@@ -52,7 +52,7 @@ except FileNotFoundError:
          for char in word.lower():
             char_counts[char] = char_counts.get(char, 0) + 1
     char_counts = [(x,y) for x, y in char_counts.items()]
-    itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1]))] # if y > 5]
+    itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1]))]
     with open("/checkpoint/mhahn/char-vocab-acqdiv-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
@@ -145,7 +145,7 @@ indices_with_blanks = indices_with_blanks[:100000]
 boundaries = []
 numeric_full = []
 indices_full = []
-for entry in zip(numeric_with_blanks, indices_with_blanks):
+for entry in zip(numeric_with_blanks, indices_with_blanks, range(len(numeric_with_blanks))):
  # print((entry-3, itos[entry-3]))
   #assert entry > 3
   if entry[0] > 3 and itos[entry[0]-3] == " ":
@@ -153,6 +153,8 @@ for entry in zip(numeric_with_blanks, indices_with_blanks):
   else:
      numeric_full.append(entry[0])
      indices_full.append(entry[1])
+  if len(boundaries) > 0:
+       assert len(numeric_full) - boundaries[-1] < 100, "".join([itos[x-3] for x in numeric_with_blanks[max(0,entry[2]-150):entry[2]+150]])
  #    print(itos[entry[0]-3],entry[1])
 #quit()
 
@@ -216,14 +218,21 @@ dependent = []
 utteranceBoundaries = []
 lastWasUtteranceBoundary = False
 
+timeSinceLastBoundary = 0
+
 indices_without_boundaries = []
 boundaries_index = 0
 for i in range(len(numeric_full)):
-   if boundaries_index < len(boundaries) and i == boundaries[boundaries_index]:
+   if boundaries_index < len(boundaries):
+       assert i <= boundaries[boundaries_index]
+   boundary = False
+   while boundaries_index < len(boundaries) and i == boundaries[boundaries_index]:
       boundary = True
       boundaries_index += 1
-   else:
-      boundary = False
+   #   if boundaries_index < len(boundaries):
+   #       assert i < boundaries[boundaries_index], (i, boundaries[boundaries_index])
+   #else:
+      
    pmiFuturePast = mi(future_surprisal_without[i], future_surprisal_with[i])
    print((itos[numeric_full[i]-3], char_surprisal[i], pmiFuturePast, pmiFuturePast < 0 if pmiFuturePast is not None else None, boundary)) # pmiFuturePast < 2 if pmiFuturePast is not None else None,
    if pmiFuturePast is not None:
@@ -235,6 +244,8 @@ for i in range(len(numeric_full)):
        chars.append(character)
        predictor.append([pmiFuturePast, char_surprisal[i], char_entropy[i], 1 if lastWasUtteranceBoundary else 0]) #char_surprisal[i], pmiFuturePast]) #pmiFuturePast])
        dependent.append(1 if boundary else 0)
+       timeSinceLastBoundary = timeSinceLastBoundary+1 if boundary == False else 0
+       assert timeSinceLastBoundary < 100, (i, boundaries[boundaries_index])
        lastWasUtteranceBoundary = False
        indices_without_boundaries.append(indices_full[i])
 
@@ -392,7 +403,7 @@ for char, predicted, real, indices in zip(chars_test, predictions, y_test, indic
    else:
        currentWordReal += char
    #print(currentWord, currentWordReal, lastPredictedStartCoincidedWithRealStart)
-
+   assert len(currentWordReal) < 100, currentWordReal
 
 assert agreement + oversegmented + undersegmented + missegmented == predictedWords
 
@@ -437,7 +448,11 @@ print(predictedAndReal/targetCount)
 score = logisticRegr.score(x_test, y_test)
 print(score)
 
+quantities = {"agreement" : agreement, "oversegmented" : oversegmented, "undersegmented" : undersegmented, "missegmented" : missegmented, "over" : wasOversegmented, "under" : wasUndersegmented, "lexical_precision" : len(correctWords)/len(extractedLexicon), "lexical_recall" : len(correctWords)/len(realLexicon), "token_precision" : agreement/predictedWords, "token_recall" : agreement/realWords, "boundary_precision" : predictedAndReal/predictedCount, "boundary_recall" : predictedAndReal/targetCount, "boundary_accuracy" : score}
 
+with open("/checkpoint/mhahn/trajectories/"+__file__+"_"+args.load_from, "w") as outFile:
+     for key, value in quantities.items():
+        outFile.write("\t".join(list(map(str, ([key, value]))))+"\n")
 
 
 #import matplotlib.pyplot as plt
