@@ -12,6 +12,6 @@ import os.path
 import subprocess
 
 while os.path.isfile("/checkpoint/mhahn/"+args.load_from+"_EPOCH_"+str(i)+".pth.tar"):
-   subprocess.call(["python", "lm-acqdiv-segmentation-analyses-morph.py", "--language", args.language, "--load-from", args.load_from+"_EPOCH_"+str(i)])
+   subprocess.call(["python", "lm-acqdiv-segmentation-analyses-morph-pos.py", "--language", args.language, "--load-from", args.load_from+"_EPOCH_"+str(i)])
    i += 1
 

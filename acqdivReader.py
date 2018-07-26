@@ -97,13 +97,18 @@ class AcqdivReader():
      for sentence in self.utterances[1]:
         utterance_raw = (sentence[utterance_raw_index]).lower()
         utterance_for_return = utterance_raw+((" " if blankBeforeEOS else "")+"\n" if markUtteranceBoundaries else "")
-        utterance = utterance_raw.lower().split(" ")
-        morpheme = sentence[morpheme_index].split(" ")
-        gloss_raw = sentence[gloss_raw_index].split(" ")
-        pos_raw = sentence[pos_raw_index].split(" ")
+        utterance = [x for x in utterance_raw.lower().split(" ") if x != ""]
+        morpheme = [x for x in sentence[morpheme_index].split(" ") if x != ""]
+        gloss_raw = [x for x in sentence[gloss_raw_index].split(" ") if x != ""]
+        pos_raw = [x for x in sentence[pos_raw_index].split(" ") if x != ""]
         for l in [morpheme, gloss_raw, pos_raw]:
           while len(l) < len(utterance):
             l.append("")
+
+        # japanese: expect same length, or annotation missing altogether
+        # sesotho: annotation matching, but utterance may have different tokenization --> best chance seems to be heuristic alignment
+        # indonesian: some splitting of words into morphemes, with combined whitespace and "-"
+
         annotated = list(zip(utterance, morpheme, gloss_raw, pos_raw))
         yield (utterance_for_return, annotated)
 
