@@ -4,6 +4,7 @@ import random
 #import accessTOROTData
 import sys
  
+import edlib
 
 import csv
 
@@ -101,15 +102,93 @@ class AcqdivReader():
         morpheme = [x for x in sentence[morpheme_index].split(" ") if x != ""]
         gloss_raw = [x for x in sentence[gloss_raw_index].split(" ") if x != ""]
         pos_raw = [x for x in sentence[pos_raw_index].split(" ") if x != ""]
-        for l in [morpheme, gloss_raw, pos_raw]:
-          while len(l) < len(utterance):
-            l.append("")
+        if self.language == "Japanese":
+          for l in [morpheme, gloss_raw, pos_raw]:
+            while len(l) < len(utterance):
+              l.append("")
 
         # japanese: expect same length, or annotation missing altogether
         # sesotho: annotation matching, but utterance may have different tokenization --> best chance seems to be heuristic alignment
         # indonesian: some splitting of words into morphemes, with combined whitespace and "-"
 
-        annotated = list(zip(utterance, morpheme, gloss_raw, pos_raw))
+        if self.language == "Sesotho":
+             print(".....")
+             print(utterance)
+             print(morpheme)
+             print(gloss_raw)
+             print(pos_raw)
+             if len(morpheme) != len(pos_raw):
+                _ = 0
+             else:
+               #print(morpheme)
+               #print(pos_raw)
+               # align morphemes with the tags
+               for j in range(len(morpheme)):
+                   assert len(morpheme[j].split("-")) == len(pos_raw[j].split("-"))
+               rawUtterance = "".join(utterance)
+               rawMorphemes = "".join(morpheme).replace("-", "").lower()
+               #print(rawUtterance)
+               #print(rawMorphemes)
+               cigar = edlib.align(rawMorphemes, rawUtterance, task="path")["cigar"]
+               utteranceSegmentedIntoMorphemes = []
+               currentUtterancePortion = ""
+               positionInRawUtterance = 0
+               positionInMorphemes = 0
+               morphemesString = " ".join(morpheme)
+              # print(cigar)
+               j = 0
+               while j < len(cigar):
+                  k = j
+                  while k < len(cigar):
+                     if "0" <= cigar[k] and cigar[k] <= "9":
+                        k += 1
+                     else:
+                            break
+                  length = int(cigar[j:k])
+                  action = cigar[k]
+                  j = k+1
+                  for k in range(length):
+                  #    print((currentUtterancePortion, utteranceSegmentedIntoMorphemes, "rawUtterance", rawUtterance[positionInRawUtterance:], "morphemeString", morphemesString[positionInMorphemes:]))
+                      while positionInMorphemes < len(morphemesString) and morphemesString[positionInMorphemes] in [" ","-"]:
+                          utteranceSegmentedIntoMorphemes.append(currentUtterancePortion)
+                          currentUtterancePortion = ""
+                          positionInMorphemes+= 1
+
+                      if action in ["X", "="]:
+                          assert positionInRawUtterance < len(rawUtterance)
+                          currentUtterancePortion += rawUtterance[positionInRawUtterance]
+                      elif action == "D":
+                          currentUtterancePortion  += rawUtterance[positionInRawUtterance]
+#                      elif action == "D":
+                           
+                      if action != "I":
+                        positionInRawUtterance += 1
+                      if action != "D":
+                          positionInMorphemes +=1
+                            
+               utteranceSegmentedIntoMorphemes.append(currentUtterancePortion)
+               print(utteranceSegmentedIntoMorphemes)    # for Sesotho, now make this the tokenization
+               utteranceReTokenized = []
+               utteranceSegmentedIntoMorphemesFinal = []
+               indexSegments = 0
+               for word in morpheme:
+                    components = len(word.split("-"))
+                    utteranceReTokenized.append("".join(utteranceSegmentedIntoMorphemes[indexSegments:indexSegments+components]))
+                    utteranceSegmentedIntoMorphemesFinal.append(utteranceSegmentedIntoMorphemes[indexSegments:indexSegments+components])
+                    indexSegments += components
+               utteranceSegmentedIntoMorphemes = utteranceSegmentedIntoMorphemesFinal 
+               print(utteranceReTokenized)
+               print(utteranceSegmentedIntoMorphemes)
+               utterance = utteranceReTokenized
+               assert len(utterance) == len(morpheme)
+        else:
+            utteranceSegmentedIntoMorphemes = [[x] for x in utterance]
+#                assert pos_raw[0] == "none" and len(pos_raw) == 1
+#             else:
+#                assert len(morpheme) == len(pos_raw)
+#        if random.random() > 0.95:
+#            quit()
+        annotated = list(zip(utterance, morpheme, gloss_raw, pos_raw, utteranceSegmentedIntoMorphemes))
         yield (utterance_for_return, annotated)
 
 
