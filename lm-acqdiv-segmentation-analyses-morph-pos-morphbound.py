@@ -114,7 +114,9 @@ if args.load_from is not None:
 from torch.autograd import Variable
 
 
-data = AcqdivReaderPartition(acqdivCorpusReader, partition="train").reshuffledIterator(blankBeforeEOS=False, originalIterator=AcqdivReader.iteratorMorph)
+data = AcqdivReaderPartition(acqdivCorpusReader, partition="train").iterator(blankBeforeEOS=False, originalIterator=AcqdivReader.iteratorMorph)
+#data = AcqdivReaderPartition(acqdivCorpusReader, partition="train").reshuffledIterator(blankBeforeEOS=False, originalIterator=AcqdivReader.iteratorMorph)
+
 
 
 numeric_with_blanks = []
@@ -138,8 +140,9 @@ for chunk in data:
     if char not in stoi:
         print(char)
     numeric_with_blanks.append(stoi[char]+3 if char in stoi else 2)
-  if len(numeric_with_blanks) > 100000:
+  if len(numeric_with_blanks) > 10:
      break
+quit()
  #   print((char, chunk))
 #quit()
 # select a portion

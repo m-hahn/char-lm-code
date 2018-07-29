@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import random
 #import accessISWOCData
@@ -7,6 +8,11 @@ import sys
 import edlib
 
 import csv
+
+queue = multiprocessing.Queue()
+
+
+import time
 
 def readTSV(paths, language=None):
    result = []
@@ -95,7 +101,12 @@ class AcqdivReader():
      morpheme_index = self.utterances[0].index("morpheme")
      gloss_raw_index = self.utterances[0].index("gloss_raw")
      pos_raw_index = self.utterances[0].index("pos_raw")
+     counter = 0
      for sentence in self.utterances[1]:
+        startTime = time.time()
+        counter += 1
+        if counter % 500 == 0:
+           print(counter/len(self.utterances[1]))
         utterance_raw = (sentence[utterance_raw_index]).lower()
         utterance_for_return = utterance_raw+((" " if blankBeforeEOS else "")+"\n" if markUtteranceBoundaries else "")
         utterance = [x for x in utterance_raw.lower().split(" ") if x != ""]
@@ -106,19 +117,43 @@ class AcqdivReader():
           for l in [morpheme, gloss_raw, pos_raw]:
             while len(l) < len(utterance):
               l.append("")
-
+              assert time.time() -startTime < 10
         # japanese: expect same length, or annotation missing altogether
         # sesotho: annotation matching, but utterance may have different tokenization --> best chance seems to be heuristic alignment
         # indonesian: some splitting of words into morphemes, with combined whitespace and "-"
 
+
+        utteranceSegmentedIntoMorphemes = [[x] for x in utterance]
+
+
+        printHere= False and (random.random() > 0.99)
+        if printHere:
+              print(110)
+#              quit()
+
         if self.language == "Sesotho":
-             print(".....")
-             print(utterance)
-             print(morpheme)
-             print(gloss_raw)
-             print(pos_raw)
+#             print(".....")
+#             print(utterance)
+#             print(morpheme)
+#             print(gloss_raw)
+#             print(pos_raw)
              if len(morpheme) != len(pos_raw):
                 _ = 0
+                print("WARNING")
+                print(utterance)
+                print(morpheme)
+                print(pos_raw)
+                continue
+
+             elif len("".join(morpheme).replace("-", "").lower()) == 0:
+                 _ = 0
+                 print("WARNING")
+                 print(utterance)
+                 print(morpheme)
+                 print(pos_raw)
+                 continue
+
+
              else:
                #print(morpheme)
                #print(pos_raw)
@@ -127,9 +162,43 @@ class AcqdivReader():
                    assert len(morpheme[j].split("-")) == len(pos_raw[j].split("-"))
                rawUtterance = "".join(utterance)
                rawMorphemes = "".join(morpheme).replace("-", "").lower()
+               assert len(rawMorphemes) > 0, morpheme
                #print(rawUtterance)
                #print(rawMorphemes)
-               cigar = edlib.align(rawMorphemes, rawUtterance, task="path")["cigar"]
+             #  print("Starting to align")
+               cigar = []
+               queue.put(cigar)
+               def foo(queue):
+      #           print("Entering foo")
+                 cigarResu = edlib.align(rawMorphemes, rawUtterance, task="path")["cigar"]
+
+                 cigarList = queue.get()
+                 cigarList.append(cigarResu)
+                 queue.put(cigarList)
+    #             print(cigar)
+     #            print("Exiting foo")
+              # if (counter/len(self.utterances[1])) > 0.6277:
+              #    print((counter/len(self.utterances[1]), rawMorphemes, rawUtterance))
+              #    print(rawMorphemes)
+              #    print(rawUtterance, flush=True)
+
+#               p = multiprocessing.Process(target=foo, args=(queue,))
+ #              p.start()
+               foo(queue)
+  #             p = multiprocessing.Process(target=foo, args=(queue,))
+   #            p.start()
+    #           p.join(2)
+     #          if p.is_alive():
+      #           print("Killing alignment")
+       #          p.terminate()
+        #         p.join()
+               cigar = queue.get()[0]
+#               print(p.exitcode)
+ #              print("Joined")
+   #            print([163, (cigar)])
+  #             assert len(cigar) == 1
+   #            cigar = cigar[0]["cigar"] #edlib.align(rawMorphemes, rawUtterance, task="path")["cigar"]
+               #print("Ending alognment")
                utteranceSegmentedIntoMorphemes = []
                currentUtterancePortion = ""
                positionInRawUtterance = 0
@@ -138,8 +207,10 @@ class AcqdivReader():
               # print(cigar)
                j = 0
                while j < len(cigar):
+                  assert time.time() -startTime < 10
                   k = j
                   while k < len(cigar):
+                     assert time.time() -startTime < 10
                      if "0" <= cigar[k] and cigar[k] <= "9":
                         k += 1
                      else:
@@ -148,8 +219,10 @@ class AcqdivReader():
                   action = cigar[k]
                   j = k+1
                   for k in range(length):
+                      assert time.time() -startTime < 10
                   #    print((currentUtterancePortion, utteranceSegmentedIntoMorphemes, "rawUtterance", rawUtterance[positionInRawUtterance:], "morphemeString", morphemesString[positionInMorphemes:]))
                       while positionInMorphemes < len(morphemesString) and morphemesString[positionInMorphemes] in [" ","-"]:
+                          assert time.time() -startTime < 10 
                           utteranceSegmentedIntoMorphemes.append(currentUtterancePortion)
                           currentUtterancePortion = ""
                           positionInMorphemes+= 1
@@ -167,28 +240,43 @@ class AcqdivReader():
                           positionInMorphemes +=1
                             
                utteranceSegmentedIntoMorphemes.append(currentUtterancePortion)
-               print(utteranceSegmentedIntoMorphemes)    # for Sesotho, now make this the tokenization
+          #     print(utteranceSegmentedIntoMorphemes)    # for Sesotho, now make this the tokenization
                utteranceReTokenized = []
                utteranceSegmentedIntoMorphemesFinal = []
                indexSegments = 0
                for word in morpheme:
+                    assert time.time() -startTime < 10
                     components = len(word.split("-"))
                     utteranceReTokenized.append("".join(utteranceSegmentedIntoMorphemes[indexSegments:indexSegments+components]))
                     utteranceSegmentedIntoMorphemesFinal.append(utteranceSegmentedIntoMorphemes[indexSegments:indexSegments+components])
                     indexSegments += components
                utteranceSegmentedIntoMorphemes = utteranceSegmentedIntoMorphemesFinal 
-               print(utteranceReTokenized)
-               print(utteranceSegmentedIntoMorphemes)
+        #       print(utteranceReTokenized)
+         #      print(utteranceSegmentedIntoMorphemes)
                utterance = utteranceReTokenized
                assert len(utterance) == len(morpheme)
-        else:
-            utteranceSegmentedIntoMorphemes = [[x] for x in utterance]
+#        else:
 #                assert pos_raw[0] == "none" and len(pos_raw) == 1
 #             else:
 #                assert len(morpheme) == len(pos_raw)
 #        if random.random() > 0.95:
 #            quit()
+        if False and  self.language == "Sesotho":
+           if len(morpheme) == 0 or "".join(morpheme).replace("-","") == "":
+                morpheme = utterance[:]
+           if len(gloss_raw) == 1 and gloss_raw[0] == "???":
+                gloss_raw = ["???" for _ in utterance]
+           if len(pos_raw) == 1 and pos_raw[0] == "none":
+                pos_raw = ["none" for _ in utterance]
+        assert len(utterance) == len(morpheme), (utterance, morpheme, gloss_raw, pos_raw, utteranceSegmentedIntoMorphemes)
+        assert len(utterance) == len(gloss_raw), (utterance, morpheme, gloss_raw, pos_raw, utteranceSegmentedIntoMorphemes)
+        assert len(utterance) == len(pos_raw), (utterance, morpheme, gloss_raw, pos_raw, utteranceSegmentedIntoMorphemes)
+        assert len(utterance) == len(utteranceSegmentedIntoMorphemes), (utterance, morpheme, gloss_raw, pos_raw, utteranceSegmentedIntoMorphemes)
         annotated = list(zip(utterance, morpheme, gloss_raw, pos_raw, utteranceSegmentedIntoMorphemes))
+        if printHere:
+              print(201)
+        utterance_for_return = (" ".join(utterance))+((" " if blankBeforeEOS else "")+"\n" if markUtteranceBoundaries else "")
+
         yield (utterance_for_return, annotated)
 
 
@@ -198,6 +286,7 @@ class AcqdivReaderPartition():
         self.corpus = reader
         self.partition = partition
    def reshuffledIterator(self, markUtteranceBoundaries=True, blankBeforeEOS=True, originalIterator = AcqdivReader.iterator):
+      print("Obtaining all the data from the iterator")
       results = list(self.iterator(markUtteranceBoundaries=markUtteranceBoundaries, blankBeforeEOS=blankBeforeEOS, originalIterator = originalIterator))
       random.shuffle(results)
       for utterance in results:

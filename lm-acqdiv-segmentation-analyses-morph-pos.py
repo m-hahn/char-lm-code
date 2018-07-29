@@ -79,7 +79,6 @@ rnn = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num).c
 
 rnn_parameter_names = [name for name, _ in rnn.named_parameters()]
 print(rnn_parameter_names)
-#quit()
 
 
 rnn_drop = WeightDrop(rnn, [(name, args.weight_dropout_in) for name, _ in rnn.named_parameters() if name.startswith("weight_ih_")] + [ (name, args.weight_dropout_hidden) for name, _ in rnn.named_parameters() if name.startswith("weight_hh_")])
@@ -113,9 +112,8 @@ if args.load_from is not None:
 
 from torch.autograd import Variable
 
-
-data = AcqdivReaderPartition(acqdivCorpusReader, partition="train").reshuffledIterator(blankBeforeEOS=False, originalIterator=AcqdivReader.iteratorMorph)
-
+data = AcqdivReaderPartition(acqdivCorpusReader, partition="train")
+data = data.reshuffledIterator(blankBeforeEOS=False, originalIterator=AcqdivReader.iteratorMorph)
 
 numeric_with_blanks = []
 
@@ -123,6 +121,9 @@ indices_with_blanks = []
 count = 0
 print("Prepare chunks")
 for chunk in data:
+#  print(chunk)
+ # print(len(indices_with_blanks))
+  #print(len(numeric_with_blanks))
   indices_with_blanks.append((chunk, -1))
   numeric_with_blanks.append(stoi[" "]+3)
   countInChunk = 0
@@ -138,6 +139,13 @@ for chunk in data:
     if char not in stoi:
         print(char)
     numeric_with_blanks.append(stoi[char]+3 if char in stoi else 2)
+#    if random.random() > 0.95:
+ #        print(len(numeric_with_blanks))
+  if len(numeric_with_blanks) > 100000:
+       break
+print("Got chunks")
+assert len(numeric_with_blanks) == len(indices_with_blanks)
+#quit()
  #   print((char, chunk))
 #quit()
 # select a portion
@@ -150,6 +158,7 @@ indices_full = []
 for entry in zip(numeric_with_blanks, indices_with_blanks, range(len(numeric_with_blanks))):
  # print((entry-3, itos[entry-3]))
   #assert entry > 3
+ # print(entry)
   if entry[0] > 3 and itos[entry[0]-3] == " ":
      boundaries.append(len(numeric_full))
   else:
@@ -159,6 +168,10 @@ for entry in zip(numeric_with_blanks, indices_with_blanks, range(len(numeric_wit
        assert len(numeric_full) - boundaries[-1] < 100, "".join([itos[x-3] for x in numeric_with_blanks[max(0,entry[2]-150):entry[2]+150]])
  #    print(itos[entry[0]-3],entry[1])
 #quit()
+#print(boundaries)
+#quit()
+
+print("Got indices")
 
 future_surprisal_with = [None for _ in numeric_full]
 future_surprisal_without = [None for _ in numeric_full]
@@ -225,6 +238,8 @@ timeSinceLastBoundary = 0
 indices_without_boundaries = []
 boundaries_index = 0
 for i in range(len(numeric_full)):
+   #print(boundaries[boundaries_index], len(boundaries), i)
+
    if boundaries_index < len(boundaries):
        assert i <= boundaries[boundaries_index]
    boundary = False
@@ -294,6 +309,7 @@ predictions = logisticRegr.predict(x_test)
 #predictions = [1 if x[0]<0 else 0 for x in x_test]
 #print(predictions)
 
+assert sum(y_test) < len(y_test)/2
 for char, predicted, real, predictor in zip(chars_test, predictions, y_test, x_test):
     print((char, predicted, real, predictor[0]))
 
@@ -324,7 +340,7 @@ lastIndex = None
 currentWordAnnotation = None
 posOfCurrentWord = None
 
-for char, predicted, real, indices in zip(chars_test, predictions, y_test, indices_test):
+for char, predicted, real, indices, number in zip(chars_test, predictions, y_test, indices_test, range(len(chars_test))):
    assert char != " "
 
 #   print(indices)
@@ -333,7 +349,7 @@ for char, predicted, real, indices in zip(chars_test, predictions, y_test, indic
    if indices[0] is not lastIndex:
 #     print((lastPredictedStartCoincidedWithRealStart, currentWord, currentWordReal, indices))
      print("")
-     print(list(indices[0][-1]))
+     print(indices)
      lastIndex = indices[0]
    
    if real ==1 and posOfCurrentWord is not None:
@@ -373,7 +389,7 @@ for char, predicted, real, indices in zip(chars_test, predictions, y_test, indic
           if len(currentWord) > len(currentWordReal): # missegmented
              missegmented += 1
           else:
-             assert len(currentWord) < len(currentWordReal), (currentWord, currentWordReal)
+             assert len(currentWord) < len(currentWordReal), (currentWord, currentWordReal, chars_test[max(0, number-10):number+5], y_test[max(0,number-10):number+5], predictions[max(0, number-10):number+5])
              oversegmented += 1
        elif real == 0 and len(currentWord) <= len(currentWordReal):
              oversegmented += 1
@@ -402,14 +418,27 @@ for char, predicted, real, indices in zip(chars_test, predictions, y_test, indic
        currentWord += char
 
 
+# for char, predicted, real, indices, number in zip(chars_test, predictions, y_test, indices_test, range(len(chars_test))
    if real ==1:
        #print(["CURRENT WORD ANNO", currentWordReal, currentWordAnnotation])
-       assert currentWordAnnotation is None or currentWordReal == currentWordAnnotation[0]
+       if currentWordAnnotation is not None and currentWordReal != currentWordAnnotation[0]:
+         print("WARNING 425 "+currentWordReal+" "+str(currentWordAnnotation))
+       assert currentWordAnnotation is None or len(currentWordReal) == len(currentWordAnnotation[0]), (currentWordReal, currentWordAnnotation, chars_test[number-5:number+5], predictions[number-5:number+5], y_test[number-5:number+5], indices_test[number-5:number+5])
        realWords += 1
        realLexicon.add(currentWordReal)
        currentWordReal = char
+       assert len(indices) > 2, indices
+       assert len(indices) > 0, indices
+       assert len(indices[0]) > 1, indices[0]
+       assert len(indices[0][1]) > indices[2], indices
        currentWordAnnotation = indices[0][1][indices[2]]
-       posOfCurrentWord = currentWordAnnotation[3].split("-")[0].split(":")[0]
+       posOfCurrentWord = currentWordAnnotation[3]
+       posOfCurrentWord = posOfCurrentWord.replace("pfx","").split("-")
+       while len(posOfCurrentWord) > 0 and len(posOfCurrentWord[0]) == 0:
+          del posOfCurrentWord[0]
+       if len(posOfCurrentWord) == 0:
+           posOfCurrentWord = ["none"]
+       posOfCurrentWord = posOfCurrentWord[0].split(":")[0].split(".")[0]
        print(["POS", posOfCurrentWord])
    else:
        currentWordReal += char
@@ -469,6 +498,7 @@ print(score)
 
 quantities = {"agreement" : agreementTotal, "oversegmented" : oversegmented, "undersegmented" : undersegmented, "missegmented" : missegmented, "lexical_precision" : len(correctWords)/len(extractedLexicon), "lexical_recall" : len(correctWords)/len(realLexicon), "token_precision" : agreementTotal/predictedWords, "token_recall" : agreementTotal/realWords, "boundary_precision" : predictedAndReal/predictedCount, "boundary_recall" : predictedAndReal/targetCount, "boundary_accuracy" : score}
 
+print("/checkpoint/mhahn/trajectories/"+__file__+"_"+args.load_from)
 with open("/checkpoint/mhahn/trajectories/"+__file__+"_"+args.load_from, "w") as outFile:
      for key, value in quantities.items():
         outFile.write("\t".join(list(map(str, ([key, value, "all"]))))+"\n")
