@@ -1,3 +1,6 @@
+from config import VOCAB_HOME, CHAR_VOCAB_HOME, CHECKPOINT_HOME
+
+
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -39,21 +42,22 @@ def plus(it1, it2):
    for x in it2:
       yield x
 
+
 try:
-   with open("/checkpoint/mhahn/char-vocab-acqdiv-"+args.language, "r") as inFile:
+   with open(CHAR_VOCAB_HOME+"/char-vocab-acqdiv-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
 except FileNotFoundError:
     print("Creating new vocab")
     char_counts = {}
     # get symbol vocabulary
-    with open("/private/home/mhahn/data/acqdiv/"+args.language+"-vocab.txt", "r") as inFile:
+    with open(VOCAB_HOME+args.language+"-vocab.txt", "r") as inFile:
       words = inFile.read().strip().split("\n")
       for word in words:
          for char in word.lower():
             char_counts[char] = char_counts.get(char, 0) + 1
     char_counts = [(x,y) for x, y in char_counts.items()]
     itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1]))]
-    with open("/checkpoint/mhahn/char-vocab-acqdiv-"+args.language, "w") as outFile:
+    with open(CHAR_VOCAB_HOME+"/char-vocab-acqdiv-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
 itos.append("\n")
@@ -106,7 +110,7 @@ optim = torch.optim.SGD(parameters(), lr=args.learning_rate, momentum=0.0) # 0.0
 named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
 
 if args.load_from is not None:
-  checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
+  checkpoint = torch.load(CHECKPOINT_HOME+args.load_from+".pth.tar")
   for name, module in named_modules.items():
       module.load_state_dict(checkpoint[name])
 
@@ -501,8 +505,8 @@ print(score)
 
 quantities = {"agreement" : agreementTotal, "oversegmented" : oversegmented, "undersegmented" : undersegmented, "missegmented" : missegmented, "lexical_precision" : len(correctWords)/len(extractedLexicon), "lexical_recall" : len(correctWords)/len(realLexicon), "token_precision" : agreementTotal/predictedWords, "token_recall" : agreementTotal/realWords, "boundary_precision" : predictedAndReal/predictedCount, "boundary_recall" : predictedAndReal/targetCount, "boundary_accuracy" : score}
 
-print("/checkpoint/mhahn/trajectories/"+__file__+"_"+args.load_from)
-with open("/checkpoint/mhahn/trajectories/"+__file__+"_"+args.load_from, "w") as outFile:
+print(CHECKPOINT_HOME+"/trajectories/"+__file__+"_"+args.load_from)
+with open(CHECKPOINT_HOME+"/trajectories/"+__file__+"_"+args.load_from, "w") as outFile:
      for key, value in quantities.items():
         outFile.write("\t".join(list(map(str, ([key, value, "all"]))))+"\n")
      for pos in posTags:

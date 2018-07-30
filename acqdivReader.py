@@ -1,3 +1,6 @@
+
+from config import ACQDIV_HOME
+
 import multiprocessing
 import os
 import random
@@ -73,9 +76,11 @@ def printTSV(table, path):
        for line in data:
            outFile.write("\t".join(line)+"\n")
 
+
+
 class AcqdivReader():
    def __init__(self, language):
-      basePath = "/private/home/mhahn/data/acqdiv-database/tsv/"+language.lower()+"/"
+      basePath = ACQDIV_HOME+"/tsv/"+language.lower()+"/"
       self.morphemes = readTSV([basePath+x for x in os.listdir(basePath) if x.startswith("morphemes") and x.endswith(".tsv")])
 #      printTSV("/private/home/mhahn/data/acqdiv-database/tsv/"
 

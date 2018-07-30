@@ -1,5 +1,8 @@
+from config import TRAJECTORIES_HOME, VISUALIZATIONS_HOME
+
+
 import os
-basePath = "/checkpoint/mhahn/trajectories/"
+basePath = TRAJECTORIES_HOME
 
 groups = {"words" : ["undersegmented", "over", "under", "missegmented", "agreement"], "boundaries" : ["boundary_precision", "boundary_recall", "boundary_accuracy"], "tokens" : ["token_precision", "token_recall"], "lexical" : ["lexical_recall", "lexical_precision"]}
 
@@ -30,7 +33,7 @@ for language in ["Japanese", "Sesotho", "Indonesian"]:
       plt.plot(range(len(datapoints)), datapoints, label=name)
     plt.legend()
     plt.show()
-    plt.savefig("/checkpoint/mhahn/figures/"+language+"_"+group+".png")
+    plt.savefig(VISUALIZATIONS_HOME+language+"_"+group+".png")
     plt.close()
 
 

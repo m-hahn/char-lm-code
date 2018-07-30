@@ -1,3 +1,5 @@
+from config import VOCAB_HOME
+
 from acqdivReader import AcqdivReader
 
 import argparse
@@ -19,7 +21,7 @@ for utterance in iterator:
    utterance = utterance.split(" ")
    for word in utterance:
        vocabulary.add(word)
-with open('/private/home/mhahn/data/acqdiv/'+args.language+'-vocab.txt', "w") as outFile:
+with open(VOCAB_HOME+args.language+'-vocab.txt', "w") as outFile:
    for word in vocabulary:
       print(word, file=outFile)
 

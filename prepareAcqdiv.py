@@ -1,3 +1,7 @@
+from config import ACQDIV_HOME
+
+
+
 import os
 import random
 #import accessISWOCData
@@ -43,9 +47,8 @@ def mergeCSV(infiles, outfile):
              outFile.write(inFile.read())
 
 
-# extract data for specific language
-basePath = "/private/home/mhahn/data/acqdiv-database/csv/"
-basePathOut = "/private/home/mhahn/data/acqdiv-database/tsv/"
+basePath = ACQDIV_HOME+"/csv/"
+basePathOut = ACQDIV_HOME+"/tsv/"
 names = ["speakers","morphemes",  "utterances", "words", "uniquespeakers"]
 
 

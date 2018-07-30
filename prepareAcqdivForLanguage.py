@@ -1,3 +1,7 @@
+from config import ACQDIV_HOME
+
+
+
 import os
 import random
 #import accessISWOCData
@@ -50,8 +54,8 @@ language = sys.argv[1]
 
 
 # extract data for specific language
-basePath = "/private/home/mhahn/data/acqdiv-database/tsv/"
-basePathOut = "/private/home/mhahn/data/acqdiv-database/tsv/"+language.lower()+"/"
+basePath = ACQDIV_HOME+"/tsv/"
+basePathOut = ACQDIV_HOME+"/tsv/"+language.lower()+"/"
 names = ["speakers","morphemes",  "utterances", "words", "uniquespeakers"]
 
 
