@@ -340,6 +340,9 @@ lastIndex = None
 currentWordAnnotation = None
 posOfCurrentWord = None
 
+#predictions[0] = 1
+#y_test[0] = 1
+
 for char, predicted, real, indices, number in zip(chars_test, predictions, y_test, indices_test, range(len(chars_test))):
    assert char != " "
 
@@ -389,7 +392,7 @@ for char, predicted, real, indices, number in zip(chars_test, predictions, y_tes
           if len(currentWord) > len(currentWordReal): # missegmented
              missegmented += 1
           else:
-             assert len(currentWord) < len(currentWordReal), (currentWord, currentWordReal, chars_test[max(0, number-10):number+5], y_test[max(0,number-10):number+5], predictions[max(0, number-10):number+5])
+             assert len(currentWord) < len(currentWordReal), (currentWord, currentWordReal, number, chars_test[max(0, number-10):number+5], y_test[max(0,number-10):number+5], predictions[max(0, number-10):number+5])
              oversegmented += 1
        elif real == 0 and len(currentWord) <= len(currentWordReal):
              oversegmented += 1
@@ -423,7 +426,7 @@ for char, predicted, real, indices, number in zip(chars_test, predictions, y_tes
        #print(["CURRENT WORD ANNO", currentWordReal, currentWordAnnotation])
        if currentWordAnnotation is not None and currentWordReal != currentWordAnnotation[0]:
          print("WARNING 425 "+currentWordReal+" "+str(currentWordAnnotation))
-       assert currentWordAnnotation is None or len(currentWordReal) == len(currentWordAnnotation[0]), (currentWordReal, currentWordAnnotation, chars_test[number-5:number+5], predictions[number-5:number+5], y_test[number-5:number+5], indices_test[number-5:number+5])
+       assert currentWordAnnotation is None or len(currentWordReal) == len(currentWordAnnotation[0]), (currentWordReal, currentWordAnnotation, number, chars_test[number-5:number+5], predictions[number-5:number+5], y_test[number-5:number+5], indices_test[number-5:number+5])
        realWords += 1
        realLexicon.add(currentWordReal)
        currentWordReal = char

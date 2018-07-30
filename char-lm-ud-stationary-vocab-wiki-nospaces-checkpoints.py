@@ -18,6 +18,8 @@ parser.add_argument("--char_noise_prob", type = float, default= 0.01)
 parser.add_argument("--learning_rate", type = float, default= 0.1)
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
 parser.add_argument("--sequence_length", type=int, default=50)
+parser.add_argument("--first_checkpoint", type=int, default=0)
+
 
 
 args=parser.parse_args()
@@ -202,7 +204,7 @@ def backward(loss, printHere):
 import time
 
 
-checkpointCount = 0
+checkpointCount = args.first_checkpoint+1
 
 devLosses = []
 for epoch in range(10000):
@@ -236,7 +238,7 @@ for epoch in range(10000):
       if counter % 20000 == 0 and epoch == 0:
         if args.save_to is not None:
            torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), "/checkpoint/mhahn/"+args.save_to+".pth.tar")
-      if time.time() - lastSaved > 1800:
+      if time.time() - lastSaved > 3600:
         if args.save_to is not None:
            torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), "/checkpoint/mhahn/"+args.save_to+"_CHECKPOINT"+str(checkpointCount)+".pth.tar")
            checkpointCount += 1

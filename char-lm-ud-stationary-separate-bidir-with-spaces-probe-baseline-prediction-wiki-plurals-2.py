@@ -343,6 +343,10 @@ predictions = logisticRegr.predict(x_test)
 score = logisticRegr.score(x_test, y_test)
 print(["test on n, s, e",score])
 
+evaluationPoints = []
+evaluationPoints.append(("NSE", "NSE", score))
+
+
 
 # test on R plurals
 encodedPluralsR = encodeListOfWords(["."+y for x, y in formations["r"]])
@@ -354,7 +358,7 @@ dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
 score = logisticRegr.score(predictors, dependent)
 print(["r plurals",score])
 
-
+evaluationPoints.append(("NSE", "R", score))
 
 # test on R plurals
 encodedPluralsR = encodeListOfWords(["."+y for x, y in formations["same"]])
@@ -365,6 +369,10 @@ dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
 
 score = logisticRegr.score(predictors, dependent)
 print(["same length plurals", score])
+
+evaluationPoints.append(("NSE", "same", score))
+
+
 
 
 # adjective plural
@@ -401,12 +409,16 @@ dependent = [0 for _ in predictors]
 score = logisticRegr.score(predictors, dependent)
 print(["r", score])
 
+evaluationPoints.append(("NSE", "r_distract", score))
+
 
 
 predictors = encodeListOfWords(["."+x for x in wordsEndingIn["s"]])
 dependent = [0 for _ in predictors]
 score = logisticRegr.score(predictors, dependent)
 print(["s", score])
+
+evaluationPoints.append(("NSE", "s_distract", score))
 
 
 
@@ -415,6 +427,8 @@ dependent = [0 for _ in predictors]
 score = logisticRegr.score(predictors, dependent)
 print(["n", score])
 
+evaluationPoints.append(("NSE", "n_distract", score))
+
 
 
 
@@ -422,6 +436,8 @@ predictors = encodeListOfWords(["."+x for x in wordsEndingIn["e"]])
 dependent = [0 for _ in predictors]
 score = logisticRegr.score(predictors, dependent)
 print(["e", score])
+
+evaluationPoints.append(("NSE", "e_distract", score))
 
 
 
@@ -455,6 +471,9 @@ predictions = logisticRegr.predict(x_test)
 score = logisticRegr.score(x_test, y_test)
 print(score)
 
+evaluationPoints.append(("NS", "NS", score))
+
+
 
 # test on R plurals
 encodedPluralsR = encodeListOfWords(["."+y for x, y in formations["r"]])
@@ -465,6 +484,8 @@ dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
 
 score = logisticRegr.score(predictors, dependent)
 print(["r plurals",score])
+
+evaluationPoints.append(("NS", "R", score))
 
 
 
@@ -478,11 +499,16 @@ dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
 score = logisticRegr.score(predictors, dependent)
 print(["same length plurals",score])
 
+evaluationPoints.append(("NS", "same", score))
+
+
 
 predictors = encodeListOfWords(["."+x for x in wordsEndingIn["r"]])
 dependent = [0 for _ in predictors]
 score = logisticRegr.score(predictors, dependent)
 print(["r", score])
+
+evaluationPoints.append(("NS", "r_distract", score))
 
 
 
@@ -491,12 +517,16 @@ dependent = [0 for _ in predictors]
 score = logisticRegr.score(predictors, dependent)
 print(["s", score])
 
+evaluationPoints.append(("NS", "s_distract", score))
+
 
 
 predictors = encodeListOfWords(["."+x for x in wordsEndingIn["n"]])
 dependent = [0 for _ in predictors]
 score = logisticRegr.score(predictors, dependent)
 print(["n", score])
+
+evaluationPoints.append(("NS", "n_distract", score))
 
 
 
@@ -506,6 +536,8 @@ dependent = [0 for _ in predictors]
 score = logisticRegr.score(predictors, dependent)
 print(["e", score])
 
+
+evaluationPoints.append(("NS", "e_distract", score))
 
 
 
@@ -540,6 +572,10 @@ predictions = logisticRegr.predict(x_test)
 score = logisticRegr.score(x_test, y_test)
 print(["test on n plurals",score])
 
+evaluationPoints.append(("N", "N", score))
+
+
+
 
 # test on R plurals
 encodedPluralsR = encodeListOfWords(["."+y for x, y in formations["r"]])
@@ -550,6 +586,8 @@ dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
 
 score = logisticRegr.score(predictors, dependent)
 print(["r plurals",score])
+
+evaluationPoints.append(("N", "R", score))
 
 
 
@@ -563,6 +601,8 @@ dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
 score = logisticRegr.score(predictors, dependent)
 print(score)
 
+evaluationPoints.append(("N", "same", score))
+
 
 # test on R plurals
 encodedPluralsR = encodeListOfWords(["."+y for x, y in formations["e"]])
@@ -573,6 +613,9 @@ dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
 
 score = logisticRegr.score(predictors, dependent)
 print(["e plurals",score])
+
+evaluationPoints.append(("N", "E", score))
+
 
 
 # test on R plurals
@@ -585,11 +628,15 @@ dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
 score = logisticRegr.score(predictors, dependent)
 print(["s plurals",score])
 
+evaluationPoints.append(("N", "S", score))
 
 predictors = encodeListOfWords(["."+x for x in wordsEndingIn["r"]])
 dependent = [0 for _ in predictors]
 score = logisticRegr.score(predictors, dependent)
 print(["r", score])
+
+
+evaluationPoints.append(("N", "r_distract", score))
 
 
 
@@ -598,12 +645,16 @@ dependent = [0 for _ in predictors]
 score = logisticRegr.score(predictors, dependent)
 print(["s", score])
 
+evaluationPoints.append(("N", "s_distract", score))
+
 
 
 predictors = encodeListOfWords(["."+x for x in wordsEndingIn["n"]])
 dependent = [0 for _ in predictors]
 score = logisticRegr.score(predictors, dependent)
 print(["n", score])
+
+evaluationPoints.append(("N", "n_distract", score))
 
 
 
@@ -612,6 +663,8 @@ predictors = encodeListOfWords(["."+x for x in wordsEndingIn["e"]])
 dependent = [0 for _ in predictors]
 score = logisticRegr.score(predictors, dependent)
 print(["e", score])
+
+evaluationPoints.append(("N", "e_distract", score))
 
 
 
@@ -643,6 +696,8 @@ dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
 score = logisticRegr.score(predictors, dependent)
 print(["r plurals",score])
 
+evaluationPoints.append(("same", "R", score))
+
 
 
 # test on R plurals
@@ -655,6 +710,9 @@ dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
 score = logisticRegr.score(predictors, dependent)
 print(["n plurals",score])
 
+evaluationPoints.append(("same", "N", score))
+
+
 
 # test on R plurals
 encodedPluralsR = encodeListOfWords(["."+y for x, y in formations["e"]])
@@ -665,6 +723,9 @@ dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
 
 score = logisticRegr.score(predictors, dependent)
 print(["e plurals",score])
+
+evaluationPoints.append(("same", "E", score))
+
 
 
 # test on R plurals
@@ -677,6 +738,12 @@ dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
 score = logisticRegr.score(predictors, dependent)
 print(["s plurals",score])
 
+evaluationPoints.append(("same", "S", score))
+
+
+with open("/checkpoint/mhahn/trajectories/"+__file__+"_"+args.load_from, "w") as outFile:
+   for line in evaluationPoints:
+     outFile.write("\t".join(list(map(str, (line))))+"\n")
 
 
 

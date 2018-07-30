@@ -106,7 +106,7 @@ class AcqdivReader():
         startTime = time.time()
         counter += 1
         if counter % 500 == 0:
-           print(counter/len(self.utterances[1]))
+           print((counter/len(self.utterances[1]), counter))
         utterance_raw = (sentence[utterance_raw_index]).lower()
         utterance_for_return = utterance_raw+((" " if blankBeforeEOS else "")+"\n" if markUtteranceBoundaries else "")
         utterance = [x for x in utterance_raw.lower().split(" ") if x != ""]
@@ -261,13 +261,18 @@ class AcqdivReader():
 #                assert len(morpheme) == len(pos_raw)
 #        if random.random() > 0.95:
 #            quit()
-        if False and  self.language == "Sesotho":
+        if True: #False and  self.language == "Sesotho":
            if len(morpheme) == 0 or "".join(morpheme).replace("-","") == "":
                 morpheme = utterance[:]
            if len(gloss_raw) == 1 and gloss_raw[0] == "???":
                 gloss_raw = ["???" for _ in utterance]
            if len(pos_raw) == 1 and pos_raw[0] == "none":
                 pos_raw = ["none" for _ in utterance]
+           if len(utterance) != len(morpheme):
+               print("WARNING")
+               print((utterance, morpheme, gloss_raw, pos_raw, utteranceSegmentedIntoMorphemes))
+               continue
+
         assert len(utterance) == len(morpheme), (utterance, morpheme, gloss_raw, pos_raw, utteranceSegmentedIntoMorphemes)
         assert len(utterance) == len(gloss_raw), (utterance, morpheme, gloss_raw, pos_raw, utteranceSegmentedIntoMorphemes)
         assert len(utterance) == len(pos_raw), (utterance, morpheme, gloss_raw, pos_raw, utteranceSegmentedIntoMorphemes)

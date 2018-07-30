@@ -272,11 +272,13 @@ print(keepGenerating(encodeSequenceBatchForward(encodeWord(".siemach"))))
 print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esmach"))))
 print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esdenk"))))
 
-def doChoiceList(xs):
-    for x in xs:
-       print(x)
+def doChoiceList(xs, printHere=True):
+    if printHere:
+      for x in xs:
+         print(x)
     losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
-    print(losses)
+    if printHere:
+      print(losses)
     return np.argmin(losses)
 
 
@@ -336,13 +338,13 @@ def genderTest():
    genders = dict([("Gender="+x, set()) for x in ["Masc", "Fem", "Neut"]])
    for sentence in training.iterator():
        for line in sentence:
-        if line["posUni"] == "NOUN":
-         morph = line["morph"]
-         if "Number=Sing" in morph:
+        if line["posUni"] == "NOUN" and "|" not in line["lemma"]:
+           morph = line["morph"]
+      #   if "Number=Sing" in morph and "Case=Nom":
            gender = [x for x in morph if x.startswith("Gender=")]
            if len(gender) > 0:
-             genders[gender[0]].add(line["word"].lower())
-   print(genders)
+             genders[gender[0]].add(line["lemma"].lower())
+   #print(genders)
    counter = 0
 
 
@@ -351,9 +353,10 @@ def genderTest():
      counter = 0
      for noun in genders[gender]:
        counter += 1
-       results[genderIndex][doChoiceList([".der"+noun+".", ".die"+noun+".", ".das"+noun+"."])] += 1
+       results[genderIndex][doChoiceList([".der"+noun+".", ".die"+noun+".", ".das"+noun+"."], printHere=(random.random() > 0.98))] += 1
 #       results[doChoiceList([".ein"+noun+".", ".eine"+noun+"."])] += 1
-       print([[x/counter for x in resultsx] for resultsx in results])
+       if random.random() > 0.98:
+          print([[x/counter for x in resultsx] for resultsx in results])
      results[genderIndex] = [x/counter for x in results[genderIndex]]
    return results
 
