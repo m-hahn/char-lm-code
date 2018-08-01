@@ -1,4 +1,4 @@
-path = "/private/home/mhahn/data/WIKIPEDIA/wikiextractor/dewiki"
+path = "/private/home/mhahn/data/WIKIPEDIA/wikiextractor/itwiki"
 
 import os
 

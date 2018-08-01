@@ -16,12 +16,14 @@ parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.
 parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.0, 0.05, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]))
 parser.add_argument("--char_dropout_prob", type=float, default=random.choice([0.0, 0.01]))
 parser.add_argument("--char_noise_prob", type = float, default=random.choice([0.0, 0.01]))
-parser.add_argument("--learning_rate", type = float, default= random.choice([0.05, 0.1, 0.2, 0.3,  0.5, 0.6, 0.8, 0.9, 1.0, 2.0]))
+parser.add_argument("--learning_rate", type = float, default= random.choice([0.2, 0.5, 0.6, 0.8, 0.9, 1.0, 2.0, 3.0, 4.0]))
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
 parser.add_argument("--sequence_length", type=int, default=random.choice([50, 80]))
 parser.add_argument("--verbose", type=bool, default=False)
+parser.add_argument("--lr_decay", type=float, default=random.choice([0.9, 0.95, 0.98, 1.0]))
 
 
+import math
 
 args=parser.parse_args()
 
@@ -103,7 +105,10 @@ def parameters():
 
 parameters_cached = [x for x in parameters()]
 
-optim = torch.optim.SGD(parameters(), lr=args.learning_rate, momentum=0.0) # 0.02, 0.9
+
+learning_rate = args.learning_rate
+
+optim = torch.optim.SGD(parameters(), lr=learning_rate, momentum=0.0) # 0.02, 0.9
 
 named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
 
@@ -234,6 +239,7 @@ def forward(numeric, train=True, printHere=False):
          losses = lossTensor.data.cpu().numpy()
          numericCPU = numeric.cpu().data.numpy()
 #         boundaries_index = [0 for _ in numeric]
+         print(("NONE", itos[numericCPU[0][0]-3]))
          for i in range((args.sequence_length)):
  #           if boundaries_index[0] < len(boundaries[0]) and i+1 == boundaries[0][boundaries_index[0]]:
   #             boundary = True
@@ -285,6 +291,7 @@ for epoch in range(10000):
           print("Dev losses")
           print(devLosses)
           print("Chars per sec "+str(trainChars/(time.time()-startTime)))
+          print(learning_rate)
           print(args)
       if counter % 20000 == 0 and epoch == 0:
         if args.save_to is not None:
@@ -319,9 +326,12 @@ for epoch in range(10000):
    with open("/checkpoint/mhahn/"+args.language+"_"+__file__+"_"+str(args.myID), "w") as outFile:
       print(" ".join([str(x) for x in devLosses]), file=outFile)
       print(" ".join(sys.argv), file=outFile)
+      print(str(args), file=outFile)
    if len(devLosses) > 1 and devLosses[-1] > devLosses[-2]:
       break
    if args.save_to is not None:
       torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), "/checkpoint/mhahn/"+args.save_to+".pth.tar")
 
+   learning_rate = args.learning_rate * math.pow(args.lr_decay, len(devLosses))
+   optim = torch.optim.SGD(parameters(), lr=learning_rate, momentum=0.0) # 0.02, 0.9
 
