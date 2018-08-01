@@ -15,7 +15,7 @@ def load(language, partition):
     with open("/private/home/mhahn/data/WIKIPEDIA/"+language+"-"+partition+".txt", "r") as inFile:
       for line in inFile:
         chunks.append(line.strip().lower())
-        if len(chunks) > 10000:
+        if len(chunks) > 20000:
            random.shuffle(chunks)
            yield "".join(chunks)
            chunks = []
