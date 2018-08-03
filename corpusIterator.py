@@ -75,11 +75,12 @@ def readUDCorpus(language, partition):
       return data
   
 class CorpusIterator():
-   def __init__(self, language, partition="train", storeMorph=False, splitLemmas=False, removePunctuation=True):
+   def __init__(self, language, partition="train", storeMorph=False, splitLemmas=False, removePunctuation=True, lowerCaseLemmas=False):
       if splitLemmas:
            assert language == "Korean"
       self.splitLemmas = splitLemmas
   
+      self.lowerCaseLemmas=lowerCaseLemmas
       if removePunctuation:
          self.removePunctuation = True
       self.storeMorph = storeMorph
@@ -116,6 +117,9 @@ class CorpusIterator():
            sentence[i]["head"] = int(sentence[i]["head"])
            sentence[i]["index"] = int(sentence[i]["index"])
            sentence[i]["word"] = sentence[i]["word"].lower()
+           if self.lowerCaseLemmas:
+              sentence[i]["lemma"] = sentence[i]["lemma"].lower()
+
            if self.language == "Thai-Adap":
               assert sentence[i]["lemma"] == "_"
               sentence[i]["lemma"] = sentence[i]["word"]
