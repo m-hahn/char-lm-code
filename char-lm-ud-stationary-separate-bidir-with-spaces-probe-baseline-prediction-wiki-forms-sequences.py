@@ -10,9 +10,9 @@ parser.add_argument("--load-from", dest="load_from", type=str)
 import random
 
 parser.add_argument("--batchSize", type=int, default=16)
-parser.add_argument("--char_embedding_size", type=int, default=100)
+parser.add_argument("--char_embedding_size", type=int, default=200)
 parser.add_argument("--hidden_dim", type=int, default=1024)
-parser.add_argument("--layer_num", type=int, default=1)
+parser.add_argument("--layer_num", type=int, default=3)
 parser.add_argument("--weight_dropout_in", type=float, default=0.01)
 parser.add_argument("--weight_dropout_hidden", type=float, default=0.1)
 parser.add_argument("--char_dropout_prob", type=float, default=0.33)
@@ -21,11 +21,15 @@ parser.add_argument("--learning_rate", type = float, default= 0.1)
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
 parser.add_argument("--sequence_length", type=int, default=50)
 
+parser.add_argument("--sequence", type=str)
+parser.add_argument("--iterations", type=int)
+
+
 
 args=parser.parse_args()
 print(args)
 
-
+args.load_from = "wiki-german-nospaces-bptt-"+args.sequence+"-"+str(args.iterations)
 
 
 
@@ -61,6 +65,7 @@ print(itos)
 stoi = dict([(itos[i],i) for i in range(len(itos))])
 
 
+germanAlphabet = "abcdefghijklmnopqrstuvwxyzßäöü"
 
 
 import random
@@ -272,14 +277,31 @@ print(torch.nn.functional.cosine_similarity(out1, out2, dim=0))
 #print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esmach"))))
 #print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esdenk"))))
 #
-def doChoiceList(xs, printHere=True):
+def doChoiceList(xs, printHere=False, printRanking=False):
     if printHere:
       for x in xs:
          print(x)
     losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
     if printHere:
       print(losses)
+    if printRanking:
+       z = zip(xs, losses)
+       z= sorted(z, key=lambda x:x[1])
+       print(z)
     return np.argmin(losses)
+
+def doChoiceListRet(xs, printHere=True, printRanking=False):
+    if printHere:
+      for x in xs:
+         print(x)
+    losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
+    if printHere:
+      print(losses)
+    if printRanking:
+       z = zip(xs, losses)
+       z= sorted(z, key=lambda x:x[1])
+       print(z)
+    return losses
 
 
 def doChoice(x, y):
@@ -288,6 +310,37 @@ def doChoice(x, y):
     losses = choice(encodeWord(x), encodeWord(y))
     print(losses)
     return 0 if losses[0] < losses[1] else 1
+
+
+def keepGenerating(encoded, length=100, backwards=False):
+    out, hidden = encoded
+    output_string = ""
+   
+#    rnn_forward_drop.train(True)
+
+    for _ in range(length):
+      prediction = logsoftmax(2*output(out.unsqueeze(0))).data.cpu().view(3+len(itos)).numpy() #.view(1,1,-1))).view(3+len(itos)).data.cpu().numpy()
+#      predicted = np.argmax(prediction).items()
+      predicted = np.random.choice(3+len(itos), p=np.exp(prediction))
+
+      output_string += itos[predicted-3]
+
+      input_tensor_forward = Variable(torch.LongTensor([[predicted]]).transpose(0,1).cuda(), requires_grad=False)
+
+      embedded_forward = char_embeddings(input_tensor_forward)
+      
+      out, hidden = (rnn_drop if not backwards else rnn_backward_drop)(embedded_forward, hidden)
+      out = out[-1]
+
+ #   rnn_forward_drop.train(False)
+
+
+    return output_string if not backwards else output_string[::-1]
+
+
+print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ichmach"))))
+
+
 #
 #doChoice(".ichmachedas.", ".ichmachstdas.")
 #doChoice(".dumachendas.", ".dumachstdas.")
@@ -331,43 +384,75 @@ def doChoice(x, y):
 #doChoice(".einnasenbär.", ".einnasenbären.")
 
 
+# need to do some sort of ngram control
 
-singularsThatLookLikePlurals = []
+examples = [args.sequence[:-1]+x+"." for x in germanAlphabet]
+comb = doChoiceListRet(examples) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
+examples = [x+"." for x in itos[3:] if x > "_"]
+uni = doChoiceListRet(examples) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
 
-counter = 0
-forSingSum = 0
-forPlurSum = 0
 
-correctBare = {x : 0 for x in "nrse"}
-totalBare = {x : 0 for x in "nrse"}
+z = zip(examples, comb, uni)
+z = sorted(z, key=lambda x:x[1]-x[2])
+print(z)
 
-with open("germanNounDeclension.txt") as inFile:
-    data = inFile.read().strip().split("###")[1:]
-    for noun in data:
-       noun = noun.strip().split("\n")[1:]
-       noun = [x.split("\t") for x in noun]
-       noun = {x[0] : [y.lower() for y in x[1:]] for x in noun}
-       if "Genus" in noun and len(noun["Genus"]) > 0:
-         genus = noun["Genus"][0]
-         if genus not in ["m", "f", "n"]:
-              print("ERROR")
-              continue
-         assert genus in ["m", "f", "n"], noun
-         singular = noun["Nominativ Singular"][0]
-         if "Nominativ Plural" not in noun:
-           print("ERROR")
-           continue
-         plural = noun["Nominativ Plural"][0]
-         if singular != plural:
-            if singular[-1] in ["n", "r", "s", "e"]:
-                article = "" #{"m" : "der", "n" : "das", "f" : "die"}[genus]
-                result = doChoiceList([f".{article}{singular}istgut.", f".{article}{singular}sindgut."], printHere=True)
-                forSingSum += 1 if 0 == result else 0
-                correctBare[singular[-1]] += (1 if 0 == result else 0)
-                totalBare[singular[-1]] += 1
-                forPlurSum += 1 if 0 == doChoiceList([f".die{singular}istgut.", f".die{singular}sindgut."], printHere=True) else 0
-                counter += 1
-      
-                print(forSingSum/counter, forPlurSum/counter)
-                print({x : correctBare[x]/(totalBare[x]+0.0001) for x in "nrse"})
+
+with open("/checkpoint/mhahn/CHAR_SEQUENCES_wiki-german-nospaces-bptt-"+args.sequence+"-"+str(args.iterations), "r") as inFile:
+    trigrams =[y.split("\t") for y in inFile.read().strip().split("\n")]
+    
+    trigrams = dict([(lambda x: (x[0], int(x[1])))(y) for y in trigrams])
+
+
+bigramsLeft   = dict([(x[0:2], 0) for x in trigrams])
+bigramsRight  = dict([(x[1:3], 0) for x in trigrams])
+unigramsMid   = dict([(x[1], 0) for x in trigrams])
+unigramsRight = dict([(x[2], 0) for x in trigrams])
+
+total = len(itos)
+for t, count in trigrams.items():
+   total += count
+   bigramsLeft[t[0:2]] += count
+   bigramsRight[t[1:3]] += count
+   unigramsMid[t[1]] += count
+   unigramsRight[t[2]] += count
+
+from math import log
+
+def evaluateNgramProb(x):
+   
+   prob = log(unigramsRight.get(x[0], 0) + 1) - log(total)
+   if x[0:2] in bigramsRight:
+      prob += log(bigramsRight[x[0:2]]) - log(unigramsMid[x[0]])
+   elif x[1] in unigramsRight:
+       prob = log(1+unigramsRight[x[1]]) - log(total)
+   else:
+       prob -= log(total)
+   for i in range(2, len(x)):
+      if x[i-2:i+1] in trigrams:
+           prob += log(trigrams[x[i-2:i+1]]) - log(bigramsLeft[x[i-2:i]])
+      elif x[i-1:i+1] in bigramsRight:
+          prob += log(bigramsRight[x[i-1:i+1]]) - log(unigramsMid[x[i-1]])
+      elif x[i] in unigramsRight:
+          prob += log(1+unigramsRight[x[i]]) - log(total)
+      else:
+          prob -= log(total)
+   return prob
+
+def doChoiceListNgrams(xs):
+    return [-evaluateNgramProb(x) for x in xs]
+
+
+
+
+
+examples = [args.sequence[:-1]+x+"." for x in germanAlphabet]
+comb = doChoiceListNgrams(examples) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
+examples = [x+"." for x in itos[3:] if x > "_"]
+uni = doChoiceListNgrams(examples) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
+
+
+z = zip(examples, comb, uni)
+z = sorted(z, key=lambda x:x[1]-x[2])
+print(z)
+
 

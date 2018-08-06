@@ -358,16 +358,19 @@ with open("germanNounDeclension.txt") as inFile:
            print("ERROR")
            continue
          plural = noun["Nominativ Plural"][0]
-         if singular != plural:
+         if singular != plural and plural != "-":
             if singular[-1] in ["n", "r", "s", "e"]:
-                article = "" #{"m" : "der", "n" : "das", "f" : "die"}[genus]
-                result = doChoiceList([f".{article}{singular}istgut.", f".{article}{singular}sindgut."], printHere=True)
+                printHere = (random.random() > 0.95)
+                article = "der" #{"m" : "der", "n" : "das", "f" : "die"}[genus]
+                matrix = "ichdenke,dass"
+                result = doChoiceList([f".{matrix}{article}{singular}sehrgutist.", f".{matrix}{article}{plural}sehrgutist."], printHere=printHere)
                 forSingSum += 1 if 0 == result else 0
                 correctBare[singular[-1]] += (1 if 0 == result else 0)
                 totalBare[singular[-1]] += 1
-                forPlurSum += 1 if 0 == doChoiceList([f".die{singular}istgut.", f".die{singular}sindgut."], printHere=True) else 0
+                forPlurSum += 1 if 1 == doChoiceList([f".{matrix}{article}{singular}sehrgutsind.", f".{matrix}{article}{plural}sehrgutsind."], printHere=printHere) else 0
                 counter += 1
-      
-                print(forSingSum/counter, forPlurSum/counter)
-                print({x : correctBare[x]/(totalBare[x]+0.0001) for x in "nrse"})
+     
+                if printHere: 
+                    print(forSingSum/counter, forPlurSum/counter)
+                    print({x : correctBare[x]/(totalBare[x]+0.0001) for x in "nrse"})
 

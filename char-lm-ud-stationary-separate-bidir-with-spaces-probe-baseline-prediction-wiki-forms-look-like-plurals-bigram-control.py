@@ -341,6 +341,17 @@ forPlurSum = 0
 correctBare = {x : 0 for x in "nrse"}
 totalBare = {x : 0 for x in "nrse"}
 
+    
+singulars = set()
+plurals = set()
+
+print("Read bigrams")
+
+def existsBigram(bigram):
+    if bigram[0] in bigram and bigram[1] in bigrams[bigram[0]]:
+       return True
+    return False
+
 with open("germanNounDeclension.txt") as inFile:
     data = inFile.read().strip().split("###")[1:]
     for noun in data:
@@ -350,7 +361,7 @@ with open("germanNounDeclension.txt") as inFile:
        if "Genus" in noun and len(noun["Genus"]) > 0:
          genus = noun["Genus"][0]
          if genus not in ["m", "f", "n"]:
-              print("ERROR")
+              print(f"ERROR {genus}")
               continue
          assert genus in ["m", "f", "n"], noun
          singular = noun["Nominativ Singular"][0]
@@ -361,13 +372,74 @@ with open("germanNounDeclension.txt") as inFile:
          if singular != plural:
             if singular[-1] in ["n", "r", "s", "e"]:
                 article = "" #{"m" : "der", "n" : "das", "f" : "die"}[genus]
-                result = doChoiceList([f".{article}{singular}istgut.", f".{article}{singular}sindgut."], printHere=True)
+                singulars.add(singular)
+                plurals.add(plural)
+
+
+with open("/checkpoint/mhahn/bigrams-german.txt", "r") as inFile:
+    bigrams = inFile.read().strip().split("#START#")
+print("Got bigram string")
+
+occursWithIst = set()
+for i in range(len(bigrams)):
+    if i % 100000 == 0:
+       print(i/len(bigrams))
+    word = bigrams[i]
+    toPrint = word[:50]
+    assert type(toPrint) == str
+    assert len(toPrint) < 60
+#    print(toPrint)
+    j = word.find("\n")
+    lemma = word[:j]
+    if lemma not in singulars:
+       continue
+#    print(lemma)
+    while True:
+       jNew = word.find("\n", j+1)
+       if jNew == -1:
+          break
+       if word[j+1:jNew].startswith("ist\t"):
+ #           print("OCCURS")
+            occursWithIst.add(lemma)
+            break
+       j = jNew
+#    if len(word) < 10:
+#       continue
+#    quit()
+#    lemma = word[:word.index("\n")]
+#    if lemma not in singulars:
+#       continue
+#    word = word.split("\n")
+#    entries = [x.split("\t") for x in word[1:]]
+#    entries = dict([(x[0], int(x[1])) for x in entries if len(x) == 2])
+#    bigrams[i] = (lemma, entries)
+
+#print(occursWithIst)
+
+
+plurals = list(plurals)
+
+for singular in singulars:
+                printHere = (random.random() > 0.9)
+                if singular in occursWithIst: # existsBigram([singular, "ist"]):
+                    print(f"SKIPPED {singular}")
+                    continue
+                plural = random.choice(plurals)
+                result = doChoiceList([f".{article}{singular}istgut.", f".{article}{plural}istgut."], printHere=printHere)
                 forSingSum += 1 if 0 == result else 0
                 correctBare[singular[-1]] += (1 if 0 == result else 0)
                 totalBare[singular[-1]] += 1
-                forPlurSum += 1 if 0 == doChoiceList([f".die{singular}istgut.", f".die{singular}sindgut."], printHere=True) else 0
+                forPlurSum += 1 if 1 == doChoiceList([f".die{singular}sindgut.", f".die{plural}sindgut."], printHere=printHere) else 0
                 counter += 1
-      
-                print(forSingSum/counter, forPlurSum/counter)
-                print({x : correctBare[x]/(totalBare[x]+0.0001) for x in "nrse"})
+     
+                if printHere: 
+                  print(forSingSum/counter, forPlurSum/counter)
+                  print({x : correctBare[x]/(totalBare[x]+0.0001) for x in "nrse"})
+
+
+print(forSingSum/counter, forPlurSum/counter)
+print({x : correctBare[x]/(totalBare[x]+0.0001) for x in "nrse"})
+
+
+
 

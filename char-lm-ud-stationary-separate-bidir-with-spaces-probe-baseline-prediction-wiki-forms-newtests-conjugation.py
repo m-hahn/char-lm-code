@@ -371,7 +371,11 @@ with open("germanConjugationCleaned.txt", "r") as inFile:
                    continue
                  if "veraltet:" in i:
                     continue
-                 assert len(i) in [2,3], i
+                 i = [z for z in i if len(z) > 0 and z != "[1]"]
+                 
+                 if len(i) not in [2,3] and i[2] != "wieder":
+                   print(["ERROR", i])
+                   continue
                  presentForms.add(form)
 
 #            if presentForms == None:
@@ -425,8 +429,8 @@ with open("germanConjugationCleaned.txt", "r") as inFile:
             thirdSingularForm = "".join(praesens[2][0][0][1:][::-1])
             thirdPluralForm = "".join(praesens[5][0][0][1:][::-1])
             subject = "er"
-            intervening = "gerne" #"gerne"
-            matrix = "ersagt,dass"
+            intervening = "jaextremunglaublichgerne" #"gerne"
+            matrix = "ichsage,dass"
             post = "" #,obwohldasfalschist"
             stimuli = [f'.{matrix}{subject}{intervening}{thirdSingularForm}{post}.', f'.{matrix}{subject}{intervening}{thirdPluralForm}{post}.']
             result = doChoiceList(stimuli, printHere=True)

@@ -4,7 +4,6 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--language", dest="language", type=str)
 parser.add_argument("--load-from", dest="load_from", type=str)
-parser.add_argument("--save-to", dest="save_to", type=str)
 
 import random
 
@@ -27,8 +26,6 @@ import math
 
 args=parser.parse_args()
 
-if "MYID" in args.save_to:
-   args.save_to = args.save_to.replace("MYID", str(args.myID))
 
 print(args)
 
@@ -142,16 +139,16 @@ def prepareDatasetChunks(data, train=True):
        #  if len(numeric) > args.sequence_length:
         #    yield numeric
          #   numeric = [0]
-       cutoff = int(len(numerified)/(args.batchSize*args.sequence_length)) * (args.batchSize*args.sequence_length)
+       cutoff = int(len(numerified)/(args.batchSize)) * (args.batchSize)
        numerifiedCurrent = numerified[:cutoff]
        numerified = numerified[cutoff:]
-       numerifiedCurrent = torch.LongTensor(numerifiedCurrent).view(args.batchSize, -1, args.sequence_length).transpose(0,1).transpose(1,2).cuda()
+       numerifiedCurrent = torch.LongTensor(numerifiedCurrent).view(args.batchSize, -1).cuda().transpose(0,1)
        #print(numerifiedCurrent.size())
        #quit()
-       numberOfSequences = numerifiedCurrent.size()[0]
+       numberOfSequences = numerifiedCurrent.size()[1]-args.sequence_length
        for i in range(numberOfSequences):
 #           print(numerifiedCurrent[i].size())
-           yield numerifiedCurrent[i]
+           yield numerifiedCurrent[i:i+args.sequence_length]
        hidden = None
 
 def prepareDatasetChunksPrevious(data, train=True):
@@ -194,15 +191,17 @@ hidden = None
 
 zeroBeginning = torch.LongTensor([0 for _ in range(args.batchSize)]).cuda().view(1,args.batchSize)
 beginning = None
+import numpy
+
+lossesPerStepSum = numpy.zeros(args.sequence_length)
 
 def forward(numeric, train=True, printHere=False):
       global hidden
       global beginning
-      if hidden is None or (train and random.random() > 0.9):
+      global lossesPerStepSum
+      if True:
           hidden = None
           beginning = zeroBeginning
-      elif hidden is not None:
-          hidden = tuple([Variable(x.data).detach() for x in hidden])
 
       numeric = torch.cat([beginning, numeric], dim=0)
 
@@ -234,76 +233,43 @@ def forward(numeric, train=True, printHere=False):
       
       loss = train_loss(log_probs.view(-1, len(itos)+3), target_tensor.view(-1))
 
-      if printHere:
+      if True:
          lossTensor = print_loss(log_probs.view(-1, len(itos)+3), target_tensor.view(-1)).view(-1, args.batchSize)
-         losses = lossTensor.data.cpu().numpy()
-         numericCPU = numeric.cpu().data.numpy()
-#         boundaries_index = [0 for _ in numeric]
-         print(("NONE", itos[numericCPU[0][0]-3]))
-         for i in range((args.sequence_length)):
- #           if boundaries_index[0] < len(boundaries[0]) and i+1 == boundaries[0][boundaries_index[0]]:
-  #             boundary = True
-   #            boundaries_index[0] += 1
-    #        else:
-     #          boundary = False
-            print((losses[i][0], itos[numericCPU[i+1][0]-3]))
+         lossesPerStep = lossTensor.mean(1).data.cpu().numpy()
+         lossesPerStepSum += lossesPerStep
+
+         if printHere:
+            losses = lossTensor.data.cpu().numpy()
+            numericCPU = numeric.cpu().data.numpy()
+   #         boundaries_index = [0 for _ in numeric]
+            print(("NONE", itos[numericCPU[0][0]-3]))
+            for i in range((args.sequence_length)):
+    #           if boundaries_index[0] < len(boundaries[0]) and i+1 == boundaries[0][boundaries_index[0]]:
+     #             boundary = True
+      #            boundaries_index[0] += 1
+       #        else:
+        #          boundary = False
+               print((losses[i][0], itos[numericCPU[i+1][0]-3]))
       return loss, target_tensor.view(-1).size()[0]
-
-def backward(loss, printHere):
-      optim.zero_grad()
-      if printHere:
-         print(loss)
-      loss.backward()
-      torch.nn.utils.clip_grad_value_(parameters_cached, 5.0) #, norm_type="inf")
-      optim.step()
-
-
 
 
 import time
 
 devLosses = []
-for epoch in range(10000):
-   print(epoch)
+if True:
    training_data = corpusIteratorWiki.training(args.language)
    print("Got data")
    training_chars = prepareDatasetChunks(training_data, train=True)
 
 
 
-   rnn_drop.train(True)
-   startTime = time.time()
-   trainChars = 0
-   counter = 0
-   hidden, beginning = None, None
-   while True:
-      counter += 1
-      try:
-         numeric = next(training_chars)
-      except StopIteration:
-         break
-      printHere = (counter % 50 == 0)
-      loss, charCounts = forward(numeric, printHere=printHere, train=True)
-      backward(loss, printHere)
-      trainChars += charCounts 
-      if printHere:
-          print((epoch,counter))
-          print("Dev losses")
-          print(devLosses)
-          print("Chars per sec "+str(trainChars/(time.time()-startTime)))
-          print(learning_rate)
-          print(args)
-      if counter % 20000 == 0 and epoch == 0:
-        if args.save_to is not None:
-           torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), "/checkpoint/mhahn/"+args.save_to+".pth.tar")
-
 
    rnn_drop.train(False)
 
 
-   dev_data = corpusIteratorWiki.dev(args.language)
+   train_data = corpusIteratorWiki.training(args.language)
    print("Got data")
-   dev_chars = prepareDataset(dev_data, train=False) if args.language == "italian" else prepareDatasetChunks(dev_data, train=False)
+   dev_chars = prepareDatasetChunks(train_data, train=False)
 
 
      
@@ -321,17 +287,23 @@ for epoch in range(10000):
        loss, numberOfCharacters = forward(numeric, printHere=printHere, train=False)
        dev_loss += numberOfCharacters * loss.cpu().data.numpy()
        dev_char_count += numberOfCharacters
+       if printHere:
+          print(lossesPerStepSum/counter)
+       if counter > 1000:
+           break
+   lossesPerStepSum = lossesPerStepSum/counter
+   mis = lossesPerStepSum[0] - lossesPerStepSum
+   excessEntropy = (sum([(mis[i]-mis[i-1]) * i for i in range(1,len(mis))]))
    devLosses.append(dev_loss/dev_char_count)
    print(devLosses)
-   with open("/checkpoint/mhahn/"+args.language+"_"+__file__+"_"+str(args.myID), "w") as outFile:
+   with open("/checkpoint/mhahn/excess-"+args.load_from, "w") as outFile:
       print(" ".join([str(x) for x in devLosses]), file=outFile)
       print(" ".join(sys.argv), file=outFile)
       print(str(args), file=outFile)
-   if len(devLosses) > 1 and devLosses[-1] > devLosses[-2]:
-      break
-   if args.save_to is not None:
-      torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), "/checkpoint/mhahn/"+args.save_to+".pth.tar")
+      print(" ".join([str(x) for x in lossesPerStepSum]), file=outFile)
+      print(excessEntropy, file=outFile)
+      print(lossesPerStepSum[0]-lossesPerStepSum[-1], file=outFile)
+      print(excessEntropy/(lossesPerStepSum[0]-lossesPerStepSum[-1]), file=outFile)
 
-   learning_rate = args.learning_rate * math.pow(args.lr_decay, len(devLosses))
-   optim = torch.optim.SGD(parameters(), lr=learning_rate, momentum=0.0) # 0.02, 0.9
+
 

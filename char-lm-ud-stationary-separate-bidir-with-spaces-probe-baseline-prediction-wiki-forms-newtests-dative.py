@@ -333,9 +333,9 @@ def doChoice(x, y):
 #doChoice(".einhauspfähle.", ".einhäuserpfähle.")
 #doChoice(".einnasenbär.", ".einnasenbären.")
 
-left = "ichwillnundeswegenundauchtrotzdem"
-objects = ["ihm", "ihn"]
-middle = ""
+left = "erwolltenundeswegenundauchtrotzdemdanacheindeutigwahrscheinlichgerne"
+objects = ["ihr", "sie"] #"ihm", "ihn"]
+middle = "" #nundeswegenundauchtrotzdemdanacheindeutigwahrscheinlichgerne" #dementsprechendgarnicht"
 
 with open("datives.txt", "r") as inFile:
    datives = inFile.read().strip().split("\n")[1:]
