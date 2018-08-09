@@ -10,17 +10,19 @@ import random
 
 parser.add_argument("--batchSize", type=int, default=random.choice([128, 128, 256]))
 parser.add_argument("--char_embedding_size", type=int, default=random.choice([50, 100, 200, 200]))
-parser.add_argument("--hidden_dim", type=int, default=random.choice([1024, 2048]))
+parser.add_argument("--hidden_dim", type=int, default=random.choice([256, 512, 1024, 2048]))
 parser.add_argument("--layer_num", type=int, default=random.choice([1,2]))
 parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.0, 0.0, 0.0, 0.01, 0.05, 0.1]))
 parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.0, 0.05, 0.15, 0.2]))
 parser.add_argument("--char_dropout_prob", type=float, default=random.choice([0.0, 0.0, 0.001, 0.01, 0.01]))
 parser.add_argument("--char_noise_prob", type = float, default=random.choice([0.0, 0.0]))
-parser.add_argument("--learning_rate", type = float, default= random.choice([0.9, 1.0, 2.0, 2.0, 3.0]))
+parser.add_argument("--learning_rate", type = float, default= random.choice([0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.01, 0.01, 0.1, 0.2, 0.5, 0.9]))
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
-parser.add_argument("--sequence_length", type=int, default=random.choice([50, 50, 80]))
+parser.add_argument("--sequence_length", type=int, default=random.choice([10, 20, 30, 50, 50, 80]))
 parser.add_argument("--verbose", type=bool, default=False)
 parser.add_argument("--lr_decay", type=float, default=random.choice([0.5, 0.7, 0.9, 0.95, 0.98, 0.98, 1.0]))
+parser.add_argument("--nonlinearity", type=str, default=random.choice(["tanh", "relu"]))
+
 
 
 import math
@@ -78,7 +80,7 @@ print(torch.__version__)
 from weight_drop import WeightDrop
 
 
-rnn = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num).cuda()
+rnn = torch.nn.RNN(args.char_embedding_size, args.hidden_dim, args.layer_num, args.nonlinearity).cuda()
 
 rnn_parameter_names = [name for name, _ in rnn.named_parameters()]
 print(rnn_parameter_names)
@@ -202,7 +204,7 @@ def forward(numeric, train=True, printHere=False):
           hidden = None
           beginning = zeroBeginning
       elif hidden is not None:
-          hidden = tuple([Variable(x.data).detach() for x in hidden])
+          hidden = Variable(hidden.data).detach()
 
       numeric = torch.cat([beginning, numeric], dim=0)
 
