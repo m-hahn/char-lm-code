@@ -32,6 +32,10 @@ print(args)
 import corpusIteratorWiki
 
 
+def plusL(its):
+  for it in its:
+       for x in it:
+           yield x
 
 def plus(it1, it2):
    for x in it1:
@@ -98,9 +102,9 @@ def parameters():
        for param in module.parameters():
             yield param
 
-optim = torch.optim.SGD(parameters(), lr=args.learning_rate, momentum=0.0) # 0.02, 0.9
+#optim = torch.optim.SGD(parameters(), lr=args.learning_rate, momentum=0.0) # 0.02, 0.9
 
-named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
+named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings} #, "optim" : optim}
 
 print("Loading model")
 if args.load_from is not None:
@@ -128,7 +132,6 @@ def encodeWord(word):
       for char in word:
            numeric[-1].append((stoi[char]+3 if char in stoi else 2) if True else 2+random.randint(0, len(itos)))
       return numeric
-
 
 
 
@@ -160,6 +163,21 @@ def choice(numeric1, numeric2):
      losses = lossModule(prediction.view(-1, len(itos)+3), target.view(-1)).view(maxLength, 2)
      losses = losses.sum(0).data.cpu().numpy()
      return losses
+
+
+def encodeListOfWords(words):
+    numeric = [encodeWord(word)[0] for word in words]
+    maxLength = max([len(x) for x in numeric])
+    for i in range(len(numeric)):
+       numeric[i] = ([0]*(maxLength-len(numeric[i]))) + numeric[i]
+    input_tensor_forward = Variable(torch.LongTensor([[0]+x for x in numeric]).transpose(0,1).cuda(), requires_grad=False)
+    
+    input_cut = input_tensor_forward #[:-1]
+    embedded_forward = char_embeddings(input_cut)
+    out_forward, hidden_forward = rnn_drop(embedded_forward, None)
+    hidden = hidden_forward[0].data.cpu().numpy()
+    return [hidden[0][i] for i in range(len(words))]
+
 
 
 
@@ -248,132 +266,92 @@ def keepGenerating(encoded, length=100, backwards=False):
     return output_string if not backwards else output_string[::-1]
 
 
-out1, hidden1 = encodeSequenceBatchForward(encodeWord("katze"))
-out2, hidden2 = encodeSequenceBatchForward(encodeWord("katzem"))
-#print(torch.dot(out1[-1], out2[-1]))
-#print(torch.dot(hidden1[0], hidden2[0]))
-#print(torch.dot(hidden1[1], hidden2[1]))
-
-print(torch.nn.functional.cosine_similarity(out1, out2, dim=0))
-#print(torch.nn.functional.cosine_similarity(hidden1, hidden2, dim=0))
-#print(torch.nn.functional.cosine_similarity(cell1, cell2, dim=0))
-
-#print("willmach")
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ichmach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".dumach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ermach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".siemach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esmach"))))
-#
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ichmach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".dumach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ermach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".siemach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esmach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esdenk"))))
-#
-def doChoiceList(xs, printHere=True):
-    if printHere:
-      for x in xs:
-         print(x)
-    losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
-    if printHere:
-      print(losses)
-    return np.argmin(losses)
+vocabPath = {"german" : "/private/home/mhahn/data/WIKIPEDIA/german-wiki-word-vocab-POS.txt", "italian" : "/private/home/mhahn/data/WIKIPEDIA/itwiki/italian-wiki-word-vocab-POS.txt"}[args.language]
 
 
-def doChoice(x, y):
-    print(x)
-    print(y)
-    losses = choice(encodeWord(x), encodeWord(y))
-    print(losses)
-    return 0 if losses[0] < losses[1] else 1
-#
-#doChoice(".ichmachedas.", ".ichmachstdas.")
-#doChoice(".dumachendas.", ".dumachstdas.")
-#doChoice(".ermachendas.", ".ermachtdas.")
-#doChoice(".wirmachendas.", ".wirmachtdas.")
-#
-#doChoice(".ichvergeigedas.", ".ichvergeigstdas.")
-#doChoice(".duvergeigendas.", ".duvergeigstdas.")
-#doChoice(".ervergeigendas.", ".ervergeigtdas.")
-#doChoice(".wirvergeigendas.", ".wirvergeigtdas.")
-#
-#
-#
-#
-#
-#doChoice(".ichwilldas.", ".ichwillstdas.")
-#doChoice(".duwollendas.", ".duwillstdas.")
-#doChoice(".erwollendas.", ".erwilldas.")
-#doChoice(".wirwollendas.", ".wirwilldas.")
-#
-#
-#doChoice("indashaus.", "indiehaus.")
-#doChoice("indascomputermaus.", "indiecomputermaus.")
-#
-#doChoice(".ichgeheindashaus.", ".ichgeheindemhaus.")
-#doChoice(".ichlebeindashaus.", ".ichlebeindemhaus.")
-#
-#
-#doChoice(".ichlebeindashausmeisterzimmer.", ".ichlebeindemhausmeisterzimmer.")
-#
-#
-#doChoice(".zweihaus.", ".zweihäuser.")
-#doChoice(".zweilampen.", ".zweilampe.")
-#doChoice(".zweilampenpfahl.", ".zweilampenpfähle.")
-#doChoice(".zweihauspfähle.", ".zweihäuserpfähle.")
-#doChoice(".zweinasenbär.", ".zweinasenbären.")
-#
-#doChoice(".einhaus.", ".einhäuser.")
-#doChoice(".einlampenpfahl.", ".einlampenpfähle.")
-#doChoice(".einhauspfähle.", ".einhäuserpfähle.")
-#doChoice(".einnasenbär.", ".einnasenbären.")
+def detectVerb(pos):
+  if args.language == "german":
+      return pos.startswith("v")
+  elif args.language == "italian":
+      return pos.startswith("ver") 
+def detectNoun(pos):
+   if args.language == "german":
+      return pos.startswith("n")
+   elif args.language == "italian":
+       return pos == "noun"
+
+nouns = []
+verbs = []
+nounsTotal = set()
+verbsTotal = set()
+incorporating = True
+with open(vocabPath, "r") as inFile:
+  for line in inFile:
+    line = line.strip().split("\t")
+    pos = line[1]
+    if detectVerb(pos):
+        verbsTotal.add(line[0])
+        if incorporating:
+           verbs.append(line[0])
+    elif detectNoun(pos):
+        nounsTotal.add(line[0])
+        if incorporating:
+            nouns.append(line[0])
+    if incorporating and len(line[2]) <= 3 and int(line[2]) < 10:
+        incorporating = False
+
+nouns = [x for x in nouns if x not in verbsTotal]
+verbs = [x for x in verbs if x not in nounsTotal]
+print(len(nouns))
+print(len(verbs))
 
 
+def criterion(word):
+    if args.language == "german":
+       return word.endswith("n")
+    elif args.language == "italian":
+       return word.endswith("re")
 
-initial = ["", "b", "d", "f", "g", "k", "l", "m", "n", "p", "qu", "r", "s", "sch", "st", "str", "schl"]
-medial = ["a", "e", "i", "o", "u"]
-final = ["", "hl", "b", "g", "ck", "sch", "ss", "rr", "r"]
+nounsInN = [x for x in nouns if criterion(x)]
+verbsInN = [x for x in verbs if criterion(x)]
+print(len(nounsInN))
+print(len(verbsInN))
 
-import random
+print(nounsInN[:100])
+print(verbsInN[:100])
 
-results_sg = [0,0, 0]
-results_en = [0,0, 0]
-results_verb = [0,0, 0]
-results_verb_pl = [0,0, 0]
+sampleSize = 500
 
-
-
-
-adjective ="" # "sehrkleinen" #"sosehrwahnsinnigwundervollkomplettunglaublichkleine" # this is also effective at modulating the effect: ending in -e, it favors masc/neuter, ending in -en it favors "die". If the adjective phrase gets really long, the difference disappears.
-
-predicate = "klein"
-
-for i in range(1, 200):
-    noun = adjective+random.choice(initial)+random.choice(medial)+random.choice(final)
-    choiceSg = doChoiceList([f".die{noun}sind{predicate}.", f".der{noun}sind{predicate}.", f".das{noun}sind{predicate}."], printHere=True) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
-    choice_en = doChoiceList([f".die{noun}ensind{predicate}.", f".der{noun}ensind{predicate}.", f".das{noun}ensind{predicate}."], printHere=True)
-    choice_verb = doChoiceList([f".die{noun}ist{predicate}.", f".der{noun}ist{predicate}.", f".das{noun}ist{predicate}."], printHere=True) # this one doesn't care about the adjective ending very much, the ending of the noun is more important
-    choice_verb_pl = doChoiceList([f".die{noun}enist{predicate}.", f".der{noun}enist{predicate}.", f".das{noun}enist{predicate}."], printHere=True) # this one doesn't care about the adjective ending very much, the ending of the noun is more important
+accuracies = []
+for _ in range(100):
+  random.shuffle(nounsInN)
+  random.shuffle(verbsInN)
 
 
-    results_sg[choiceSg]+=1
-    results_en[choice_en] += 1
-    results_verb[choice_verb] += 1
-    results_verb_pl[choice_verb_pl] += 1
+  nounsInNSelected = nounsInN[:sampleSize]# len(verbsInN)]
+  verbsInNSelected = verbsInN[:sampleSize] #len(verbsInN)]
+  
+  encodedNounsInN = encodeListOfWords([x for x in nounsInNSelected])
+  encodedVerbsInN = encodeListOfWords([x for x in verbsInNSelected])
+  
+  predictors = encodedNounsInN + encodedVerbsInN
+  
+  dependent = [0 for _ in encodedNounsInN] + [1 for _ in encodedVerbsInN]
+  
+  from sklearn.model_selection import train_test_split
+  x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=0.95, random_state=0, shuffle=True)
+  
+  from sklearn.linear_model import LogisticRegression
+  
+  print("regression")
+  
+  logisticRegr = LogisticRegression()
+  
+  logisticRegr.fit(x_train, y_train)
+  
+  score = logisticRegr.score(x_test, y_test)
+  print(score)
+  accuracies.append(score)
 
-
-    print([x/i for x in results_sg])
-    print([x/i for x in results_en])
-    print([x/i for x in results_verb])
-    print([x/i for x in results_verb_pl])
-
-
-
-
-
-
-
-
+print(sum(accuracies)/100)  
 

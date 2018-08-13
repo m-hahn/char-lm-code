@@ -352,7 +352,7 @@ with open("germanNounDeclension.txt") as inFile:
                if len(set(dative).intersection(set(genitive))) == 0:
                    dativeForm = dative[0].lower()
                    genitiveForm = genitive[0].lower()
-                   intermediate = "massivstextremsttotalunglaublichklitzekleinsten"
+                   intermediate = "roten" #"kleinen" #informationstechnologischen" #"massivstextremsttotalunglaublichklitzekleinsten"
                    correctDat[0] += (1 if 0 == doChoiceList([f".dem{intermediate}{dativeForm}.", f".des{intermediate}{dativeForm}."], printHere=True) else 0)
                    correctGen[0] += (1 if 1 == doChoiceList([f".dem{intermediate}{genitiveForm}.", f".des{intermediate}{genitiveForm}."], printHere=True) else 0)
 

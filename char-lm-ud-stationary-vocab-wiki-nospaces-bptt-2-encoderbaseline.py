@@ -8,19 +8,19 @@ parser.add_argument("--save-to", dest="save_to", type=str)
 
 import random
 
-parser.add_argument("--batchSize", type=int, default=random.choice([128, 128, 256]))
-parser.add_argument("--char_embedding_size", type=int, default=random.choice([50, 100, 200, 200]))
-parser.add_argument("--hidden_dim", type=int, default=random.choice([1024, 2048]))
-parser.add_argument("--layer_num", type=int, default=random.choice([1,2]))
-parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.0, 0.0, 0.0, 0.01, 0.05, 0.1]))
-parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.0, 0.05, 0.15, 0.2]))
-parser.add_argument("--char_dropout_prob", type=float, default=random.choice([0.0, 0.0, 0.001, 0.01, 0.01]))
-parser.add_argument("--char_noise_prob", type = float, default=random.choice([0.0, 0.0]))
-parser.add_argument("--learning_rate", type = float, default= random.choice([0.9, 1.0, 2.0, 2.0, 3.0]))
+parser.add_argument("--batchSize", type=int, default=random.choice([128]))
+parser.add_argument("--char_embedding_size", type=int, default=random.choice([100]))
+parser.add_argument("--hidden_dim", type=int, default=random.choice([1024]))
+parser.add_argument("--layer_num", type=int, default=random.choice([2]))
+parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.0]))
+parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.0]))
+parser.add_argument("--char_dropout_prob", type=float, default=random.choice([0.0]))
+parser.add_argument("--char_noise_prob", type = float, default=random.choice([0.0]))
+parser.add_argument("--learning_rate", type = float, default= random.choice([1.0]))
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
-parser.add_argument("--sequence_length", type=int, default=random.choice([50, 50, 80]))
+parser.add_argument("--sequence_length", type=int, default=random.choice([50]))
 parser.add_argument("--verbose", type=bool, default=False)
-parser.add_argument("--lr_decay", type=float, default=random.choice([0.5, 0.7, 0.9, 0.95, 0.98, 0.98, 1.0]))
+parser.add_argument("--lr_decay", type=float, default=random.choice([1.0]))
 
 
 import math
@@ -34,7 +34,7 @@ print(args)
 
 
 
-import corpusIteratorWiki
+import corpusIteratorWikiWords
 
 
 
@@ -79,6 +79,8 @@ from weight_drop import WeightDrop
 
 
 rnn = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num).cuda()
+rnn_decoder = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num).cuda()
+
 
 rnn_parameter_names = [name for name, _ in rnn.named_parameters()]
 print(rnn_parameter_names)
@@ -97,7 +99,7 @@ train_loss = torch.nn.NLLLoss(ignore_index=0)
 print_loss = torch.nn.NLLLoss(size_average=False, reduce=False, ignore_index=0)
 char_dropout = torch.nn.Dropout2d(p=args.char_dropout_prob)
 
-modules = [rnn, output, char_embeddings]
+modules = [rnn, output, char_embeddings, rnn_decoder]
 def parameters():
    for module in modules:
        for param in module.parameters():
@@ -126,128 +128,53 @@ from torch.autograd import Variable
 
 
 def prepareDatasetChunks(data, train=True):
-      numeric = [0]
+      words = []
       count = 0
       print("Prepare chunks")
       numerified = []
       for chunk in data:
        print(len(chunk))
-       for char in chunk:
-         if char == " ":
-           continue
-         count += 1
-#         if count % 100000 == 0:
-#             print(count/len(data))
-         numerified.append((stoi[char]+3 if char in stoi else 2) if (not train) or random.random() > args.char_noise_prob else 2+random.randint(0, len(itos)))
-       #  if len(numeric) > args.sequence_length:
-        #    yield numeric
-         #   numeric = [0]
-       cutoff = int(len(numerified)/(args.batchSize*args.sequence_length)) * (args.batchSize*args.sequence_length)
-       numerifiedCurrent = numerified[:cutoff]
-       numerified = numerified[cutoff:]
-       numerifiedCurrent = torch.LongTensor(numerifiedCurrent).view(args.batchSize, -1, args.sequence_length).transpose(0,1).transpose(1,2).cuda()
-       #print(numerifiedCurrent.size())
-       #quit()
-       numberOfSequences = numerifiedCurrent.size()[0]
-       for i in range(numberOfSequences):
-#           print(numerifiedCurrent[i].size())
-           yield numerifiedCurrent[i]
-       hidden = None
-
-def prepareDatasetChunksPrevious(data, train=True):
-      numeric = [0]
-      count = 0
-      print("Prepare chunks")
-      for chunk in data:
-       print(len(chunk))
-       for char in chunk:
-         if char == " ":
-           continue
-         count += 1
-#         if count % 100000 == 0:
-#             print(count/len(data))
-         numeric.append((stoi[char]+3 if char in stoi else 2) if (not train) or random.random() > args.char_noise_prob else 2+random.randint(0, len(itos)))
-         if len(numeric) > args.sequence_length:
-            yield numeric
-            numeric = [0]
-
-
-
-
-
-
-def prepareDataset(data, train=True):
-      numeric = [0]
-      count = 0
-      for char in data:
-         if char == " ":
-           continue
-         count += 1
-#         if count % 100000 == 0:
-#             print(count/len(data))
-         numeric.append((stoi[char]+3 if char in stoi else 2) if (not train) or random.random() > args.char_noise_prob else 2+random.randint(0, len(itos)))
-         if len(numeric) > args.sequence_length:
-            yield numeric
-            numeric = [0]
+       for word in chunk:
+         words.append(word)
+         if len(words) == args.batchSize:
+            yield words
+            words = []
 
 hidden = None
 
 zeroBeginning = torch.LongTensor([0 for _ in range(args.batchSize)]).cuda().view(1,args.batchSize)
 beginning = None
 
-def forward(numeric, train=True, printHere=False):
-      global hidden
-      global beginning
-      if hidden is None or (train and random.random() > 0.9):
-          hidden = None
-          beginning = zeroBeginning
-      elif hidden is not None:
-          hidden = tuple([Variable(x.data).detach() for x in hidden])
-
-      numeric = torch.cat([beginning, numeric], dim=0)
-
-      beginning = numeric[numeric.size()[0]-1].view(1, args.batchSize)
+def encodeWord(word):
+      numeric = [[]]
+      for char in word:
+           numeric[-1].append((stoi[char]+3 if char in stoi else 2) if True else 2+random.randint(0, len(itos)))
+      return numeric
 
 
-      input_tensor = Variable(numeric[:-1], requires_grad=False)
-      target_tensor = Variable(numeric[1:], requires_grad=False)
-      
 
-    #  print(char_embeddings)
-      #if train and (embedding_full_dropout_prob is not None):
-      #   embedded = embedded_dropout(char_embeddings, input_tensor, dropout=embedding_full_dropout_prob, scale=None) #char_embeddings(input_tensor)
-      #else:
-      embedded = char_embeddings(input_tensor)
-      if train:
-         embedded = char_dropout(embedded)
+def forward(words, printHere=False, train=False):
+    numeric = [encodeWord(word)[0] for word in words]
+    maxLength = max([len(x) for x in numeric])
+    charCount = sum([len(x)+1 for x in numeric])
+    numericIn = [None for _ in numeric]
+    numericOut = [None for _ in numeric]
+    for i in range(len(numeric)):
+       numericIn[i] = ([0]*(maxLength-len(numeric[i]))) + numeric[i]
+       numericOut[i] = numeric[i] + [1] + ([0]*(maxLength-len(numeric[i])))
 
-      out, hidden = rnn_drop(embedded, hidden)
-#      if train:
-#          out = dropout(out)
+    input_tensor_forward = Variable(torch.LongTensor([[0]+x for x in numericIn]).transpose(0,1).cuda(), requires_grad=False)
+    input_tensor_decoder = Variable(torch.LongTensor([[0]+x for x in numericOut]).transpose(0,1).cuda(), requires_grad=False)
+    embedded_forward = char_embeddings(input_tensor_forward)
+    out_forward, hidden_forward = rnn_drop(embedded_forward, None)
+    out_decoder, _ = rnn_decoder(char_embeddings(input_tensor_decoder[:-1]), hidden_forward)
+    softmaxDecoder = logsoftmax(output(out_decoder))
+    target_tensor = input_tensor_decoder[1:]
+    loss = train_loss(softmaxDecoder.view(-1, len(itos)+3), target_tensor.view(-1))
+    if printHere:
+       print(loss)
+    return loss, charCount
 
-      logits = output(out) 
-      log_probs = logsoftmax(logits)
-   #   print(logits)
-  #    print(log_probs)
- #     print(target_tensor)
-
-      
-      loss = train_loss(log_probs.view(-1, len(itos)+3), target_tensor.view(-1))
-
-      if printHere and args.verbose:
-         lossTensor = print_loss(log_probs.view(-1, len(itos)+3), target_tensor.view(-1)).view(-1, args.batchSize)
-         losses = lossTensor.data.cpu().numpy()
-         numericCPU = numeric.cpu().data.numpy()
-#         boundaries_index = [0 for _ in numeric]
-         print(("NONE", itos[numericCPU[0][0]-3]))
-         for i in range((args.sequence_length)):
- #           if boundaries_index[0] < len(boundaries[0]) and i+1 == boundaries[0][boundaries_index[0]]:
-  #             boundary = True
-   #            boundaries_index[0] += 1
-    #        else:
-     #          boundary = False
-            print((losses[i][0], itos[numericCPU[i+1][0]-3]))
-      return loss, target_tensor.view(-1).size()[0]
 
 def backward(loss, printHere):
       optim.zero_grad()
@@ -263,9 +190,10 @@ def backward(loss, printHere):
 import time
 
 devLosses = []
-for epoch in range(10000):
+try:
+ for epoch in range(10000):
    print(epoch)
-   training_data = corpusIteratorWiki.training(args.language)
+   training_data = corpusIteratorWikiWords.training(args.language)
    print("Got data")
    training_chars = prepareDatasetChunks(training_data, train=True)
 
@@ -301,7 +229,7 @@ for epoch in range(10000):
    rnn_drop.train(False)
 
 
-   dev_data = corpusIteratorWiki.dev(args.language)
+   dev_data = corpusIteratorWikiWords.dev(args.language)
    print("Got data")
    dev_chars = prepareDatasetChunks(dev_data, train=False)
 
@@ -334,4 +262,9 @@ for epoch in range(10000):
 
    learning_rate = args.learning_rate * math.pow(args.lr_decay, len(devLosses))
    optim = torch.optim.SGD(parameters(), lr=learning_rate, momentum=0.0) # 0.02, 0.9
+except KeyboardInterrupt:
+   if args.save_to is not None:
+      print("Saving")
+      torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), "/checkpoint/mhahn/"+args.save_to+".pth.tar")
+
 

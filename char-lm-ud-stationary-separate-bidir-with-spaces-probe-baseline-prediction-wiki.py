@@ -353,7 +353,8 @@ def genderTest():
      counter = 0
      for noun in genders[gender]:
        counter += 1
-       results[genderIndex][doChoiceList([".der"+noun+".", ".die"+noun+".", ".das"+noun+"."], printHere=(random.random() > 0.98))] += 1
+       noun = f"kleine{noun}"
+       results[genderIndex][doChoiceList([f".der{noun}.", f".die{noun}.", f".das{noun}."], printHere=(random.random() > 0.98))] += 1
 #       results[doChoiceList([".ein"+noun+".", ".eine"+noun+"."])] += 1
        if random.random() > 0.98:
           print([[x/counter for x in resultsx] for resultsx in results])

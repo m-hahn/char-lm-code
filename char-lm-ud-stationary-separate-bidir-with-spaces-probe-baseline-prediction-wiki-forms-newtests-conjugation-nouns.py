@@ -1,4 +1,7 @@
 
+
+# Clear evidence that the model isn't leveraging evidence about the subcategorization of the verb.
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--language", dest="language", type=str)
@@ -330,50 +333,87 @@ def doChoice(x, y):
 #doChoice(".einhauspfähle.", ".einhäuserpfähle.")
 #doChoice(".einnasenbär.", ".einnasenbären.")
 
+nouns = []
 
-
-initial = ["", "b", "d", "f", "g", "k", "l", "m", "n", "p", "qu", "r", "s", "sch", "st", "str", "schl"]
-medial = ["a", "e", "i", "o", "u"]
-final = ["", "hl", "b", "g", "ck", "sch", "ss", "rr", "r"]
-
-import random
-
-results_sg = [0,0, 0]
-results_en = [0,0, 0]
-results_verb = [0,0, 0]
-results_verb_pl = [0,0, 0]
-
-
-
-
-adjective ="" # "sehrkleinen" #"sosehrwahnsinnigwundervollkomplettunglaublichkleine" # this is also effective at modulating the effect: ending in -e, it favors masc/neuter, ending in -en it favors "die". If the adjective phrase gets really long, the difference disappears.
-
-predicate = "klein"
-
-for i in range(1, 200):
-    noun = adjective+random.choice(initial)+random.choice(medial)+random.choice(final)
-    choiceSg = doChoiceList([f".die{noun}sind{predicate}.", f".der{noun}sind{predicate}.", f".das{noun}sind{predicate}."], printHere=True) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
-    choice_en = doChoiceList([f".die{noun}ensind{predicate}.", f".der{noun}ensind{predicate}.", f".das{noun}ensind{predicate}."], printHere=True)
-    choice_verb = doChoiceList([f".die{noun}ist{predicate}.", f".der{noun}ist{predicate}.", f".das{noun}ist{predicate}."], printHere=True) # this one doesn't care about the adjective ending very much, the ending of the noun is more important
-    choice_verb_pl = doChoiceList([f".die{noun}enist{predicate}.", f".der{noun}enist{predicate}.", f".das{noun}enist{predicate}."], printHere=True) # this one doesn't care about the adjective ending very much, the ending of the noun is more important
-
-
-    results_sg[choiceSg]+=1
-    results_en[choice_en] += 1
-    results_verb[choice_verb] += 1
-    results_verb_pl[choice_verb_pl] += 1
-
-
-    print([x/i for x in results_sg])
-    print([x/i for x in results_en])
-    print([x/i for x in results_verb])
-    print([x/i for x in results_verb_pl])
+with open("germanNounDeclension.txt") as inFile:
+    data = inFile.read().strip().split("###")[1:]
+    for noun in data:
+       noun = noun.strip().split("\n")[1:]
+       noun = [x.split("\t") for x in noun]
+       noun = {x[0] : [y.lower() for y in x[1:]] for x in noun}
+       if "Genus" in noun:
+          singular = noun["Nominativ Singular"][0]
+          plural = noun.get("Nominativ Plural", [None])[0]
+          if plural is None:
+              continue
+          if singular != plural:
+             if noun["Genus"][0] in "mfn":
+                nouns.append((singular, plural, noun["Genus"][0]))
+             else:
+               print(noun)
+print(nouns)
 
 
 
 
 
+correctFirst = [0,0]
+correctSecond = [0,0]
+correctThird = [0,0]
+correctThirdSingPlur = [0,0]
+correctThirdPlurSing = [0,0]
+
+correctThirdSingPlurFar = [0,0]
+correctThirdPlurSingFar = [0,0]
+
+
+prefix = "" #"ichdenke,dass"
+with open("germanConjugationCleaned.txt", "r") as inFile:
+    conj = inFile.read().strip().replace("\xa0", " ").split("###")
+    for verb in conj:
+        verb = verb.split("%")
+        if len(verb) == 1:
+             print(verb)
+             continue
+        lemma = verb[0].strip()
+        praesens = [x for x in verb[1].strip().split("\n")]
+        praesens = [[[z.strip().split(" ") for z in  y.split(", ")] for y in x.split("\t")[1:]] for x in praesens]
+        nounS, nounP, gender = random.choice(nouns)
+
+        articleSingular = {"m" : "der", "f" : "die", "n" : "das"}[gender]
+        singularNP = articleSingular+nounS
+        pluralNP = "die"+nounP
+        # third singular vs plural
+        thirdSingularForm = "".join(praesens[2][0][0][1:])
+        thirdPluralForm = "".join(praesens[5][0][0][1:])
+        if len(thirdSingularForm) != len(thirdPluralForm):
+           continue
+        stimuli = [f'.{prefix}{singularNP}{thirdSingularForm}.', f'.{prefix}{singularNP}{thirdPluralForm}.']
+        result = doChoiceList(stimuli, printHere=True)
+        correctThirdSingPlur[0] += (1 if result  == 0 else 0)
+        correctThirdSingPlur[1]+=1
+        print(correctThirdSingPlur[0]/correctThirdSingPlur[1])
 
 
 
+        stimuli = [f'.{prefix}{pluralNP}{thirdSingularForm}.', f'.{prefix}{pluralNP}{thirdPluralForm}.']
+        result = doChoiceList(stimuli, printHere=True)
+        correctThirdPlurSing[0] += (1 if result  == 1 else 0)
+        correctThirdPlurSing[1]+=1
+        print(correctThirdPlurSing[0]/correctThirdPlurSing[1])
 
+
+ 
+#            # third singular vs plural
+#            thirdSingularForm = "".join(praesens[2][0][0][1:][::-1])
+#            thirdPluralForm = "".join(praesens[5][0][0][1:][::-1])
+#            subject = "er"
+#            intervening = "jaextremunglaublichgerne" #"gerne"
+#            matrix = "ichsage,dass"
+#            post = "" #,obwohldasfalschist"
+#            stimuli = [f'.{matrix}{subject}{intervening}{thirdSingularForm}{post}.', f'.{matrix}{subject}{intervening}{thirdPluralForm}{post}.']
+#            result = doChoiceList(stimuli, printHere=True)
+#            correctThirdSingPlurFar[0] += (1 if result  == 0 else 0)
+#            correctThirdSingPlurFar[1]+=1
+#            print("ThirdSingPlurFor", correctThirdSingPlurFar[0]/correctThirdSingPlurFar[1])
+                     
