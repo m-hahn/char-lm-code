@@ -83,6 +83,8 @@ class CorpusIterator():
       self.lowerCaseLemmas=lowerCaseLemmas
       if removePunctuation:
          self.removePunctuation = True
+      else:
+         self.removePunctuation = False
       self.storeMorph = storeMorph
       if language.startswith("ISWOC_"):
           data = accessISWOCData.readISWOCCorpus(language.replace("ISWOC_",""), partition)

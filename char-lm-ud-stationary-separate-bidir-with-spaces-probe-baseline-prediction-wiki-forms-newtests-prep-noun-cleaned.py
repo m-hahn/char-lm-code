@@ -127,7 +127,7 @@ from torch.autograd import Variable
 #from embed_regularize import embedded_dropout
 
 def encodeWord(word):
-      numeric = [[]]
+      numeric = [[0]]
       for char in word:
            numeric[-1].append((stoi[char]+3 if char in stoi else 2) if True else 2+random.randint(0, len(itos)))
       return numeric
@@ -284,7 +284,14 @@ def doChoiceList(xs, printHere=True):
       print(losses)
     return np.argmin(losses)
 
-
+def doChoiceListLosses(xs, printHere=True):
+    if printHere:
+      for x in xs:
+         print(x)
+    losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
+    if printHere:
+      print(losses)
+    return losses
 def doChoice(x, y):
     print(x)
     print(y)
@@ -337,28 +344,156 @@ def doChoice(x, y):
 correctDat = [0,0]
 correctGen = [0,0]
 
+
+# mit der + must have feminine noun, not masculine noun
+# mit den  + must have dat plur noun, not masculine accusative noun
+
+
+feminineDatives = set()
+masculineNominatives = set()
+
+pluralDatives = set()
+masculineAccusatives = set()
+
 with open("germanNounDeclension.txt") as inFile:
     data = inFile.read().strip().split("###")[1:]
     for noun in data:
        noun = noun.strip().split("\n")[1:]
        noun = [x.split("\t") for x in noun]
-       noun = {x[0] : x[1:] for x in noun}
+       noun = {x[0] : [y.lower() for y in x[1:]] for x in noun}
        if "Genus" in noun:
-         if "m" in noun["Genus"] or "n" in noun["Genus"]:
-#           print(noun)
-           dative = noun["Dativ Singular"]
-           genitive = noun["Genitiv Singular"]
-           if len(dative) > 0 and len(genitive) > 0:
-               if len(set(dative).intersection(set(genitive))) == 0:
-                   dativeForm = dative[0].lower()
-                   genitiveForm = genitive[0].lower()
-                   intermediate = "karminroten" #"kleinen" #informationstechnologischen" #"massivstextremsttotalunglaublichklitzekleinsten"
-                   correctDat[0] += (1 if 0 == doChoiceList([f".dem{intermediate}{dativeForm}.", f".des{intermediate}{dativeForm}."], printHere=True) else 0)
-                   correctGen[0] += (1 if 1 == doChoiceList([f".dem{intermediate}{genitiveForm}.", f".des{intermediate}{genitiveForm}."], printHere=True) else 0)
+         if "m" in noun["Genus"]: # record the nominative
+             for x in noun["Nominativ Singular"]:
+                 masculineNominatives.add(x)
+             for x in noun["Akkusativ Singular"]:
+                 masculineAccusatives.add(x)
+         if "f" in noun["Genus"]:
+             for x in noun["Dativ Singular"]:
+                 feminineDatives.add(x)
+         if "Dativ Plural" not in noun:
+            print("ERROR")
+            continue
+         for x in noun["Dativ Plural"]:
+             pluralDatives.add(x)
+
+common = pluralDatives & masculineAccusatives
+pluralDatives = pluralDatives - common
+masculineAccusatives = masculineAccusatives - common
+
+feminineDatives = list(feminineDatives)
+masculineNominatives = list(masculineNominatives)
+pluralDatives = list(pluralDatives)
+masculineAccusatives = list(masculineAccusatives)
+
+correctDer = 0 # this one is stable --> here, the adjective helps distinguish
+correctDen = 0 # this one is less strong, and deteriorates to chance with longer infixes (adjective with adverbs) --> here, the adjective doesn't distinguish between the two forms
+
+correctControlDer = 0 # this one is stable --> here, the adjective helps distinguish
+correctControlDen = 0 # this one is less strong, and deteriorates to chance with longer infixes (adjective with adverbs) --> here, the adjective doesn't distinguish between the two forms
 
 
-                   correctDat[1] += 1
-                   correctGen[1] += 1
-                   print(correctDat[0]/correctDat[1])
-                   print(correctGen[0]/correctGen[1])
+correctNoAdjDer = 0 # this one is better. why?
+correctNoAdjDen = 0 # 
+
+
+# more ~/data/WIKIPEDIA/german-train-tagged.txt  | awk '{print $2,tolower($3)}' 
+# sort ~/data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS.txt | uniq -c > ~/data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS-uniq.txt
+wentThroughAdjectives = False
+with open("/private/home/mhahn//data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as inFile:
+    adjectives = []
+    for line in inFile:
+      line = line.strip().split(" ")
+      if len(line) != 3:
+        continue
+      if line[1] != "ADJA":
+          if wentThroughAdjectives:
+             continue
+      else:
+        wentThroughAdjectives = True
+      if int(line[0]) > 100 and not line[2].endswith("r"):
+         adjectives.append(line[2])
+      
+print(len(adjectives))
+
+from corpusIterator import CorpusIterator
+data = CorpusIterator("German", partition="train", removePunctuation=False).iterator()
+frames = []
+for sentence in data:
+  mits = []
+  for word in sentence:
+     if word["lemma"] == "mit" and word["posUni"] == "ADP" and word["dep"] == "case":
+         head = word["head"] - 1
+         if head < 0:
+              continue
+         if sentence[head]["posUni"] not in ["NOUN", "PROPN"]:
+              continue
+         mits.append(word)
+  if len(mits) > 0:
+ #    print(len(mits))
+     mit = random.choice(mits)
+  #   print(mit)
+     head = mit["head"] - 1
+#     if head < 0:
+#        print(sentence)
+#        continue
+#     print(sentence[head]["posUni"], sentence[head]["dep"])
+     assert head >= 0
+     sentence[head]["remove"] = True
+   #  print(len(sentence), [x["head"] for x in sentence])
+    # print(len(sentence), [x["index"] for x in sentence])
+
+     for i in range(0, len(sentence)):
+        if i == head:
+            sentence[i]["remove"] = True
+        elif "remove" not in sentence[i]:
+           stack = [i]
+           while True:
+               headH = sentence[stack[-1]]["head"]-1
+               assert headH < len(sentence), headH
+               if headH < 0 :
+                   for j in stack:
+                       sentence[j]["remove"] = False
+                   break
+               elif "remove" in sentence[headH]:
+                   for j in stack:
+                      sentence[j]["remove"] = sentence[headH]["remove"]
+                   break
+               stack.append(headH) 
+        assert "remove" in sentence[i]
+     badIndices = [i for i in range(len(sentence)) if sentence[i]["remove"]]
+#     print(badIndices)
+     if len(badIndices) != badIndices[-1] - badIndices[0] + 1: # remove examples wit
+ #       print(badIndices)
+        continue
+     if badIndices[0] != mit["index"] -1:
+#        print(mit, badIndices, [(l["word"], l["head"]) for l in sentence] )
+        continue
+     frames.append(([x["word"] for x in sentence[:badIndices[0]]], [x["word"] for x in sentence[badIndices[-1]+1:]]))
+print(frames[:10])
+# Hypothesis: the model is capable of getting this right when the adjective distinguishes the case, but not so easily when case marking on the noun is required. 
+# (Removing the noun, accuracy is even perfect in the case where the adjective helps distinguish)
+
+import random
+
+preposition = "mit"
+correctByPMI = 0
+for i in range(1,len(frames)):
+    frame = frames[i]
+    left = "".join(frame[0])
+    right = "".join(frame[1])
+    adverbs = ["sehr"] #,"extrem","unglaublich"]
+    adjective = "".join(adverbs)+random.choice(adjectives)
+   
+    lossesFull = doChoiceListLosses([f'.{left}{preposition}der{adjective}en{right}', f'.{left}{preposition}der{adjective}e{right}'], printHere=True)
+    lossesSuffix = doChoiceListLosses([f'der{adjective}en{right}', f'der{adjective}e{right}'], printHere=True)
+    pmi = lossesFull - lossesSuffix
+    correctByPMI += (1 if 0 == np.argmin(pmi) else 0)
+    print("BY PMI", correctByPMI/i)
+
+    correctDer += (1 if 0 == np.argmin(lossesFull) else 0)
+    print("WITH ADJECTIVE", correctDer/i)
+
+    correctControlDer += (1 if 1 == np.argmin(lossesSuffix) else 0)
+    print("CONTROL", correctControlDer/i)
+
 

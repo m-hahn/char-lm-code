@@ -334,9 +334,36 @@ def doChoice(x, y):
 #doChoice(".einnasenbär.", ".einnasenbären.")
 
 
+
+wentThroughAdjectives = False
+with open("/private/home/mhahn//data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as inFile:
+    adjectives = []
+    for line in inFile:
+      line = line.strip().split(" ")
+      if len(line) != 3:
+        continue
+      if line[1] != "ADJA":
+          if wentThroughAdjectives:
+             continue
+      else:
+        wentThroughAdjectives = True
+      if line[2] == "<unknown>":
+         continue
+      if len(line[2]) == 1:
+        continue
+      if "." in line[2]:
+        continue
+      if int(line[0]) > 100 and not line[2].endswith("r"):
+         adjectives.append(line[2])
+#print(adjectives) 
+#print(len(adjectives))
+#quit()
+
+
 correctDat = [0,0]
 correctGen = [0,0]
 
+adverbs = [] #"sehr", "extrem"]
 with open("germanNounDeclension.txt") as inFile:
     data = inFile.read().strip().split("###")[1:]
     for noun in data:
@@ -352,7 +379,7 @@ with open("germanNounDeclension.txt") as inFile:
                if len(set(dative).intersection(set(genitive))) == 0:
                    dativeForm = dative[0].lower()
                    genitiveForm = genitive[0].lower()
-                   intermediate = "karminroten" #"kleinen" #informationstechnologischen" #"massivstextremsttotalunglaublichklitzekleinsten"
+                   intermediate = "".join(adverbs)+random.choice(adjectives)+"en" #"karminroten" #"kleinen" #informationstechnologischen" #"massivstextremsttotalunglaublichklitzekleinsten"
                    correctDat[0] += (1 if 0 == doChoiceList([f".dem{intermediate}{dativeForm}.", f".des{intermediate}{dativeForm}."], printHere=True) else 0)
                    correctGen[0] += (1 if 1 == doChoiceList([f".dem{intermediate}{genitiveForm}.", f".des{intermediate}{genitiveForm}."], printHere=True) else 0)
 

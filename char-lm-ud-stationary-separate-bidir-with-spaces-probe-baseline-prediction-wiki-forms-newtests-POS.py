@@ -341,8 +341,16 @@ for _ in range(100):
   dependent = [0 for _ in encodedNounsInN] + [1 for _ in encodedVerbsInN]
   
   from sklearn.model_selection import train_test_split
-  x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=1-args.train_size/1000, random_state=0, shuffle=True)
-  
+  x_train_nouns, x_test_nouns, y_train_nouns, y_test_nouns = train_test_split(encodedNounsInN, [0 for _ in encodedNounsInN], test_size=1-args.train_size/500, shuffle=True)
+  x_train_verbs, x_test_verbs, y_train_verbs, y_test_verbs = train_test_split(encodedVerbsInN, [1 for _ in encodedVerbsInN], test_size=1-args.train_size/500, shuffle=True)
+
+  x_train = x_train_nouns + x_train_verbs
+  y_train = y_train_nouns + y_train_verbs
+  x_test = x_test_nouns + x_test_verbs
+  y_test = y_test_nouns + y_test_verbs
+
+
+
   from sklearn.linear_model import LogisticRegression
   
   print("regression")
