@@ -20,6 +20,8 @@ parser.add_argument("--char_noise_prob", type = float, default= 0.01)
 parser.add_argument("--learning_rate", type = float, default= 0.1)
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
 parser.add_argument("--sequence_length", type=int, default=50)
+parser.add_argument("--train_size", type=int, default=25)
+
 
 
 args=parser.parse_args()
@@ -308,7 +310,7 @@ print(len(verbs))
 
 def criterion(word):
     if args.language == "german":
-       return word.endswith("n")
+       return word.endswith("en")
     elif args.language == "italian":
        return word.endswith("re")
 
@@ -339,7 +341,7 @@ for _ in range(100):
   dependent = [0 for _ in encodedNounsInN] + [1 for _ in encodedVerbsInN]
   
   from sklearn.model_selection import train_test_split
-  x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=0.95, random_state=0, shuffle=True)
+  x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=1-args.train_size/1000, random_state=0, shuffle=True)
   
   from sklearn.linear_model import LogisticRegression
   
@@ -353,5 +355,10 @@ for _ in range(100):
   print(score)
   accuracies.append(score)
 
-print(sum(accuracies)/100)  
+print(sum(accuracies)/100)
+with open(f"/checkpoint/mhahn/pos/{__file__}_"+args.language+"_"+str(args.train_size)+"_"+args.load_from, "w") as outFile:
+   print(args.language, file=outFile)
+   print(args.train_size, file=outFile)
+   print(args.load_from, file=outFile)
+   print(sum(accuracies)/100, file=outFile)  
 
