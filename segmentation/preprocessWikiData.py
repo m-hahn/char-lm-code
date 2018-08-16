@@ -1,8 +1,19 @@
 
+
+# ./segment /checkpoint/mhahn/german-valid-500-exclude-punctuation.txt -w0 -o /checkpoint/mhahn/german-valid-500-exclude-punctuation-segmented-bayesian.txt
+
+import sys
+
+language = sys.argv[1]
+partition = sys.argv[2]
+
+infix = "" if language == "german" else "/itwiki/"
+name = "german" if language == "german" else "itwiki"
+
 sentences = [0,0]
 
-with open("/private/home/mhahn/data/WIKIPEDIA/german-valid-tagged.txt", "r") as inFile:
-   with open("/checkpoint/mhahn/german-valid-500.txt", "w") as outFile:
+with open(f"/private/home/mhahn/data/WIKIPEDIA/{infix}{name}-{partition}-tagged.txt", "r") as inFile:
+   with open(f"/checkpoint/mhahn/{language}-{partition}-500.txt", "w") as outFile:
       currentLine = []
       currentLineCharCount = 0
       for line in inFile:
@@ -14,7 +25,7 @@ with open("/private/home/mhahn/data/WIKIPEDIA/german-valid-tagged.txt", "r") as 
 #          print([line[i+1:i+3]])
           currentLine.append(word)
           currentLineCharCount += len(word) + 1
-          if word == "." and line[i+1:i+3] == "$.":
+          if word == "." and ((line[i+1:i+3] == "$.") if language == "german" else (line[i+1:i+5] == "SENT")):
               if currentLineCharCount > 450:
                 print("ERROR "+str(currentLineCharCount))
                 print((currentLine))

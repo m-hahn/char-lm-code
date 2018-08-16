@@ -330,17 +330,28 @@ for adverb, adjective in dataset:
 with open("/checkpoint/mbaroni/char-rnn-exchange/candidate_eadj_aonoun_testset.txt", "r") as inFile:
    dataset = [tuple(x.split(" ")) for x in inFile.read().strip().split("\n")]
 
-choiceMasc = [0,0]
-choiceFem = [0,0]
+choice2Masc = [0,0]
+choice2Fem = [0,0]
 
 for adjective, noun in dataset:
     nounA = noun[:-1]+"a"
     masc = [f".il{adjective}{noun}.", f".la{adjective}{noun}."]
-    choiceMasc[doChoiceList(masc)] += 1
-    print(choiceMasc[0] / sum(choiceMasc))
+    choice2Masc[doChoiceList(masc)] += 1
+    print(choice2Masc[0] / sum(choice2Masc))
     fem = [f".il{adjective}{nounA}.", f".la{adjective}{nounA}."]
-    choiceFem[doChoiceList(fem)] += 1
-    print(choiceFem[1] / sum(choiceFem))
+    choice2Fem[doChoiceList(fem)] += 1
+    print(choice2Fem[1] / sum(choice2Fem))
+
+
+print("/checkpoint/mbaroni/char-rnn-exchange/candidate_adv_aoadj_testset.txt")
+print(choiceMasc[0] / sum(choiceMasc))
+print(choiceFem[0] / sum(choiceFem))
+print("/checkpoint/mbaroni/char-rnn-exchange/candidate_adv_aeadj_testset.txt")
+print(choiceSg[0] / sum(choiceSg))
+print(choicePl[0] / sum(choicePl))
+print("/checkpoint/mbaroni/char-rnn-exchange/candidate_eadj_aonoun_testset.txt")
+print(choice2Masc[0] / sum(choice2Masc))
+print(choice2Fem[1] / sum(choice2Fem))
 
 
 

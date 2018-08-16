@@ -402,7 +402,7 @@ with open("germanConjugationCleaned.txt", "r") as inFile:
         correctThirdPlurSing[1]+=1
         print(correctThirdPlurSing[0]/correctThirdPlurSing[1])
 
-
+print(correctThirdPlurSing[1])
  
 #            # third singular vs plural
 #            thirdSingularForm = "".join(praesens[2][0][0][1:][::-1])
