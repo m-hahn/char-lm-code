@@ -8,20 +8,22 @@ parser.add_argument("--save-to", dest="save_to", type=str)
 
 import random
 
-parser.add_argument("--batchSize", type=int, default=random.choice([128, 128, 256]))
-parser.add_argument("--char_embedding_size", type=int, default=random.choice([50, 100, 200, 200]))
-parser.add_argument("--hidden_dim", type=int, default=random.choice([256, 512, 1024, 2048]))
+parser.add_argument("--batchSize", type=int, default=random.choice([128, 128]))
+parser.add_argument("--char_embedding_size", type=int, default=random.choice([200]))
+parser.add_argument("--hidden_dim", type=int, default=random.choice([1024]))
 parser.add_argument("--layer_num", type=int, default=random.choice([1,2]))
-parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.0, 0.0, 0.0, 0.01, 0.05, 0.1]))
-parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.0, 0.05, 0.15, 0.2]))
-parser.add_argument("--char_dropout_prob", type=float, default=random.choice([0.0, 0.0, 0.001, 0.01, 0.01]))
+parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.01]))
+parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.2]))
+parser.add_argument("--char_dropout_prob", type=float, default=random.choice([00.01]))
 parser.add_argument("--char_noise_prob", type = float, default=random.choice([0.0, 0.0]))
-parser.add_argument("--learning_rate", type = float, default= random.choice([0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.01, 0.01, 0.1, 0.2]))
+parser.add_argument("--learning_rate", type = float, default= random.choice([2.0]))
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
-parser.add_argument("--sequence_length", type=int, default=random.choice([10, 20, 30, 50, 50, 80]))
+parser.add_argument("--sequence_length", type=int, default=random.choice([50]))
 parser.add_argument("--verbose", type=bool, default=False)
-parser.add_argument("--lr_decay", type=float, default=random.choice([0.5, 0.7, 0.9, 0.95, 0.98, 0.98, 1.0]))
-parser.add_argument("--nonlinearity", type=str, default=random.choice(["tanh", "relu"]))
+parser.add_argument("--lr_decay", type=float, default=random.choice([1.0]))
+parser.add_argument("--sequences", type=str)
+parser.add_argument("--iterations", type=int)
+
 
 
 
@@ -29,14 +31,15 @@ import math
 
 args=parser.parse_args()
 
-if "MYID" in args.save_to:
-   args.save_to = args.save_to.replace("MYID", str(args.myID))
+
+args.sequences = args.sequences.split(",")
+args.save_to = args.save_to.replace("SEQUENCE", ".".join(args.sequences)).replace("ITERATIONS", str(args.iterations))
 
 print(args)
 
 
 
-import corpusIteratorWiki
+import corpusIteratorWikiSequences
 
 
 
@@ -80,7 +83,7 @@ print(torch.__version__)
 from weight_drop import WeightDrop
 
 
-rnn = torch.nn.RNN(args.char_embedding_size, args.hidden_dim, args.layer_num, args.nonlinearity).cuda()
+rnn = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num).cuda()
 
 rnn_parameter_names = [name for name, _ in rnn.named_parameters()]
 print(rnn_parameter_names)
@@ -126,6 +129,8 @@ from torch.autograd import Variable
 
 #from embed_regularize import embedded_dropout
 
+trigramsInThisSet = {}
+
 
 def prepareDatasetChunks(data, train=True):
       numeric = [0]
@@ -153,6 +158,15 @@ def prepareDatasetChunks(data, train=True):
        numberOfSequences = numerifiedCurrent.size()[0]
        for i in range(numberOfSequences):
 #           print(numerifiedCurrent[i].size())
+           numbers = numerifiedCurrent[i].cpu().data.numpy()
+
+ #          print(numbers)
+           for j in range(0, args.sequence_length-2):
+             for k in range(0, args.batchSize):
+#                  print(j,k)
+                  trigram = "".join([itos[x-3] for x in numbers[j:j+3,k]])
+                  trigramsInThisSet[trigram] = trigramsInThisSet.get(trigram, 0) + 1
+
            yield numerifiedCurrent[i]
        hidden = None
 
@@ -177,7 +191,6 @@ def prepareDatasetChunksPrevious(data, train=True):
 
 
 
-
 def prepareDataset(data, train=True):
       numeric = [0]
       count = 0
@@ -197,6 +210,7 @@ hidden = None
 zeroBeginning = torch.LongTensor([0 for _ in range(args.batchSize)]).cuda().view(1,args.batchSize)
 beginning = None
 
+
 def forward(numeric, train=True, printHere=False):
       global hidden
       global beginning
@@ -204,7 +218,7 @@ def forward(numeric, train=True, printHere=False):
           hidden = None
           beginning = zeroBeginning
       elif hidden is not None:
-          hidden = Variable(hidden.data).detach()
+          hidden = tuple([Variable(x.data).detach() for x in hidden])
 
       numeric = torch.cat([beginning, numeric], dim=0)
 
@@ -267,7 +281,7 @@ import time
 devLosses = []
 for epoch in range(10000):
    print(epoch)
-   training_data = corpusIteratorWiki.training(args.language)
+   training_data = corpusIteratorWikiSequences.training(args.language, None, args.sequences)
    print("Got data")
    training_chars = prepareDatasetChunks(training_data, train=True)
 
@@ -286,9 +300,6 @@ for epoch in range(10000):
          break
       printHere = (counter % 50 == 0)
       loss, charCounts = forward(numeric, printHere=printHere, train=True)
-      if loss.data.cpu().numpy() > 20.0:
-           print(f"Exploding {loss}")
-           quit()
       backward(loss, printHere)
       trainChars += charCounts 
       if printHere:
@@ -298,45 +309,11 @@ for epoch in range(10000):
           print("Chars per sec "+str(trainChars/(time.time()-startTime)))
           print(learning_rate)
           print(args)
-      if counter % 20000 == 0 and epoch == 0:
+      if counter == args.iterations:
         if args.save_to is not None:
            torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), "/checkpoint/mhahn/"+args.save_to+".pth.tar")
-
-
-   rnn_drop.train(False)
-
-
-   dev_data = corpusIteratorWiki.dev(args.language)
-   print("Got data")
-   dev_chars = prepareDatasetChunks(dev_data, train=False)
-
-
-     
-   dev_loss = 0
-   dev_char_count = 0
-   counter = 0
-   hidden, beginning = None, None
-   while True:
-       counter += 1
-       try:
-          numeric = next(dev_chars)
-       except StopIteration:
-          break
-       printHere = (counter % 50 == 0)
-       loss, numberOfCharacters = forward(numeric, printHere=printHere, train=False)
-       dev_loss += numberOfCharacters * loss.cpu().data.numpy()
-       dev_char_count += numberOfCharacters
-   devLosses.append(dev_loss/dev_char_count)
-   print(devLosses)
-   with open("/checkpoint/mhahn/"+args.language+"_"+__file__+"_"+str(args.myID), "w") as outFile:
-      print(" ".join([str(x) for x in devLosses]), file=outFile)
-      print(" ".join(sys.argv), file=outFile)
-      print(str(args), file=outFile)
-   if len(devLosses) > 1 and devLosses[-1] > devLosses[-2]:
-      break
-   if args.save_to is not None:
-      torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), "/checkpoint/mhahn/"+args.save_to+".pth.tar")
-
-   learning_rate = args.learning_rate * math.pow(args.lr_decay, len(devLosses))
-   optim = torch.optim.SGD(parameters(), lr=learning_rate, momentum=0.0) # 0.02, 0.9
+        with open("/checkpoint/mhahn/CHAR_SEQUENCES_"+args.save_to, "w") as outFile:
+            for key, value in trigramsInThisSet.items():
+               print(f"{key}\t{value}", file=outFile)
+        quit()
 

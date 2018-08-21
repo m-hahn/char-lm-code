@@ -1,4 +1,5 @@
 
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--language", dest="language", type=str)
@@ -9,36 +10,34 @@ parser.add_argument("--load-from", dest="load_from", type=str)
 
 import random
 
-parser.add_argument("--batchSize", type=int, default=16)
-parser.add_argument("--char_embedding_size", type=int, default=200)
-parser.add_argument("--hidden_dim", type=int, default=1024)
-parser.add_argument("--layer_num", type=int, default=3)
-parser.add_argument("--weight_dropout_in", type=float, default=0.01)
-parser.add_argument("--weight_dropout_hidden", type=float, default=0.1)
-parser.add_argument("--char_dropout_prob", type=float, default=0.33)
-parser.add_argument("--char_noise_prob", type = float, default= 0.01)
-parser.add_argument("--learning_rate", type = float, default= 0.1)
+parser.add_argument("--batchSize", type=int, default=random.choice([128, 128, 256]))
+parser.add_argument("--char_embedding_size", type=int, default=random.choice([100, 200, 300]))
+parser.add_argument("--hidden_dim", type=int, default=random.choice([1024]))
+parser.add_argument("--layer_num", type=int, default=random.choice([2]))
+parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.0, 0.0, 0.0, 0.01, 0.05, 0.1]))
+parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.0, 0.05, 0.15, 0.2]))
+parser.add_argument("--char_dropout_prob", type=float, default=random.choice([0.0, 0.0, 0.001, 0.01, 0.01]))
+parser.add_argument("--char_noise_prob", type = float, default=random.choice([0.0, 0.0]))
+parser.add_argument("--learning_rate", type = float, default= random.choice([0.8, 0.9, 1.0,1.0,  1.1, 1.1, 1.2, 1.2, 1.2, 1.2, 1.3, 1.3, 1.4, 1.5]))
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
-parser.add_argument("--sequence_length", type=int, default=50)
+parser.add_argument("--sequence_length", type=int, default=random.choice([50, 50, 80]))
+parser.add_argument("--verbose", type=bool, default=False)
+parser.add_argument("--lr_decay", type=float, default=random.choice([0.5, 0.7, 0.9, 0.95, 0.98, 0.98, 1.0]))
 
-parser.add_argument("--sequences", type=str)
-parser.add_argument("--iterations", type=str)
 
-
+import math
 
 args=parser.parse_args()
+print(args)
 
 
-args.sequences = args.sequences.split(",")
-#args.save_to = args.save_to.replace("SEQUENCE", ".".join(args.sequences)).replace("ITERATIONS", str(args.iterations))
+assert "word" in args.load_from, args.load_from
 
 print(args)
 
-args.load_from = f"wiki-{args.language}-nospaces-bptt-"+".".join(args.sequences)+"-"+str(args.iterations)
 
 
-
-import corpusIteratorWiki
+import corpusIteratorWikiWords
 
 
 
@@ -48,33 +47,14 @@ def plus(it1, it2):
    for x in it2:
       yield x
 
-try:
-   with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "r") as inFile:
-     itos = inFile.read().strip().split("\n")
-except FileNotFoundError:
-    print("Creating new vocab")
-    char_counts = {}
-    # get symbol vocabulary
+char_vocab_path = {"german" : "/private/home/mhahn/data/WIKIPEDIA/german-wiki-word-vocab.txt", "italian" : "/private/home/mhahn/data/WIKIPEDIA/itwiki/italian-wiki-word-vocab.txt"}[args.language]
 
-    with open("/private/home/mhahn/data/WIKIPEDIA/"+args.language+"-vocab.txt", "r") as inFile:
-      words = inFile.read().strip().split("\n")
-      for word in words:
-         for char in word.lower():
-            char_counts[char] = char_counts.get(char, 0) + 1
-    char_counts = [(x,y) for x, y in char_counts.items()]
-    itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
-    with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "w") as outFile:
-       print("\n".join(itos), file=outFile)
-#itos = sorted(itos)
-print(itos)
+with open(char_vocab_path, "r") as inFile:
+     itos = [x.split("\t")[0] for x in inFile.read().strip().split("\n")[:50000]]
 stoi = dict([(itos[i],i) for i in range(len(itos))])
 
-if args.language == "german":
-  alphabet = "abcdefghijklmnopqrstuvwxyzßäöü"
-elif args.language == "italian":
-  alphabet = "abcdefghijklmnopqrstuvwxyzàèéìòù"
-else:
-   assert False
+
+
 
 import random
 
@@ -111,7 +91,12 @@ def parameters():
        for param in module.parameters():
             yield param
 
-optim = torch.optim.SGD(parameters(), lr=args.learning_rate, momentum=0.0) # 0.02, 0.9
+parameters_cached = [x for x in parameters()]
+
+
+learning_rate = args.learning_rate
+
+optim = torch.optim.SGD(parameters(), lr=learning_rate, momentum=0.0) # 0.02, 0.9
 
 named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
 
@@ -285,187 +270,100 @@ print(torch.nn.functional.cosine_similarity(out1, out2, dim=0))
 #print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esmach"))))
 #print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esdenk"))))
 #
-def doChoiceList(xs, printHere=False, printRanking=False):
+def doChoiceList(xs, printHere=True):
     if printHere:
       for x in xs:
          print(x)
-    losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
+    losses = choiceList([encodeWord(x.split(" ")) for x in xs]) #, encodeWord(y))
     if printHere:
       print(losses)
-    if printRanking:
-       z = zip(xs, losses)
-       z= sorted(z, key=lambda x:x[1])
-       print(z)
     return np.argmin(losses)
-
-def doChoiceListRet(xs, printHere=True, printRanking=False):
+def doChoiceListLosses(xs, printHere=True):
     if printHere:
       for x in xs:
          print(x)
-    losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
+    losses = choiceList([encodeWord(x.split(" ")) for x in xs]) #, encodeWord(y))
     if printHere:
       print(losses)
-    if printRanking:
-       z = zip(xs, losses)
-       z= sorted(z, key=lambda x:x[1])
-       print(z)
     return losses
+
 
 
 def doChoice(x, y):
     print(x)
     print(y)
-    losses = choice(encodeWord(x), encodeWord(y))
+    losses = choice(encodeWord(x.split(" ")), encodeWord(y.split(" ")))
     print(losses)
     return 0 if losses[0] < losses[1] else 1
 
 
-def keepGenerating(encoded, length=100, backwards=False):
-    out, hidden = encoded
-    output_string = ""
-   
-#    rnn_forward_drop.train(True)
-
-    for _ in range(length):
-      prediction = logsoftmax(2*output(out.unsqueeze(0))).data.cpu().view(3+len(itos)).numpy() #.view(1,1,-1))).view(3+len(itos)).data.cpu().numpy()
-#      predicted = np.argmax(prediction).items()
-      predicted = np.random.choice(3+len(itos), p=np.exp(prediction))
-
-      output_string += itos[predicted-3]
-
-      input_tensor_forward = Variable(torch.LongTensor([[predicted]]).transpose(0,1).cuda(), requires_grad=False)
-
-      embedded_forward = char_embeddings(input_tensor_forward)
-      
-      out, hidden = (rnn_drop if not backwards else rnn_backward_drop)(embedded_forward, hidden)
-      out = out[-1]
-
- #   rnn_forward_drop.train(False)
 
 
-    return output_string if not backwards else output_string[::-1]
+with open("/checkpoint/mbaroni/char-rnn-exchange/candidate_adv_aoadj_testset.txt", "r") as inFile:
+    dataset = [tuple(x.split("\t")) for x in inFile.read().strip().split("\n")]
+
+choiceMasc = [0,0]
+choiceFem = [0,0]
+
+for adverb, adjective in dataset:
+    adjectiveA = adjective[:-1]+"a"
+    if adverb not in stoi or adjective not in stoi or adjectiveA not in stoi:
+        continue
+    masculine = [f". il {adverb} {adjective} .", f". il {adverb} {adjectiveA} ."]
+    choiceMasc[doChoiceList(masculine)] += 1
+    print(choiceMasc[0] / sum(choiceMasc))
+    feminine = [f". la {adverb} {adjectiveA} .", f". la {adverb} {adjective} ."]
+    choiceFem[doChoiceList(feminine)] += 1
+    print(choiceFem[0] / sum(choiceFem))
 
 
-print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ichmach"))))
+with open("/checkpoint/mbaroni/char-rnn-exchange/candidate_adv_aeadj_testset.txt", "r") as inFile:
+   dataset = [tuple(x.split("\t")) for x in inFile.read().strip().split("\n")]
 
+choiceSg = [0,0]
+choicePl = [0,0]
 
-#
-#doChoice(".ichmachedas.", ".ichmachstdas.")
-#doChoice(".dumachendas.", ".dumachstdas.")
-#doChoice(".ermachendas.", ".ermachtdas.")
-#doChoice(".wirmachendas.", ".wirmachtdas.")
-#
-#doChoice(".ichvergeigedas.", ".ichvergeigstdas.")
-#doChoice(".duvergeigendas.", ".duvergeigstdas.")
-#doChoice(".ervergeigendas.", ".ervergeigtdas.")
-#doChoice(".wirvergeigendas.", ".wirvergeigtdas.")
-#
-#
-#
-#
-#
-#doChoice(".ichwilldas.", ".ichwillstdas.")
-#doChoice(".duwollendas.", ".duwillstdas.")
-#doChoice(".erwollendas.", ".erwilldas.")
-#doChoice(".wirwollendas.", ".wirwilldas.")
-#
-#
-#doChoice("indashaus.", "indiehaus.")
-#doChoice("indascomputermaus.", "indiecomputermaus.")
-#
-#doChoice(".ichgeheindashaus.", ".ichgeheindemhaus.")
-#doChoice(".ichlebeindashaus.", ".ichlebeindemhaus.")
-#
-#
-#doChoice(".ichlebeindashausmeisterzimmer.", ".ichlebeindemhausmeisterzimmer.")
-#
-#
-#doChoice(".zweihaus.", ".zweihäuser.")
-#doChoice(".zweilampen.", ".zweilampe.")
-#doChoice(".zweilampenpfahl.", ".zweilampenpfähle.")
-#doChoice(".zweihauspfähle.", ".zweihäuserpfähle.")
-#doChoice(".zweinasenbär.", ".zweinasenbären.")
-#
-#doChoice(".einhaus.", ".einhäuser.")
-#doChoice(".einlampenpfahl.", ".einlampenpfähle.")
-#doChoice(".einhauspfähle.", ".einhäuserpfähle.")
-#doChoice(".einnasenbär.", ".einnasenbären.")
-
-
-# need to do some sort of ngram control
-
-examples = ["."+args.sequences[0][:-1]+x for x in [y[-1] for y in args.sequences]]
-comb = doChoiceListRet(examples) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
-print(list(zip(examples, comb)))
-quit()
-
-examples = [x for x in itos[3:] if x > "_"]
-uni = doChoiceListRet(examples) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
-
-
-z = zip(examples, comb, uni)
-z = sorted(z, key=lambda x:x[1]-x[2])
-print(z)
-
-quit()
+for adverb, adjective in dataset:
+    adjectiveE = adjective[:-1]+"e"
+    if adverb not in stoi or adverb not in stoi or adjectiveE not in stoi:
+      continue
+    singular = [f". la {adverb} {adjective} .", f". la {adverb} {adjectiveE} ."]
+    choiceSg[doChoiceList(singular)] += 1
+    print(choiceSg[0] / sum(choiceSg))
+    plural = [f". le {adverb} {adjectiveE} .", f". le {adverb} {adjective} ."]
+    choicePl[doChoiceList(plural)] += 1
+    print(choicePl[0] / sum(choicePl))
 
 
 
-with open(f"/checkpoint/mhahn/CHAR_SEQUENCES_wiki-{args.language}-nospaces-bptt-"+".".join(args.sequences)+"-"+str(args.iterations), "r") as inFile:
-    trigrams =[y.split("\t") for y in inFile.read().strip().split("\n")]
-    
-    trigrams = dict([(lambda x: (x[0], int(x[1])))(y) for y in trigrams])
 
-bigramsLeft   = dict([(x[0:2], 0) for x in trigrams])
-bigramsRight  = dict([(x[1:3], 0) for x in trigrams])
-unigramsMid   = dict([(x[1], 0) for x in trigrams])
-unigramsRight = dict([(x[2], 0) for x in trigrams])
+with open("/checkpoint/mbaroni/char-rnn-exchange/candidate_eadj_aonoun_testset.txt", "r") as inFile:
+   dataset = [tuple(x.split(" ")) for x in inFile.read().strip().split("\n")]
 
-total = len(itos)
-for t, count in trigrams.items():
-   total += count
-   bigramsLeft[t[0:2]] += count
-   bigramsRight[t[1:3]] += count
-   unigramsMid[t[1]] += count
-   unigramsRight[t[2]] += count
+choice2Masc = [0,0]
+choice2Fem = [0,0]
 
-from math import log
-
-def evaluateNgramProb(x):
-   
-   prob = log(unigramsRight.get(x[0], 0) + 1) - log(total)
-   if x[0:2] in bigramsRight:
-      prob += log(bigramsRight[x[0:2]]) - log(unigramsMid[x[0]])
-   elif x[1] in unigramsRight:
-       prob = log(1+unigramsRight[x[1]]) - log(total)
-   else:
-       prob -= log(total)
-   for i in range(2, len(x)):
-      if x[i-2:i+1] in trigrams:
-           prob += log(trigrams[x[i-2:i+1]]) - log(bigramsLeft[x[i-2:i]])
-      elif x[i-1:i+1] in bigramsRight:
-          prob += log(bigramsRight[x[i-1:i+1]]) - log(unigramsMid[x[i-1]])
-      elif x[i] in unigramsRight:
-          prob += log(1+unigramsRight[x[i]]) - log(total)
-      else:
-          prob -= log(total)
-   return prob
-
-def doChoiceListNgrams(xs):
-    return [-evaluateNgramProb(x) for x in xs]
+for adjective, noun in dataset:
+    nounA = noun[:-1]+"a"
+    if adjective not in stoi or noun not in stoi or nounA not in stoi:
+       continue
+    masc = [f". il {adjective} {noun} .", f". la {adjective} {noun} ."]
+    choice2Masc[doChoiceList(masc)] += 1
+    print(choice2Masc[0] / sum(choice2Masc))
+    fem = [f". il {adjective} {nounA} .", f". la {adjective} {nounA} ."]
+    choice2Fem[doChoiceList(fem)] += 1
+    print(choice2Fem[1] / sum(choice2Fem))
 
 
-quit()
+print("/checkpoint/mbaroni/char-rnn-exchange/candidate_adv_aoadj_testset.txt")
+print(choiceMasc[0] / sum(choiceMasc))
+print(choiceFem[0] / sum(choiceFem))
+print("/checkpoint/mbaroni/char-rnn-exchange/candidate_adv_aeadj_testset.txt")
+print(choiceSg[0] / sum(choiceSg))
+print(choicePl[0] / sum(choicePl))
+print("/checkpoint/mbaroni/char-rnn-exchange/candidate_eadj_aonoun_testset.txt")
+print(choice2Masc[0] / sum(choice2Masc))
+print(choice2Fem[1] / sum(choice2Fem))
 
-
-examples = ["."+args.sequences[0][:-1]+x for x in alphabet]
-comb = doChoiceListNgrams(examples) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
-examples = [x for x in itos[3:] if x > "_"]
-uni = doChoiceListNgrams(examples) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
-
-
-z = zip(examples, comb, uni)
-z = sorted(z, key=lambda x:x[1]-x[2])
-print(z)
 
 

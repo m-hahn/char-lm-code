@@ -23,7 +23,6 @@ args=parser.parse_args()
 print(args)
 
 
-assert args.language == "german"
 
 
 import corpusIteratorWiki
@@ -198,7 +197,7 @@ def forward(numeric, train=True, printHere=False):
               if random.random() < 1/(true-soFar):
 #                  print(j-5)
  #                 print(input_tensor[j-5:j,i])
-                  featurized = {"".join([itos[x-3] for x in input_tensor[j-dist:j+1,i]]) : 1 for dist in range(1, 2)}
+                  featurized = {"".join([itos[x-3] for x in input_tensor[j-dist:j+1,i]]) : 1 for dist in range(1, 7)}
                   hidden_states.append(featurized) #    out[j,i].detach().data.cpu().numpy())
                   labels.append(1 if target else 0)
                   labels_sum += labels[-1]
@@ -242,7 +241,7 @@ devLosses = []
 if True:
    training_data = corpusIteratorWiki.training(args.language)
    print("Got data")
-   training_chars = prepareDataset(training_data, train=True) if args.language == "italian" else prepareDatasetChunks(training_data, train=True)
+   training_chars = prepareDatasetChunks(training_data, train=True)
 
 
 

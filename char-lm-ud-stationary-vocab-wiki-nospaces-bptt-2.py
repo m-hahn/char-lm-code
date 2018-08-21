@@ -16,7 +16,7 @@ parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.
 parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.15, 0.2]))
 parser.add_argument("--char_dropout_prob", type=float, default=random.choice([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.001, 0.01, 0.01]))
 parser.add_argument("--char_noise_prob", type = float, default=random.choice([0.0, 0.0]))
-parser.add_argument("--learning_rate", type = float, default= random.choice([0.9, 1.0, 2.0, 2.0, 2.8, 2.9, 3.0, 3.0, 3.1, 3.2, 3.3]))
+parser.add_argument("--learning_rate", type = float, default= random.choice([2.8, 2.9, 3.0, 3.0, 3.1, 3.2, 3.3, 3.4, 3.5,3.6, 3.7, 3.8, 3.9, 4.0]))
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
 parser.add_argument("--sequence_length", type=int, default=random.choice([50, 50, 50, 80]))
 parser.add_argument("--verbose", type=bool, default=False)

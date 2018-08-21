@@ -23,7 +23,7 @@ args=parser.parse_args()
 print(args)
 
 
-assert args.language == "german"
+#assert args.language == "german"
 
 
 import corpusIteratorWiki
@@ -240,7 +240,7 @@ devLosses = []
 if True:
    training_data = corpusIteratorWiki.training(args.language)
    print("Got data")
-   training_chars = prepareDataset(training_data, train=True) if args.language == "italian" else prepareDatasetChunks(training_data, train=True)
+   training_chars = prepareDatasetChunks(training_data, train=True)
 
 
 

@@ -1,4 +1,7 @@
 
+
+# Clear evidence that the model isn't leveraging evidence about the subcategorization of the verb.
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--language", dest="language", type=str)
@@ -9,32 +12,29 @@ parser.add_argument("--load-from", dest="load_from", type=str)
 
 import random
 
-parser.add_argument("--batchSize", type=int, default=16)
-parser.add_argument("--char_embedding_size", type=int, default=200)
-parser.add_argument("--hidden_dim", type=int, default=1024)
-parser.add_argument("--layer_num", type=int, default=3)
-parser.add_argument("--weight_dropout_in", type=float, default=0.01)
-parser.add_argument("--weight_dropout_hidden", type=float, default=0.1)
-parser.add_argument("--char_dropout_prob", type=float, default=0.33)
-parser.add_argument("--char_noise_prob", type = float, default= 0.01)
-parser.add_argument("--learning_rate", type = float, default= 0.1)
+parser.add_argument("--batchSize", type=int, default=random.choice([128, 128, 256]))
+parser.add_argument("--char_embedding_size", type=int, default=random.choice([50, 100, 200, 200]))
+parser.add_argument("--hidden_dim", type=int, default=random.choice([256, 512, 1024, 2048]))
+parser.add_argument("--layer_num", type=int, default=random.choice([1,2]))
+parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.0, 0.0, 0.0, 0.01, 0.05, 0.1]))
+parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.0, 0.05, 0.15, 0.2]))
+parser.add_argument("--char_dropout_prob", type=float, default=random.choice([0.0, 0.0, 0.001, 0.01, 0.01]))
+parser.add_argument("--char_noise_prob", type = float, default=random.choice([0.0, 0.0]))
+parser.add_argument("--learning_rate", type = float, default= random.choice([0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.01, 0.01, 0.1, 0.2]))
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
-parser.add_argument("--sequence_length", type=int, default=50)
+parser.add_argument("--sequence_length", type=int, default=random.choice([10, 20, 30, 50, 50, 80]))
+parser.add_argument("--verbose", type=bool, default=False)
+parser.add_argument("--lr_decay", type=float, default=random.choice([0.5, 0.7, 0.9, 0.95, 0.98, 0.98, 1.0]))
+parser.add_argument("--nonlinearity", type=str, default=random.choice(["tanh", "relu"]))
 
-parser.add_argument("--sequences", type=str)
-parser.add_argument("--iterations", type=str)
 
 
+import math
 
 args=parser.parse_args()
-
-
-args.sequences = args.sequences.split(",")
-#args.save_to = args.save_to.replace("SEQUENCE", ".".join(args.sequences)).replace("ITERATIONS", str(args.iterations))
-
 print(args)
 
-args.load_from = f"wiki-{args.language}-nospaces-bptt-"+".".join(args.sequences)+"-"+str(args.iterations)
+
 
 
 
@@ -69,12 +69,8 @@ except FileNotFoundError:
 print(itos)
 stoi = dict([(itos[i],i) for i in range(len(itos))])
 
-if args.language == "german":
-  alphabet = "abcdefghijklmnopqrstuvwxyzßäöü"
-elif args.language == "italian":
-  alphabet = "abcdefghijklmnopqrstuvwxyzàèéìòù"
-else:
-   assert False
+
+
 
 import random
 
@@ -86,7 +82,7 @@ print(torch.__version__)
 from weight_drop import WeightDrop
 
 
-rnn = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num).cuda()
+rnn = torch.nn.RNN(args.char_embedding_size, args.hidden_dim, args.layer_num, args.nonlinearity).cuda()
 
 rnn_parameter_names = [name for name, _ in rnn.named_parameters()]
 print(rnn_parameter_names)
@@ -137,7 +133,7 @@ from torch.autograd import Variable
 #from embed_regularize import embedded_dropout
 
 def encodeWord(word):
-      numeric = [[]]
+      numeric = [[0]]
       for char in word:
            numeric[-1].append((stoi[char]+3 if char in stoi else 2) if True else 2+random.randint(0, len(itos)))
       return numeric
@@ -285,70 +281,29 @@ print(torch.nn.functional.cosine_similarity(out1, out2, dim=0))
 #print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esmach"))))
 #print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esdenk"))))
 #
-def doChoiceList(xs, printHere=False, printRanking=False):
+def doChoiceList(xs, printHere=True):
     if printHere:
       for x in xs:
          print(x)
     losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
     if printHere:
       print(losses)
-    if printRanking:
-       z = zip(xs, losses)
-       z= sorted(z, key=lambda x:x[1])
-       print(z)
     return np.argmin(losses)
 
-def doChoiceListRet(xs, printHere=True, printRanking=False):
+def doChoiceListLosses(xs, printHere=True):
     if printHere:
       for x in xs:
          print(x)
     losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
     if printHere:
       print(losses)
-    if printRanking:
-       z = zip(xs, losses)
-       z= sorted(z, key=lambda x:x[1])
-       print(z)
     return losses
-
-
 def doChoice(x, y):
     print(x)
     print(y)
     losses = choice(encodeWord(x), encodeWord(y))
     print(losses)
     return 0 if losses[0] < losses[1] else 1
-
-
-def keepGenerating(encoded, length=100, backwards=False):
-    out, hidden = encoded
-    output_string = ""
-   
-#    rnn_forward_drop.train(True)
-
-    for _ in range(length):
-      prediction = logsoftmax(2*output(out.unsqueeze(0))).data.cpu().view(3+len(itos)).numpy() #.view(1,1,-1))).view(3+len(itos)).data.cpu().numpy()
-#      predicted = np.argmax(prediction).items()
-      predicted = np.random.choice(3+len(itos), p=np.exp(prediction))
-
-      output_string += itos[predicted-3]
-
-      input_tensor_forward = Variable(torch.LongTensor([[predicted]]).transpose(0,1).cuda(), requires_grad=False)
-
-      embedded_forward = char_embeddings(input_tensor_forward)
-      
-      out, hidden = (rnn_drop if not backwards else rnn_backward_drop)(embedded_forward, hidden)
-      out = out[-1]
-
- #   rnn_forward_drop.train(False)
-
-
-    return output_string if not backwards else output_string[::-1]
-
-
-print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ichmach"))))
-
-
 #
 #doChoice(".ichmachedas.", ".ichmachstdas.")
 #doChoice(".dumachendas.", ".dumachstdas.")
@@ -392,80 +347,159 @@ print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ichmach"))))
 #doChoice(".einnasenbär.", ".einnasenbären.")
 
 
-# need to do some sort of ngram control
-
-examples = ["."+args.sequences[0][:-1]+x for x in [y[-1] for y in args.sequences]]
-comb = doChoiceListRet(examples) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
-print(list(zip(examples, comb)))
-quit()
-
-examples = [x for x in itos[3:] if x > "_"]
-uni = doChoiceListRet(examples) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
+correctDat = [0,0]
+correctGen = [0,0]
 
 
-z = zip(examples, comb, uni)
-z = sorted(z, key=lambda x:x[1]-x[2])
-print(z)
-
-quit()
+# mit der + must have feminine noun, not masculine noun
+# mit den  + must have dat plur noun, not masculine accusative noun
 
 
+feminineDatives = set()
+masculineNominatives = set()
 
-with open(f"/checkpoint/mhahn/CHAR_SEQUENCES_wiki-{args.language}-nospaces-bptt-"+".".join(args.sequences)+"-"+str(args.iterations), "r") as inFile:
-    trigrams =[y.split("\t") for y in inFile.read().strip().split("\n")]
-    
-    trigrams = dict([(lambda x: (x[0], int(x[1])))(y) for y in trigrams])
+pluralDatives = set()
+masculineAccusatives = set()
 
-bigramsLeft   = dict([(x[0:2], 0) for x in trigrams])
-bigramsRight  = dict([(x[1:3], 0) for x in trigrams])
-unigramsMid   = dict([(x[1], 0) for x in trigrams])
-unigramsRight = dict([(x[2], 0) for x in trigrams])
+with open("germanNounDeclension.txt") as inFile:
+    data = inFile.read().strip().split("###")[1:]
+    for noun in data:
+       noun = noun.strip().split("\n")[1:]
+       noun = [x.split("\t") for x in noun]
+       noun = {x[0] : [y.lower() for y in x[1:]] for x in noun}
+       if "Genus" in noun:
+         if "m" in noun["Genus"]: # record the nominative
+             for x in noun["Nominativ Singular"]:
+                 masculineNominatives.add(x)
+             for x in noun["Akkusativ Singular"]:
+                 masculineAccusatives.add(x)
+         if "f" in noun["Genus"]:
+             for x in noun["Dativ Singular"]:
+                 feminineDatives.add(x)
+         if "Dativ Plural" not in noun:
+            print("ERROR")
+            continue
+         for x in noun["Dativ Plural"]:
+             pluralDatives.add(x)
 
-total = len(itos)
-for t, count in trigrams.items():
-   total += count
-   bigramsLeft[t[0:2]] += count
-   bigramsRight[t[1:3]] += count
-   unigramsMid[t[1]] += count
-   unigramsRight[t[2]] += count
+common = pluralDatives & masculineAccusatives
+pluralDatives = pluralDatives - common
+masculineAccusatives = masculineAccusatives - common
 
-from math import log
+feminineDatives = list(feminineDatives)
+masculineNominatives = list(masculineNominatives)
+pluralDatives = list(pluralDatives)
+masculineAccusatives = list(masculineAccusatives)
 
-def evaluateNgramProb(x):
-   
-   prob = log(unigramsRight.get(x[0], 0) + 1) - log(total)
-   if x[0:2] in bigramsRight:
-      prob += log(bigramsRight[x[0:2]]) - log(unigramsMid[x[0]])
-   elif x[1] in unigramsRight:
-       prob = log(1+unigramsRight[x[1]]) - log(total)
-   else:
-       prob -= log(total)
-   for i in range(2, len(x)):
-      if x[i-2:i+1] in trigrams:
-           prob += log(trigrams[x[i-2:i+1]]) - log(bigramsLeft[x[i-2:i]])
-      elif x[i-1:i+1] in bigramsRight:
-          prob += log(bigramsRight[x[i-1:i+1]]) - log(unigramsMid[x[i-1]])
-      elif x[i] in unigramsRight:
-          prob += log(1+unigramsRight[x[i]]) - log(total)
+correctDer = 0 # this one is stable --> here, the adjective helps distinguish
+correctDen = 0 # this one is less strong, and deteriorates to chance with longer infixes (adjective with adverbs) --> here, the adjective doesn't distinguish between the two forms
+
+correctControlDer = 0 # this one is stable --> here, the adjective helps distinguish
+correctControlDen = 0 # this one is less strong, and deteriorates to chance with longer infixes (adjective with adverbs) --> here, the adjective doesn't distinguish between the two forms
+
+
+correctNoAdjDer = 0 # this one is better. why?
+correctNoAdjDen = 0 # 
+
+
+# more ~/data/WIKIPEDIA/german-train-tagged.txt  | awk '{print $2,tolower($3)}' 
+# sort ~/data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS.txt | uniq -c > ~/data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS-uniq.txt
+wentThroughAdjectives = False
+with open("/private/home/mhahn//data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as inFile:
+    adjectives = []
+    for line in inFile:
+      line = line.strip().split(" ")
+      if len(line) != 3:
+        continue
+      if line[1] != "ADJA":
+          if wentThroughAdjectives:
+             continue
       else:
-          prob -= log(total)
-   return prob
+        wentThroughAdjectives = True
+      if int(line[0]) > 100 and not line[2].endswith("r"):
+         adjectives.append(line[2])
+      
+print(len(adjectives))
 
-def doChoiceListNgrams(xs):
-    return [-evaluateNgramProb(x) for x in xs]
+from corpusIterator import CorpusIterator
+data = CorpusIterator("German", partition="train", removePunctuation=False).iterator()
+frames = []
+for sentence in data:
+  mits = []
+  for word in sentence:
+     if word["lemma"] == "mit" and word["posUni"] == "ADP" and word["dep"] == "case":
+         head = word["head"] - 1
+         if head < 0:
+              continue
+         if sentence[head]["posUni"] not in ["NOUN", "PROPN"]:
+              continue
+         mits.append(word)
+  if len(mits) > 0:
+ #    print(len(mits))
+     mit = random.choice(mits)
+  #   print(mit)
+     head = mit["head"] - 1
+#     if head < 0:
+#        print(sentence)
+#        continue
+#     print(sentence[head]["posUni"], sentence[head]["dep"])
+     assert head >= 0
+     sentence[head]["remove"] = True
+   #  print(len(sentence), [x["head"] for x in sentence])
+    # print(len(sentence), [x["index"] for x in sentence])
 
+     for i in range(0, len(sentence)):
+        if i == head:
+            sentence[i]["remove"] = True
+        elif "remove" not in sentence[i]:
+           stack = [i]
+           while True:
+               headH = sentence[stack[-1]]["head"]-1
+               assert headH < len(sentence), headH
+               if headH < 0 :
+                   for j in stack:
+                       sentence[j]["remove"] = False
+                   break
+               elif "remove" in sentence[headH]:
+                   for j in stack:
+                      sentence[j]["remove"] = sentence[headH]["remove"]
+                   break
+               stack.append(headH) 
+        assert "remove" in sentence[i]
+     badIndices = [i for i in range(len(sentence)) if sentence[i]["remove"]]
+#     print(badIndices)
+     if len(badIndices) != badIndices[-1] - badIndices[0] + 1: # remove examples wit
+ #       print(badIndices)
+        continue
+     if badIndices[0] != mit["index"] -1:
+#        print(mit, badIndices, [(l["word"], l["head"]) for l in sentence] )
+        continue
+     frames.append(([x["word"] for x in sentence[:badIndices[0]]], [x["word"] for x in sentence[badIndices[-1]+1:]]))
+print(frames[:10])
+# Hypothesis: the model is capable of getting this right when the adjective distinguishes the case, but not so easily when case marking on the noun is required. 
+# (Removing the noun, accuracy is even perfect in the case where the adjective helps distinguish)
 
-quit()
+import random
 
+preposition = "mit"
+correctByPMI = 0
+for i in range(1,len(frames)):
+    frame = frames[i]
+    left = "".join(frame[0])
+    right = "".join(frame[1])
+    adverbs = ["sehr" ,"extrem","unglaublich"]
+    adjective = "".join(adverbs)+random.choice(adjectives)
+   
+    lossesFull = doChoiceListLosses([f'.{left}{preposition}der{adjective}en{right}', f'.{left}{preposition}der{adjective}e{right}'], printHere=True)
+    lossesSuffix = doChoiceListLosses([f'der{adjective}en{right}', f'der{adjective}e{right}'], printHere=True)
+    pmi = lossesFull - lossesSuffix
+    correctByPMI += (1 if 0 == np.argmin(pmi) else 0)
+    print("BY PMI", correctByPMI/i)
 
-examples = ["."+args.sequences[0][:-1]+x for x in alphabet]
-comb = doChoiceListNgrams(examples) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
-examples = [x for x in itos[3:] if x > "_"]
-uni = doChoiceListNgrams(examples) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
+    correctDer += (1 if 0 == np.argmin(lossesFull) else 0)
+    print("WITH ADJECTIVE", correctDer/i)
 
-
-z = zip(examples, comb, uni)
-z = sorted(z, key=lambda x:x[1]-x[2])
-print(z)
+    correctControlDer += (1 if 1 == np.argmin(lossesSuffix) else 0)
+    print("CONTROL", correctControlDer/i)
 
 
