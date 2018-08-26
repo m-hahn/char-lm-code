@@ -208,34 +208,38 @@ with open("/private/home/mhahn/data/WIKIPEDIA/german-valid-tagged-parsed.txt", "
            if positionNumeric >= len(numeric_full):
                      print("at end")
                      break
-           if False:
+           if True:
                print((newWord, "".join([itos[numeric_full[x]-3] for x in range(positionNumeric, min(len(numeric_full), positionNumeric+len(newWord)))])))
-           for char in newWord:
-              if positionNumeric >= len(numeric_full):
-                     print("at end")
-                     break
-              while itos[numeric_full[positionNumeric]-3] in ["(", ")"] and char != itos[numeric_full[positionNumeric]-3] :
+           if newWord == "<nowiki>" or newWord == "</nowiki>" or newWord == "<br>":
+                 print("REMOVED TAG")
+           else:              
+              for char in newWord:
+                 if positionNumeric >= len(numeric_full):
+                        print("at end")
+                        break
+                 while itos[numeric_full[positionNumeric]-3] in ["(", ")"] and char != itos[numeric_full[positionNumeric]-3] :
+                    positionNumeric+=1
+                    if positionNumeric >= len(numeric_full):
+                        print("at end")
+                        break
+                 if positionNumeric >= len(numeric_full):
+                        print("at end")
+                        break
+                 #print((char, itos[numeric_full[positionNumeric]-3]))
+                 jumping = 0
+                 while char.lower() !=                itos[numeric_full[positionNumeric]-3].lower() and numeric_full[positionNumeric] != 2:
+                     jumping += 1
+                     #print(jumping)
+                     #print(newWord, [itos[numeric_full[x]-3].lower() for x in range(positionNumeric, positionNumeric+5)])
+                     positionNumeric += 1
+                     if positionNumeric >= len(numeric_full):
+                        print("at end")
+                        break
+                 assert jumping < 500
                  positionNumeric+=1
                  if positionNumeric >= len(numeric_full):
-                     print("at end")
-                     break
-              if positionNumeric >= len(numeric_full):
-                     print("at end")
-                     break
-              #print((char, itos[numeric_full[positionNumeric]-3]))
-              jumping = 0
-              while char.lower() !=                itos[numeric_full[positionNumeric]-3].lower() and numeric_full[positionNumeric] != 2:
-                  jumping += 1
-                  #print(jumping)
-                  #print(newWord, [itos[numeric_full[x]-3].lower() for x in range(positionNumeric, positionNumeric+5)])
-                  positionNumeric += 1
-                  if positionNumeric >= len(numeric_full):
-                     print("at end")
-                     break
-              positionNumeric+=1
-              if positionNumeric >= len(numeric_full):
-                     print("at end")
-                     break
+                        print("at end")
+                        break
            if positionNumeric >= len(numeric_full):
                      print("at end")
                      break
@@ -304,20 +308,23 @@ boundaries_index = 0
 height_dependent = []
 
 for i in range(len(numeric_full)):
-   assert conflicts/(1+boundaries_index) < 0.1
+   assert conflicts < 100 or conflicts/(1+boundaries_index) < 0.1, conflicts
    if boundaries_index < len(boundaries) and i == boundaries[boundaries_index]:
       boundary = True
       boundaries_index += 1
       if heights[i] == 0:
          conflicts += 1
-#      print((i, boundary, heights[i], conflicts, conflicts/(1+boundaries_index)))
 
    else:
       if heights[i] > 0:
           conflicts += 1
       boundary = False
-   if conflicts > 1000:
-       quit()
+#   if conflicts > 1000:
+#       assert False
+
+
+   print((i, boundary, heights[i], conflicts, conflicts/(1+boundaries_index)))
+
 
    pmiFuturePast = mi(future_surprisal_without[i], future_surprisal_with[i])
 #   print((itos[numeric_full[i]-3], char_surprisal[i], pmiFuturePast, pmiFuturePast < 0 if pmiFuturePast is not None else None, boundary)) # pmiFuturePast < 2 if pmiFuturePast is not None else None,
@@ -368,19 +375,26 @@ predictorShiftedM4 = [zeroPredictor,zeroPredictor,zeroPredictor,zeroPredictor]+p
 predictor = [a+b+c+d+e+f+g for a, b, c, d, e, f, g in zip(predictor, predictorShiftedP1, predictorShiftedP2, predictorShiftedP3, predictorShiftedM1, predictorShiftedM2, predictorShiftedM3)]
 
 
+
+  
+import matplotlib
+matplotlib.use('agg')
+import matplotlib.pyplot as plt
+
+import numpy as np
+ 
+
 for height in range(0,10):
    predictor1 = [predictor[i] for i in range(len(predictor)) if height_dependent[i] == height]
-   predictor2 = [predictor[i] for i in range(len(predictor)) if dependent[i] < height]
+   if  len(predictor1) < 50:
+      break
    print(len(predictor1))   
-   import numpy as np
    
 #   print(len(predictor1))
 #   print(len(predictor2))
    predictor1 = np.array(predictor1, dtype=np.float32)
-   predictor2 = np.array(predictor2, dtype=np.float32)
    
    predictor1 = predictor1.reshape((-1, 7, 4))
-   predictor2 = predictor2.reshape((-1, 7, 4))
    
    
 #   print(predictor1)
@@ -388,7 +402,6 @@ for height in range(0,10):
    average1 = np.array(predictor1.mean(axis=0))
 #   print(type(average1))
 #   print(average1)
-   average2 = np.mean(predictor2, axis=0)
 #   print(average1)
 #   print(average2)
    index = [0, 1, 2, 3, -1, -2, -3]
@@ -402,34 +415,22 @@ for height in range(0,10):
  #  print(surprisals1)
   # print(entropies1)
    
-   
-   
-   pmis2 = predictor2[:,:,0]
-   surprisals2 = predictor2[:,:,1]
-   entropies2 = predictor2[:,:,2]
-   
+  
 #   print(pmis2)
 #   print(surprisals2)
 #   print(entropies2)
    
-   
-   import matplotlib
-   matplotlib.use('agg')
-   import matplotlib.pyplot as plt
-   
-   import numpy as np
-   
+  
    
    #for i in range(len(pmis1)):
    #      plt.plot(range(-3, 4), [pmis1[i, index.index(j)] for j in range(-3,4)], label=name, color="grey", alpha=0.1)
    averagePMI1 = pmis1.mean(axis=0)
-   plt.plot(range(-3, 4), [averagePMI1[index.index(j)] for j in range(-3,4)], label=name, color="blue", linewidth=4.0)
-   averagePMI2 = pmis2.mean(axis=0)
-   plt.plot(range(-3, 4), [averagePMI2[index.index(j)] for j in range(-3,4)], label=name, color="red", linewidth=4.0)
-   #plt.legend()
-   plt.show()
-   plt.savefig("/checkpoint/mhahn/segmentation-profile-pmis-"+args.language+"-"+str(height)+".png")
-   plt.close()
+   plt.plot(range(-3, 4), [averagePMI1[index.index(j)] for j in range(-3,4)], label=str(height), linewidth=4.0)
+
+plt.legend()
+plt.show()
+plt.savefig("/checkpoint/mhahn/segmentation-profile-pmis-"+args.language+"-all-heights.png")
+plt.close()
    
    
 

@@ -11,7 +11,7 @@ import random
 parser.add_argument("--batchSize", type=int, default=random.choice([128, 128, 128, 128, 256, 512]))
 parser.add_argument("--char_embedding_size", type=int, default=random.choice([50, 100, 100, 100, 100, 200, 200]))
 parser.add_argument("--hidden_dim", type=int, default=random.choice([1024]))
-parser.add_argument("--layer_num", type=int, default=random.choice([2]))
+parser.add_argument("--layer_num", type=int, default=random.choice([2,3]))
 parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.05, 0.1]))
 parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.15, 0.2]))
 parser.add_argument("--char_dropout_prob", type=float, default=random.choice([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.001, 0.01, 0.01]))
