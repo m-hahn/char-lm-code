@@ -1,0 +1,48 @@
+/checkpoint/mhahn/jobs/search-italian-wiki-5137848.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5137849.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5137846.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5137847.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5137852.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5137850.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5137851.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5160834.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5160838.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5160836.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5160840.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5160842.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5160846.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5160844.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5207122.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5207118.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5207120.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5208151.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5208152.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5208153.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5208154.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5208155.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5243054.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5243058.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5243052.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5243056.out
+/checkpoint/mhahn/jobs/search-italian-wiki-5243060.out
+['673056531', '326516798', '573514867', '430756282', '519939259', '769057773', '634909895', '557654324', '154875944', '868654365', '225495799', '355811549', '450229470', '318939464', '945278326', '803024808', '552883415', '473592951', '129732835', '411557871', '810545273', '864257030', '624144088', '876975229', '678608544', '524200323', '917964407']
+(1.3675621037320413, "Namespace(batchSize=256, char_dropout_prob=0.0, char_embedding_size=200, char_noise_prob=0.0, hidden_dim=2048, language='italian', layer_num=2, learning_rate=0.004, load_from=None, lr_decay=0.98, myID=557654324, nonlinearity='tanh', save_to='wiki-italian-nospaces-bptt-rnn-557654324', sequence_length=20, verbose=True, weight_dropout_hidden=0.15, weight_dropout_in=0.0)")
+(1.4551555100637625, "Namespace(batchSize=256, char_dropout_prob=0.001, char_embedding_size=100, char_noise_prob=0.0, hidden_dim=2048, language='italian', layer_num=1, learning_rate=0.006, load_from=None, lr_decay=0.98, myID=129732835, nonlinearity='relu', save_to='wiki-italian-nospaces-bptt-rnn-129732835', sequence_length=10, verbose=True, weight_dropout_hidden=0.2, weight_dropout_in=0.0)")
+(1.4576276086217208, "Namespace(batchSize=256, char_dropout_prob=0.01, char_embedding_size=50, char_noise_prob=0.0, hidden_dim=1024, language='italian', layer_num=2, learning_rate=0.003, load_from=None, lr_decay=0.98, myID=524200323, nonlinearity='tanh', save_to='wiki-italian-nospaces-bptt-rnn-524200323', sequence_length=80, verbose=True, weight_dropout_hidden=0.0, weight_dropout_in=0.01)")
+(1.470559867378408, "Namespace(batchSize=128, char_dropout_prob=0.01, char_embedding_size=50, char_noise_prob=0.0, hidden_dim=1024, language='italian', layer_num=2, learning_rate=0.004, load_from=None, lr_decay=0.9, myID=473592951, nonlinearity='relu', save_to='wiki-italian-nospaces-bptt-rnn-473592951', sequence_length=20, verbose=True, weight_dropout_hidden=0.15, weight_dropout_in=0.0)")
+(1.4864553697507659, "Namespace(batchSize=128, char_dropout_prob=0.0, char_embedding_size=50, char_noise_prob=0.0, hidden_dim=2048, language='italian', layer_num=2, learning_rate=0.006, load_from=None, lr_decay=0.5, myID=868654365, nonlinearity='relu', save_to='wiki-italian-nospaces-bptt-rnn-868654365', sequence_length=30, verbose=True, weight_dropout_hidden=0.15, weight_dropout_in=0.0)")
+(1.4883988124600958, "Namespace(batchSize=256, char_dropout_prob=0.0, char_embedding_size=200, char_noise_prob=0.0, hidden_dim=2048, language='italian', layer_num=1, learning_rate=0.006, load_from=None, lr_decay=0.98, myID=355811549, nonlinearity='tanh', save_to='wiki-italian-nospaces-bptt-rnn-355811549', sequence_length=50, verbose=True, weight_dropout_hidden=0.2, weight_dropout_in=0.0)")
+(1.4967996528309382, "Namespace(batchSize=128, char_dropout_prob=0.01, char_embedding_size=200, char_noise_prob=0.0, hidden_dim=2048, language='italian', layer_num=1, learning_rate=0.006, load_from=None, lr_decay=0.7, myID=678608544, nonlinearity='tanh', save_to='wiki-italian-nospaces-bptt-rnn-678608544', sequence_length=50, verbose=True, weight_dropout_hidden=0.05, weight_dropout_in=0.01)")
+(1.5100442861481536, "Namespace(batchSize=256, char_dropout_prob=0.01, char_embedding_size=200, char_noise_prob=0.0, hidden_dim=2048, language='italian', layer_num=2, learning_rate=0.005, load_from=None, lr_decay=0.9, myID=810545273, nonlinearity='tanh', save_to='wiki-italian-nospaces-bptt-rnn-810545273', sequence_length=80, verbose=True, weight_dropout_hidden=0.15, weight_dropout_in=0.0)")
+(1.5115144889560534, "Namespace(batchSize=256, char_dropout_prob=0.0, char_embedding_size=100, char_noise_prob=0.0, hidden_dim=2048, language='italian', layer_num=1, learning_rate=0.004, load_from=None, lr_decay=0.95, myID=917964407, nonlinearity='relu', save_to='wiki-italian-nospaces-bptt-rnn-917964407', sequence_length=80, verbose=True, weight_dropout_hidden=0.05, weight_dropout_in=0.1)")
+(1.5532702875105198, "Namespace(batchSize=128, char_dropout_prob=0.0, char_embedding_size=200, char_noise_prob=0.0, hidden_dim=512, language='italian', layer_num=2, learning_rate=0.01, load_from=None, lr_decay=0.98, myID=450229470, nonlinearity='relu', save_to='wiki-italian-nospaces-bptt-rnn-450229470', sequence_length=20, verbose=True, weight_dropout_hidden=0.2, weight_dropout_in=0.0)")
+(1.5826635412932084, "Namespace(batchSize=256, char_dropout_prob=0.0, char_embedding_size=50, char_noise_prob=0.0, hidden_dim=1024, language='italian', layer_num=1, learning_rate=0.002, load_from=None, lr_decay=0.98, myID=225495799, nonlinearity='relu', save_to='wiki-italian-nospaces-bptt-rnn-225495799', sequence_length=30, verbose=True, weight_dropout_hidden=0.05, weight_dropout_in=0.1)")
+(1.584617307993708, "Namespace(batchSize=128, char_dropout_prob=0.0, char_embedding_size=50, char_noise_prob=0.0, hidden_dim=1024, language='italian', layer_num=1, learning_rate=0.2, load_from=None, lr_decay=1.0, myID=552883415, nonlinearity='tanh', save_to='wiki-italian-nospaces-bptt-rnn-552883415', sequence_length=80, verbose=True, weight_dropout_hidden=0.05, weight_dropout_in=0.1)")
+(1.5960845309715495, "Namespace(batchSize=128, char_dropout_prob=0.001, char_embedding_size=50, char_noise_prob=0.0, hidden_dim=512, language='italian', layer_num=1, learning_rate=0.006, load_from=None, lr_decay=0.9, myID=411557871, nonlinearity='tanh', save_to='wiki-italian-nospaces-bptt-rnn-411557871', sequence_length=20, verbose=True, weight_dropout_hidden=0.0, weight_dropout_in=0.01)")
+(1.694888169577952, "Namespace(batchSize=256, char_dropout_prob=0.0, char_embedding_size=200, char_noise_prob=0.0, hidden_dim=512, language='italian', layer_num=1, learning_rate=0.004, load_from=None, lr_decay=0.9, myID=154875944, nonlinearity='tanh', save_to='wiki-italian-nospaces-bptt-rnn-154875944', sequence_length=50, verbose=True, weight_dropout_hidden=0.0, weight_dropout_in=0.1)")
+(1.6986567022425405, "Namespace(batchSize=128, char_dropout_prob=0.0, char_embedding_size=100, char_noise_prob=0.0, hidden_dim=256, language='italian', layer_num=2, learning_rate=0.2, load_from=None, lr_decay=0.7, myID=876975229, nonlinearity='tanh', save_to='wiki-italian-nospaces-bptt-rnn-876975229', sequence_length=50, verbose=True, weight_dropout_hidden=0.05, weight_dropout_in=0.1)")
+(1.7252687512623333, "Namespace(batchSize=128, char_dropout_prob=0.01, char_embedding_size=50, char_noise_prob=0.0, hidden_dim=512, language='italian', layer_num=1, learning_rate=0.01, load_from=None, lr_decay=0.7, myID=864257030, nonlinearity='relu', save_to='wiki-italian-nospaces-bptt-rnn-864257030', sequence_length=10, verbose=True, weight_dropout_hidden=0.15, weight_dropout_in=0.0)")
+(1.7510018723902943, "Namespace(batchSize=256, char_dropout_prob=0.0, char_embedding_size=100, char_noise_prob=0.0, hidden_dim=512, language='italian', layer_num=1, learning_rate=0.001, load_from=None, lr_decay=0.98, myID=624144088, nonlinearity='tanh', save_to='wiki-italian-nospaces-bptt-rnn-624144088', sequence_length=80, verbose=True, weight_dropout_hidden=0.05, weight_dropout_in=0.0)")
+(1.7895125429282028, "Namespace(batchSize=128, char_dropout_prob=0.001, char_embedding_size=200, char_noise_prob=0.0, hidden_dim=256, language='italian', layer_num=1, learning_rate=0.01, load_from=None, lr_decay=1.0, myID=945278326, nonlinearity='relu', save_to='wiki-italian-nospaces-bptt-rnn-945278326', sequence_length=50, verbose=True, weight_dropout_hidden=0.05, weight_dropout_in=0.0)")
+(1.8418395194444763, "Namespace(batchSize=128, char_dropout_prob=0.01, char_embedding_size=200, char_noise_prob=0.0, hidden_dim=512, language='italian', layer_num=1, learning_rate=0.004, load_from=None, lr_decay=0.5, myID=803024808, nonlinearity='relu', save_to='wiki-italian-nospaces-bptt-rnn-803024808', sequence_length=50, verbose=True, weight_dropout_hidden=0.15, weight_dropout_in=0.01)")
+(1.9135327798596928, "Namespace(batchSize=128, char_dropout_prob=0.0, char_embedding_size=100, char_noise_prob=0.0, hidden_dim=256, language='italian', layer_num=1, learning_rate=0.006, load_from=None, lr_decay=0.98, myID=318939464, nonlinearity='relu', save_to='wiki-italian-nospaces-bptt-rnn-318939464', sequence_length=50, verbose=True, weight_dropout_hidden=0.2, weight_dropout_in=0.05)")
