@@ -4,9 +4,12 @@ import random
 def load(language, partition):
   if language == "italian":
     path = "/private/home/mhahn/data/WIKIPEDIA/itwiki/itwiki-"+partition+"-tagged.txt"
-  else:
+  elif language == "english":
+    path = "/private/home/mhahn/data/WIKIPEDIA/enwiki/english-"+partition+"-tagged.txt"
+  elif language == "german":
     path = "/private/home/mhahn/data/WIKIPEDIA/"+language+"-"+partition+"-tagged.txt"
-
+  else:
+    assert False
   chunk = []
   with open(path, "r") as inFile:
     for line in inFile:

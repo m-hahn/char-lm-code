@@ -384,15 +384,15 @@ masculineNominatives = list(masculineNominatives)
 pluralDatives = list(pluralDatives)
 masculineAccusatives = list(masculineAccusatives)
 
-correctDer = 0 # this one is stable --> here, the adjective helps distinguish
-correctDen = 0 # this one is less strong, and deteriorates to chance with longer infixes (adjective with adverbs) --> here, the adjective doesn't distinguish between the two forms
-
-correctControlDer = 0 # this one is stable --> here, the adjective helps distinguish
-correctControlDen = 0 # this one is less strong, and deteriorates to chance with longer infixes (adjective with adverbs) --> here, the adjective doesn't distinguish between the two forms
-
-
-correctNoAdjDer = 0 # this one is better. why?
-correctNoAdjDen = 0 # 
+#correctDer = 0 # this one is stable --> here, the adjective helps distinguish
+#correctDen = 0 # this one is less strong, and deteriorates to chance with longer infixes (adjective with adverbs) --> here, the adjective doesn't distinguish between the two forms
+#
+#correctControlDer = 0 # this one is stable --> here, the adjective helps distinguish
+#correctControlDen = 0 # this one is less strong, and deteriorates to chance with longer infixes (adjective with adverbs) --> here, the adjective doesn't distinguish between the two forms
+#
+#
+#correctNoAdjDer = 0 # this one is better. why?
+#correctNoAdjDen = 0 # 
 
 
 # more ~/data/WIKIPEDIA/german-train-tagged.txt  | awk '{print $2,tolower($3)}' 
@@ -476,27 +476,60 @@ import random
 
 preposition = "mit"
 correctByPMI = 0
-for i in range(1,len(frames)):
-    frame = frames[i]
-    left = " ".join(frame[0])
-    right = " ".join(frame[1])
-    adverbs = [] # ["sehr", "extrem", "unglaublich", ""] #,"extrem","unglaublich"]
-    adverbChain = "" if len(adverbs) == 0 else " ".join(adverbs)
-    chosenAdjective = "_NONE_"
-    while chosenAdjective+"en" not in stoi or chosenAdjective+"e" not in stoi:
-       chosenAdjective = random.choice(adjectives)
-    adjective = adverbChain+chosenAdjective
+
+
+
+correctDer = {}
+correctControlDer = {}
+correctByPMI = {}
+
+for condition in ["none", "sehr", "sehr_extrem", "sehr_extrem_unglaublich"]:
+    correctDer[condition] = 0.0 # this one is stable --> here, the adjective helps distinguish
+    correctControlDer[condition] = 0.0 # this one is stable --> here, the adjective helps distinguish
+    correctByPMI[condition] = 0.0
+
+    for i in range(1,len(frames)):
+       frame = frames[i]
+       left = " ".join(frame[0])
+       right = " ".join(frame[1])
+
+       if condition == "none":
+          adverbs = []
+       elif condition == "sehr":
+          adverbs = ["sehr"]
+       elif condition == "sehr_extrem":
+          adverbs = ["sehr", "extrem"]
+       elif condition == "sehr_extrem_unglaublich":
+         adverbs = ["sehr", "extrem", "unglaublich"]
+       else:
+          assert False 
+
+       adverbChain = "" if len(adverbs) == 0 else ((" ".join(adverbs))+" ")
+       chosenAdjective = "_NONE_"
+       while chosenAdjective+"en" not in stoi or chosenAdjective+"e" not in stoi:
+          chosenAdjective = random.choice(adjectives)
+       adjective = adverbChain+chosenAdjective
+      
+       lossesFull = doChoiceListLosses([f'. {left} {preposition} der {adjective}en {right}', f'. {left} {preposition} der {adjective}e {right}'], printHere=True)
+       lossesSuffix = doChoiceListLosses([f'der {adjective}en {right}', f'der {adjective}e {right}'], printHere=True)
+       pmi = lossesFull - lossesSuffix
+       correctByPMI[condition] += (1 if 0 == np.argmin(pmi) else 0)
+       print("BY PMI", correctByPMI[condition]/i)
    
-    lossesFull = doChoiceListLosses([f'. {left} {preposition} der {adjective}en {right}', f'. {left} {preposition} der {adjective}e {right}'], printHere=True)
-    lossesSuffix = doChoiceListLosses([f'der {adjective}en {right}', f'der {adjective}e {right}'], printHere=True)
-    pmi = lossesFull - lossesSuffix
-    correctByPMI += (1 if 0 == np.argmin(pmi) else 0)
-    print("BY PMI", correctByPMI/i)
+       correctDer[condition] += (1 if 0 == np.argmin(lossesFull) else 0)
+       print("WITH ADJECTIVE", correctDer[condition]/i)
+   
+       correctControlDer[condition] += (1 if 0 == np.argmin(lossesSuffix) else 0)
+       print("CONTROL", correctControlDer[condition]/i)
+   
+    correctDer[condition] /= len(frames)  # this one is stable --> here, the adjective helps distinguish
+    correctControlDer[condition] /= len(frames) # this one is stable --> here, the adjective helps distinguish
+    correctByPMI[condition] /= len(frames)
 
-    correctDer += (1 if 0 == np.argmin(lossesFull) else 0)
-    print("WITH ADJECTIVE", correctDer/i)
-
-    correctControlDer += (1 if 1 == np.argmin(lossesSuffix) else 0)
-    print("CONTROL", correctControlDer/i)
-
-
+print("Accuracy") 
+print(correctDer)
+print("Control")
+print(correctControlDer)
+print("By PMI")
+print(correctByPMI)
+     

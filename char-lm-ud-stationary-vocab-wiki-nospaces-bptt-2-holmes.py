@@ -8,13 +8,13 @@ parser.add_argument("--save-to", dest="save_to", type=str)
 
 import random
 
-parser.add_argument("--batchSize", type=int, default=random.choice([128, 128, 128, 128, 128, 128, 128, 256, 512]))
+parser.add_argument("--batchSize", type=int, default=random.choice([32, 64, 128, 128, 128]))
 parser.add_argument("--char_embedding_size", type=int, default=random.choice([100, 100, 100, 200, 200, 200, 200]))
 parser.add_argument("--hidden_dim", type=int, default=random.choice([1024]))
 parser.add_argument("--layer_num", type=int, default=random.choice([2,3]))
-parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.0, 0.0,  0.01, 0.05, 0.1]))
-parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.0, 0.0, 0.0,  0.01, 0.02,0.03, 0.0, 0.0, 0.0,  0.01, 0.02,0.03,  0.05, 0.1,  0.15, 0.2]))
-parser.add_argument("--char_dropout_prob", type=float, default=random.choice([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.001, 0.01, 0.01]))
+parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.0]))
+parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.01, 0.02,0.03,  0.05, 0.1,  0.15, 0.2]))
+parser.add_argument("--char_dropout_prob", type=float, default=random.choice([0.001, 0.01, 0.01]))
 parser.add_argument("--char_noise_prob", type = float, default=random.choice([0.0, 0.0]))
 parser.add_argument("--learning_rate", type = float, default= random.choice([2.0, 2.2, 2.4, 2.6, 2.8, 2.9, 3.0, 3.0, 3.1, 3.2, 3.3, 3.4, 3.5,3.6, 3.7, 3.8, 3.9, 4.0, 3.1, 3.2, 3.3, 3.4, 3.5,3.6, 3.7, 3.8, 3.9, 4.0, 3.1, 3.2, 3.3, 3.4, 3.5,3.6, 3.7, 3.8, 3.9, 4.0, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 5.0, 3.1, 3.2, 3.3, 3.4, 3.5,3.6, 3.7, 3.8, 3.9, 4.0, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 5.0]))
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
@@ -34,7 +34,7 @@ print(args)
 
 
 
-import corpusIteratorWiki
+import corpusIteratorHolmes
 
 
 
@@ -111,7 +111,7 @@ learning_rate = args.learning_rate
 
 optim = torch.optim.SGD(parameters(), lr=learning_rate, momentum=0.0) # 0.02, 0.9
 
-named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
+named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings} #, "optim" : optim}
 
 if args.load_from is not None:
   checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
@@ -247,7 +247,7 @@ def forward(numeric, train=True, printHere=False):
    #            boundaries_index[0] += 1
     #        else:
      #          boundary = False
-            print((losses[i][0], itos[numericCPU[i+1][0]-3]))
+            print((losses[i][0], "OOV" if numericCPU[i+1][0]==2 else itos[numericCPU[i+1][0]-3]  ))
       return loss, target_tensor.view(-1).size()[0]
 
 def backward(loss, printHere):
@@ -266,7 +266,7 @@ import time
 devLosses = []
 for epoch in range(10000):
    print(epoch)
-   training_data = corpusIteratorWiki.training(args.language)
+   training_data = corpusIteratorHolmes.training(args.language)
    print("Got data")
    training_chars = prepareDatasetChunks(training_data, train=True)
 
@@ -302,7 +302,7 @@ for epoch in range(10000):
    rnn_drop.train(False)
 
 
-   dev_data = corpusIteratorWiki.dev(args.language)
+   dev_data = corpusIteratorHolmes.dev(args.language)
    print("Got data")
    dev_chars = prepareDatasetChunks(dev_data, train=False)
 

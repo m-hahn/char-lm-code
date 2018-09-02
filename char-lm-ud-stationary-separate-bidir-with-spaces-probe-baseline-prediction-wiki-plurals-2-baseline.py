@@ -578,7 +578,7 @@ predictors = encodedPluralsR + encodedSingularsR
 dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
 
 score = logisticRegr.score(predictors, dependent)
-print(["s plurals",score])
+print(["s plurals",score, len(dependent), sum(dependent)])
 
 
 predictors = encodeListOfWords(["."+x for x in wordsEndingIn["r"]])

@@ -1,7 +1,4 @@
 
-
-# Clear evidence that the model isn't leveraging evidence about the subcategorization of the verb.
-
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--language", dest="language", type=str)
@@ -23,6 +20,8 @@ parser.add_argument("--char_noise_prob", type = float, default= 0.01)
 parser.add_argument("--learning_rate", type = float, default= 0.1)
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
 parser.add_argument("--sequence_length", type=int, default=50)
+parser.add_argument("--train_size", type=int, default=25)
+
 
 
 args=parser.parse_args()
@@ -35,6 +34,10 @@ print(args)
 import corpusIteratorWiki
 
 
+def plusL(its):
+  for it in its:
+       for x in it:
+           yield x
 
 def plus(it1, it2):
    for x in it1:
@@ -101,9 +104,9 @@ def parameters():
        for param in module.parameters():
             yield param
 
-optim = torch.optim.SGD(parameters(), lr=args.learning_rate, momentum=0.0) # 0.02, 0.9
+#optim = torch.optim.SGD(parameters(), lr=args.learning_rate, momentum=0.0) # 0.02, 0.9
 
-named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
+named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings} #, "optim" : optim}
 
 print("Loading model")
 if args.load_from is not None:
@@ -131,7 +134,6 @@ def encodeWord(word):
       for char in word:
            numeric[-1].append((stoi[char]+3 if char in stoi else 2) if True else 2+random.randint(0, len(itos)))
       return numeric
-
 
 
 
@@ -163,6 +165,21 @@ def choice(numeric1, numeric2):
      losses = lossModule(prediction.view(-1, len(itos)+3), target.view(-1)).view(maxLength, 2)
      losses = losses.sum(0).data.cpu().numpy()
      return losses
+
+
+def encodeListOfWords(words):
+    numeric = [encodeWord(word)[0] for word in words]
+    maxLength = max([len(x) for x in numeric])
+    for i in range(len(numeric)):
+       numeric[i] = ([0]*(maxLength-len(numeric[i]))) + numeric[i]
+    input_tensor_forward = Variable(torch.LongTensor([[0]+x for x in numeric]).transpose(0,1).cuda(), requires_grad=False)
+    
+    input_cut = input_tensor_forward #[:-1]
+    embedded_forward = char_embeddings(input_cut)
+    out_forward, hidden_forward = rnn_drop(embedded_forward, None)
+    hidden = hidden_forward[0].data.cpu().numpy()
+    return [hidden[0][i] for i in range(len(words))]
+
 
 
 
@@ -251,178 +268,252 @@ def keepGenerating(encoded, length=100, backwards=False):
     return output_string if not backwards else output_string[::-1]
 
 
-out1, hidden1 = encodeSequenceBatchForward(encodeWord("katze"))
-out2, hidden2 = encodeSequenceBatchForward(encodeWord("katzem"))
-#print(torch.dot(out1[-1], out2[-1]))
-#print(torch.dot(hidden1[0], hidden2[0]))
-#print(torch.dot(hidden1[1], hidden2[1]))
+with open("/private/home/mhahn/data/similarity/fullVocab.txt", "r") as inFile:
+   testVocabulary = set(inFile.read().strip().split("\n"))
 
-print(torch.nn.functional.cosine_similarity(out1, out2, dim=0))
-#print(torch.nn.functional.cosine_similarity(hidden1, hidden2, dim=0))
-#print(torch.nn.functional.cosine_similarity(cell1, cell2, dim=0))
-
-#print("willmach")
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ichmach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".dumach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ermach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".siemach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esmach"))))
-#
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ichmach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".dumach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ermach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".siemach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esmach"))))
-#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esdenk"))))
-#
-def doChoiceList(xs, printHere=True):
-    if printHere:
-      for x in xs:
-         print(x)
-    losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
-    if printHere:
-      print(losses)
-    return np.argmin(losses)
+with open("/private/home/mhahn/data/similarity/MEN/MEN_dataset_natural_form_full", "r") as inFile:
+   simlist = [x.split(" ") for x in inFile.read().strip().split("\n")[1:]]
+for sim in simlist:
+  testVocabulary.add(sim[0])
+  testVocabulary.add(sim[1])
 
 
-def doChoice(x, y):
-    print(x)
-    print(y)
-    losses = choice(encodeWord(x), encodeWord(y))
-    print(losses)
-    return 0 if losses[0] < losses[1] else 1
-#
-#doChoice(".ichmachedas.", ".ichmachstdas.")
-#doChoice(".dumachendas.", ".dumachstdas.")
-#doChoice(".ermachendas.", ".ermachtdas.")
-#doChoice(".wirmachendas.", ".wirmachtdas.")
-#
-#doChoice(".ichvergeigedas.", ".ichvergeigstdas.")
-#doChoice(".duvergeigendas.", ".duvergeigstdas.")
-#doChoice(".ervergeigendas.", ".ervergeigtdas.")
-#doChoice(".wirvergeigendas.", ".wirvergeigtdas.")
-#
-#
-#
-#
-#
-#doChoice(".ichwilldas.", ".ichwillstdas.")
-#doChoice(".duwollendas.", ".duwillstdas.")
-#doChoice(".erwollendas.", ".erwilldas.")
-#doChoice(".wirwollendas.", ".wirwilldas.")
-#
-#
-#doChoice("indashaus.", "indiehaus.")
-#doChoice("indascomputermaus.", "indiecomputermaus.")
-#
-#doChoice(".ichgeheindashaus.", ".ichgeheindemhaus.")
-#doChoice(".ichlebeindashaus.", ".ichlebeindemhaus.")
-#
-#
-#doChoice(".ichlebeindashausmeisterzimmer.", ".ichlebeindemhausmeisterzimmer.")
-#
-#
-#doChoice(".zweihaus.", ".zweihäuser.")
-#doChoice(".zweilampen.", ".zweilampe.")
-#doChoice(".zweilampenpfahl.", ".zweilampenpfähle.")
-#doChoice(".zweihauspfähle.", ".zweihäuserpfähle.")
-#doChoice(".zweinasenbär.", ".zweinasenbären.")
-#
-#doChoice(".einhaus.", ".einhäuser.")
-#doChoice(".einlampenpfahl.", ".einlampenpfähle.")
-#doChoice(".einhauspfähle.", ".einhäuserpfähle.")
-#doChoice(".einnasenbär.", ".einnasenbären.")
+testVocabulary = sorted(list(testVocabulary), key=lambda x:len(x))
 
 
+i = 0
+length = 0
+wordVectors = {}
 
-wentThroughAdjectives = False
-with open("/private/home/mhahn//data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as inFile:
-    adjectives = []
-    for line in inFile:
-      line = line.strip().split(" ")
-      if len(line) != 3:
-        continue
-      if line[1] != "ADJA":
-          if wentThroughAdjectives:
-             continue
+while i < len(testVocabulary):
+   toEncode = [testVocabulary[i]]
+   assert len(testVocabulary[i]) > length, (i, len(testVocabulary[i]), length)
+   length = len(testVocabulary[i])
+   while i+1 < len(testVocabulary):
+      i += 1
+      if len(testVocabulary[i]) == length:
+         toEncode.append(testVocabulary[i])
       else:
-        wentThroughAdjectives = True
-      if line[2] == "<unknown>":
-         continue
-      if len(line[2]) == 1:
-        continue
-      if "." in line[2]:
-        continue
-      if int(line[0]) > 100 and not line[2].endswith("r"):
-         adjectives.append(line[2])
-#print(adjectives) 
-#print(len(adjectives))
+         assert len(testVocabulary[i]) > length
+         break
+   else:
+      assert i+1 == len(testVocabulary)
+      i += 1
+   assert i == len(testVocabulary) or len(testVocabulary[i]) > length
+
+   vectors = encodeListOfWords(toEncode)
+   if True:
+      print(i)
+   for word, vector in zip(toEncode, vectors):
+       if False:
+          print(" ".join(list(map(str,[word] + list(vector)))))
+       wordVectors[word] = vector
+
+import torch.nn.functional
+import numpy as np
+from scipy import spatial
+
+
+def computeCosine(word1, word2):
+   vector0 = encodeListOfWords([word1])[0]
+   vector1 = encodeListOfWords([word2])[0]
+   print(word1, word2, 1-spatial.distance.cosine(vector0, vector1))
+
+computeCosine("wine", "wine7")
+
+computeCosine("wine", "wines")
+computeCosine(".wine", "wine")
+computeCosine("wine", "thewine")
+computeCosine(".wine", "the.wine")
+computeCosine("wine", "iwne")
+computeCosine("wine", "inwe")
+computeCosine("wine", "niwe")
+computeCosine("wine", "beer")
+computeCosine("computer", "laptop")
+computeCosine(",good,", ",wonderful,")
+computeCosine(",good,", ",computer,")
+
 #quit()
 
-correctDatCond = {}
-correctGenCond = {}
+cosines = []
+sims = []
+with open("/private/home/mhahn/data/similarity/wordsim353/combined.csv", "r") as inFile:
+   simlist = [x.split(",") for x in inFile.read().strip().split("\n")[1:]]
+for sim in simlist:
+   vec1 = wordVectors[sim[0].lower()]
+   vec2 = wordVectors[sim[1].lower()]
+   cosine = spatial.distance.cosine(vec1, vec2)
+   cosines.append(1-cosine)
+   sims.append(float(sim[2]))
+ #  print(cosine, sims[-1])
 
-for condition in ["none", "adjective", "sehr_adjective", "sehr_extrem_adjective"]:
- if condition == "none" or condition == "adjective":
-   adverbs = [] #"sehr", "extrem"]
- elif condition == "sehr_adjective":
-   adverbs = ["sehr"]
- elif condition == "sehr_extrem_adjective":
-   adverbs = ["sehr", "extrem"]
- else:
-   assert False
-
- print(condition)
- correctDat = [0,0]
- correctGen = [0,0]
- correctDatCond[condition] = correctDat
- correctGenCond[condition] = correctGen
+import scipy.stats
+print(scipy.stats.spearmanr(cosines, sims))
 
 
- with open("germanNounDeclension.txt") as inFile:
-  with open(f"stimuli/german-case-dative-{condition}.txt", "w") as outFileDative:
-   with open(f"stimuli/german-case-genitive-{condition}.txt", "w") as outFileGenitive:
-    data = inFile.read().strip().split("###")[1:]
-    for noun in data:
-       noun = noun.strip().split("\n")[1:]
-       noun = [x.split("\t") for x in noun]
-       noun = {x[0] : x[1:] for x in noun}
-       if "Genus" in noun:
-         if "m" in noun["Genus"] or "n" in noun["Genus"]:
-#           print(noun)
-           dative = noun["Dativ Singular"]
-           genitive = noun["Genitiv Singular"]
-           if len(dative) > 0 and len(genitive) > 0:
-               if len(set(dative).intersection(set(genitive))) == 0:
-                   dativeForm = dative[0].lower()
-                   genitiveForm = genitive[0].lower()
-#                   intermediate = "".join(adverbs)+adjective #"karminroten" #"kleinen" #informationstechnologischen" #"massivstextremsttotalunglaublichklitzekleinsten"
-                   intermediate = adverbs[:]
-                   if condition != "none":
-                       adjective = random.choice(adjectives)+"en"
-                       intermediate += [adjective]
 
-                   print(" ".join(["dem"] + intermediate + [dativeForm]), file=outFileDative)
-                   print(" ".join(["des"] + intermediate + [dativeForm]), file=outFileDative)
-                   print(" ".join(["dem"] + intermediate + [genitiveForm]), file=outFileGenitive)
-                   print(" ".join(["des"] + intermediate + [genitiveForm]), file=outFileGenitive)
+cosines = []
+sims = []
+with open("/private/home/mhahn/data/similarity/MTURK-771.csv", "r") as inFile:
+   simlist = [x.split(",") for x in inFile.read().strip().split("\n")[1:]]
+for sim in simlist:
+   vec1 = wordVectors[sim[0].lower()]
+   vec2 = wordVectors[sim[1].lower()]
+   cosine = spatial.distance.cosine(vec1, vec2)
+   cosines.append(1-cosine)
+   sims.append(float(sim[2]))
+#   print(cosine, sims[-1])
 
-                   intermediate = "".join(intermediate)
+import scipy.stats
+print(scipy.stats.spearmanr(cosines, sims))
 
 
-                   correctDat[0] += (1 if 0 == doChoiceList([f".dem{intermediate}{dativeForm}.", f".des{intermediate}{dativeForm}."], printHere=True) else 0)
-                   correctGen[0] += (1 if 1 == doChoiceList([f".dem{intermediate}{genitiveForm}.", f".des{intermediate}{genitiveForm}."], printHere=True) else 0)
+
+cosines = []
+sims = []
+with open("/private/home/mhahn/data/similarity/MEN/MEN_dataset_lemma_form.dev", "r") as inFile:
+   simlist = [x.split(" ") for x in inFile.read().strip().split("\n")[1:]]
+for sim in simlist:
+   vec1 = wordVectors[sim[0][:-2].lower()]
+   vec2 = wordVectors[sim[1][:-2].lower()]
+   cosine = spatial.distance.cosine(vec1, vec2)
+   cosines.append(1-cosine)
+   sims.append(float(sim[2]))
+#   print(cosine, sims[-1])
+
+import scipy.stats
+print(scipy.stats.spearmanr(cosines, sims))
 
 
-                   correctDat[1] += 1
-                   correctGen[1] += 1
-                   print(correctDat[0]/correctDat[1])
-                   print(correctGen[0]/correctGen[1])
- correctDat.append(  correctDat[0]/correctDat[1])
- correctGen.append(  correctGen[0]/correctGen[1])
 
-print("Dative")
-print(correctDatCond)
-print("Genitive")
-print(correctGenCond)
+projection = torch.nn.Linear(args.hidden_dim, 100)
+#projection = torch.nn.Bilinear(args.hidden_dim, args.hidden_dim, 1).cuda()
+
+final = torch.nn.Linear(1, 1)
+
+embeddingsCNLM = torch.nn.Embedding(num_embeddings=len(testVocabulary), embedding_dim=args.hidden_dim)
+for i in range(len(testVocabulary)):
+  embeddingsCNLM.weight.data[i] = torch.FloatTensor(wordVectors[testVocabulary[i]])
+
+
+modules = [projection, final]
+def parameters():
+   for module in modules:
+       for param in module.parameters():
+            yield param
+
+optim = torch.optim.SGD(parameters(), lr=10.0, momentum=0.0) # 0.02, 0.9
+for i in range(2002):
+   product = torch.mm(projection.weight , torch.transpose(projection.weight, 0, 1))
+   loss = torch.nn.MSELoss()(product, torch.eye(100))
+
+#   product = torch.mm( torch.transpose(projection.weight, 0, 1), projection.weight)
+#   loss += torch.nn.MSELoss()(product, torch.eye(1024))
+
+   if i % 1000 == 0:
+     print(loss)
+   optim.zero_grad()
+   loss.backward()
+   optim.step()
+
+
+optim = torch.optim.SGD(parameters(), lr=0.1, momentum=0.9) # 0.02, 0.9
+
+#quit()
+
+
+simlist = [(x[0][:-2], x[1][:-2], float(x[2])/50) for x in simlist]
+train = simlist[100:]
+dev = simlist[:100]
+
+itosSim = dict(zip(testVocabulary, range(len(testVocabulary))))
+
+def forwardProject(pair, train):
+  assert itosSim[pair[0]] < len(testVocabulary)
+#  print(embeddingsCNLM)
+ # print(itosSim[pair[0]])
+  emb1 = embeddingsCNLM(torch.LongTensor([itosSim[pair[0]]]).view(1,1,-1)).view(-1)
+  emb2 = embeddingsCNLM(torch.LongTensor([itosSim[pair[1]]]).view(1,1,-1)).view(-1)
+  if train:
+    mask = Variable(torch.bernoulli(emb1.data.new(emb1.data.size()).fill_(0.4)))
+    emb1 = emb1 * mask / 0.4
+    emb2 = emb2 * mask / 0.4
+
+  proj1 = projection(emb1)
+  proj2 = projection(emb2)
+  norm1 = torch.sqrt(torch.dot(proj1, proj1))
+  norm2 = torch.sqrt(torch.dot(proj2, proj2))
+#  print("Norm", norm1 * norm2)
+ # print("Dot", torch.dot(proj1, proj2))
+  similarity = final(torch.div(torch.dot(proj1, proj2) , (norm1 * norm2 + 1e-8)).view(1))
+
+  loss = torch.nn.MSELoss()(pair[2], similarity)
+
+
+
+  product = torch.mm(projection.weight , torch.transpose(projection.weight, 0, 1))
+  lossOrthog =0.1 *  torch.nn.MSELoss()(product, torch.eye(100))
+#  print(lossOrthog)
+  loss += lossOrthog
+
+
+  return loss
+  #print(similarity.data.numpy(), pair[2], loss.data.numpy())
+
+def backwardProject(loss):
+    optim.zero_grad()
+    loss.backward()
+    optim.step()
+
+import random
+for epoch in range(100):
+   loss = 0
+   for pair in dev:
+      loss += forwardProject(pair, train=False).data.cpu().numpy()
+   loss /= len(dev)
+   print(epoch, loss)
+   print(final.weight)
+   print(final.bias)
+
+   cosines = []
+   sims = []
+   for sim in simlist:
+      vec1 = projection(torch.FloatTensor(wordVectors[sim[0]])).data.numpy()
+      vec2 = projection(torch.FloatTensor(wordVectors[sim[1]])).data.numpy()
+      cosine = spatial.distance.cosine(vec1, vec2)
+      cosines.append(1-cosine)
+      sims.append(float(sim[2]))
+   #   print(cosine, sims[-1])
+   
+   import scipy.stats
+   print(scipy.stats.spearmanr(cosines, sims))
+   
+   
+   cosines = []
+   sims = []
+   with open("/private/home/mhahn/data/similarity/MTURK-771.csv", "r") as inFile:
+      simlist771 = [x.split(",") for x in inFile.read().strip().split("\n")[1:]]
+   for sim in simlist771:
+      vec1 = projection(torch.FloatTensor(wordVectors[sim[0].lower()])).data.numpy()
+      vec2 = projection(torch.FloatTensor(wordVectors[sim[1].lower()])).data.numpy()
+      cosine = spatial.distance.cosine(vec1, vec2)
+      cosines.append(1-cosine)
+      sims.append(float(sim[2]))
+   #   print(cosine, sims[-1])
+   
+   import scipy.stats
+   print(scipy.stats.spearmanr(cosines, sims))
+   
+
+
+
+
+   random.shuffle(train)
+   counter = 0
+   for pair in train:
+      counter += 1
+      if counter % 100 == 0:
+        print("in epoch", counter/len(train))
+      loss = forwardProject(pair, train=True)
+      backwardProject(loss)
 
