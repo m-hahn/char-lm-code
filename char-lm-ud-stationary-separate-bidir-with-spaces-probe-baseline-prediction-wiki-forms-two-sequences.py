@@ -10,9 +10,9 @@ parser.add_argument("--load-from", dest="load_from", type=str)
 import random
 
 parser.add_argument("--batchSize", type=int, default=16)
-parser.add_argument("--char_embedding_size", type=int, default=100)
+parser.add_argument("--char_embedding_size", type=int, default=200)
 parser.add_argument("--hidden_dim", type=int, default=1024)
-parser.add_argument("--layer_num", type=int, default=1)
+parser.add_argument("--layer_num", type=int, default=3)
 parser.add_argument("--weight_dropout_in", type=float, default=0.01)
 parser.add_argument("--weight_dropout_hidden", type=float, default=0.1)
 parser.add_argument("--char_dropout_prob", type=float, default=0.33)
@@ -21,11 +21,20 @@ parser.add_argument("--learning_rate", type = float, default= 0.1)
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
 parser.add_argument("--sequence_length", type=int, default=50)
 
+parser.add_argument("--sequences", type=str)
+parser.add_argument("--iterations", type=int)
+
+
 
 args=parser.parse_args()
+
+
+args.sequences = args.sequences.split(",")
+#args.save_to = args.save_to.replace("SEQUENCE", ".".join(args.sequences)).replace("ITERATIONS", str(args.iterations))
+
 print(args)
 
-
+args.load_from = "wiki-german-nospaces-bptt-"+".".join(args.sequences)+"-"+str(args.iterations)
 
 
 
@@ -61,6 +70,7 @@ print(itos)
 stoi = dict([(itos[i],i) for i in range(len(itos))])
 
 
+germanAlphabet = "abcdefghijklmnopqrstuvwxyzßäöü"
 
 
 import random
@@ -254,23 +264,49 @@ out2, hidden2 = encodeSequenceBatchForward(encodeWord("katzem"))
 #print(torch.dot(hidden1[0], hidden2[0]))
 #print(torch.dot(hidden1[1], hidden2[1]))
 
-def doChoiceList(xs, printHere=True):
-    if printHere:
-      for x in xs:
-         print(x)
-    losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
-    if printHere:
-      print(losses)
-    return np.argmin(losses)
-def doChoiceListLosses(xs, printHere=True):
-    if printHere:
-      for x in xs:
-         print(x)
-    losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
-    if printHere:
-      print(losses)
-    return losses
+print(torch.nn.functional.cosine_similarity(out1, out2, dim=0))
+#print(torch.nn.functional.cosine_similarity(hidden1, hidden2, dim=0))
+#print(torch.nn.functional.cosine_similarity(cell1, cell2, dim=0))
 
+#print("willmach")
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ichmach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".dumach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ermach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".siemach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esmach"))))
+#
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ichmach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".dumach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ermach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".siemach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esmach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esdenk"))))
+#
+def doChoiceList(xs, printHere=False, printRanking=False):
+    if printHere:
+      for x in xs:
+         print(x)
+    losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
+    if printHere:
+      print(losses)
+    if printRanking:
+       z = zip(xs, losses)
+       z= sorted(z, key=lambda x:x[1])
+       print(z)
+    return np.argmin(losses)
+
+def doChoiceListRet(xs, printHere=True, printRanking=False):
+    if printHere:
+      for x in xs:
+         print(x)
+    losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
+    if printHere:
+      print(losses)
+    if printRanking:
+       z = zip(xs, losses)
+       z= sorted(z, key=lambda x:x[1])
+       print(z)
+    return losses
 
 
 def doChoice(x, y):
@@ -280,113 +316,148 @@ def doChoice(x, y):
     print(losses)
     return 0 if losses[0] < losses[1] else 1
 
-from corpusIterator import CorpusIterator
 
-adjectives = []
-wentThroughAdjectives = False
-with open("/private/home/mhahn//data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as inFile:
-    adjectives = []
-    for line in inFile:
-      line = line.strip().split(" ")
-      if len(line) != 3:
-        continue
-      if line[1] != "ADJA":
-          if wentThroughAdjectives:
-             continue
-      else:
-        wentThroughAdjectives = True
-      if line[2] == "<unknown>":
-         continue
-      if len(line[2]) == 1:
-        continue
-      if "." in line[2]:
-        continue
-      if int(line[0]) > 100 and not line[2].endswith("r"):
-         adjectives.append(line[2])
+def keepGenerating(encoded, length=100, backwards=False):
+    out, hidden = encoded
+    output_string = ""
+   
+#    rnn_forward_drop.train(True)
 
+    for _ in range(length):
+      prediction = logsoftmax(2*output(out.unsqueeze(0))).data.cpu().view(3+len(itos)).numpy() #.view(1,1,-1))).view(3+len(itos)).data.cpu().numpy()
+#      predicted = np.argmax(prediction).items()
+      predicted = np.random.choice(3+len(itos), p=np.exp(prediction))
 
-def genderTest(mode):
-   training = CorpusIterator("German", partition="train", storeMorph=True, removePunctuation=True)
-   genders = dict([("Gender="+x, set()) for x in ["Masc", "Fem", "Neut"]])
-   for sentence in training.iterator():
-       for line in sentence:
-        if line["posUni"] == "NOUN" and "|" not in line["lemma"]:
-        
-           morph = line["morph"]
-           if "Number=Sing" in morph and "Case=Nom" in morph:
-            gender = [x for x in morph if x.startswith("Gender=")]
-            if len(gender) > 0:
-              genders[gender[0]].add(line["lemma"].lower())
-              
-   #print(genders)
-   counter = 0
+      output_string += itos[predicted-3]
 
-   results = [[0,0,0] for _ in range(3)]
-   for genderIndex, gender in enumerate(["Gender="+x for x in ["Masc", "Fem", "Neut"]]):
-     with open(f"stimuli/german-gender-{gender}-{mode}.txt", "w") as outFile:
-       counter = 0
-       for noun in genders[gender]:
-         counter += 1
-     #    adverbs = ["sehr"]
-      #   adjective = "" #"".join(adverbs)+random.choice(adjectives)+"e"
-         if mode == "nothing":
-           noun = noun
-           nounStimulus = [noun]
-         elif mode == "adjective":
-            adjective = random.choice(adjectives)+"e"
-            nounStimulus = [adjective, noun]
-            noun = adjective+noun
-         elif mode == "sehr + adjective":
-            adjective = random.choice(adjectives)+"e"
-            nounStimulus = ["sehr", adjective, noun]
-            noun = "sehr"+adjective+noun
-         elif mode == "sehr + extrem + adjective":
-            adjective = random.choice(adjectives)+"e"
-            nounStimulus = ["sehr", "extrem", adjective, noun]
-            noun = "sehr"+"extrem"+adjective+noun
+      input_tensor_forward = Variable(torch.LongTensor([[predicted]]).transpose(0,1).cuda(), requires_grad=False)
+
+      embedded_forward = char_embeddings(input_tensor_forward)
+      
+      out, hidden = (rnn_drop if not backwards else rnn_backward_drop)(embedded_forward, hidden)
+      out = out[-1]
+
+ #   rnn_forward_drop.train(False)
 
 
- 
-         stimuli = []
-         print(" ".join(["der"] + nounStimulus), file=outFile)
-         print(" ".join(["die"] + nounStimulus), file=outFile)
-         print(" ".join(["das"] + nounStimulus), file=outFile)
-         
- 
-  #       noun = f"{adjective}{noun}"
-         results[genderIndex][doChoiceList([f".der{noun}.", f".die{noun}.", f".das{noun}."], printHere=(random.random() > 0.98))] += 1
-  #       results[doChoiceList([".ein"+noun+".", ".eine"+noun+"."])] += 1
-         if random.random() > 0.98:
-            print([[round(x/(counter if genderIndex == i else 1), 2) for x in results[i]] for i in range(len(results))])
-       results[genderIndex] = [x/counter for x in results[genderIndex]]
-   return results
+    return output_string if not backwards else output_string[::-1]
 
 
-#   # test separation of feminine from masc/neuter via indefinite
-#   results = [0,0,0] 
-#   for noun in genders["Gender=Masc"].union(genders["Gender=Neut"]):
-#       counter += 1
-##       results[doChoiceList([".der"+noun+".", ".die"+noun+".", ".das"+noun+"."])] += 1
-#       results[doChoiceList([".ein"+noun+".", ".eine"+noun+"."])] += 1
-#       print([x/counter for x in results])
-#   return [x/counter for x in results]
+print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ichmach"))))
+
+
 #
-confusion1 = genderTest("nothing")
-confusion2 = genderTest("adjective")
-confusion3 = genderTest("sehr + adjective")
-confusion4 = genderTest("sehr + extrem + adjective")
+#doChoice(".ichmachedas.", ".ichmachstdas.")
+#doChoice(".dumachendas.", ".dumachstdas.")
+#doChoice(".ermachendas.", ".ermachtdas.")
+#doChoice(".wirmachendas.", ".wirmachtdas.")
+#
+#doChoice(".ichvergeigedas.", ".ichvergeigstdas.")
+#doChoice(".duvergeigendas.", ".duvergeigstdas.")
+#doChoice(".ervergeigendas.", ".ervergeigtdas.")
+#doChoice(".wirvergeigendas.", ".wirvergeigtdas.")
+#
+#
+#
+#
+#
+#doChoice(".ichwilldas.", ".ichwillstdas.")
+#doChoice(".duwollendas.", ".duwillstdas.")
+#doChoice(".erwollendas.", ".erwilldas.")
+#doChoice(".wirwollendas.", ".wirwilldas.")
+#
+#
+#doChoice("indashaus.", "indiehaus.")
+#doChoice("indascomputermaus.", "indiecomputermaus.")
+#
+#doChoice(".ichgeheindashaus.", ".ichgeheindemhaus.")
+#doChoice(".ichlebeindashaus.", ".ichlebeindemhaus.")
+#
+#
+#doChoice(".ichlebeindashausmeisterzimmer.", ".ichlebeindemhausmeisterzimmer.")
+#
+#
+#doChoice(".zweihaus.", ".zweihäuser.")
+#doChoice(".zweilampen.", ".zweilampe.")
+#doChoice(".zweilampenpfahl.", ".zweilampenpfähle.")
+#doChoice(".zweihauspfähle.", ".zweihäuserpfähle.")
+#doChoice(".zweinasenbär.", ".zweinasenbären.")
+#
+#doChoice(".einhaus.", ".einhäuser.")
+#doChoice(".einlampenpfahl.", ".einlampenpfähle.")
+#doChoice(".einhauspfähle.", ".einhäuserpfähle.")
+#doChoice(".einnasenbär.", ".einnasenbären.")
 
-print(confusion1)
-print(confusion2)
-print(confusion3)
-print(confusion4)
+
+# need to do some sort of ngram control
+
+examples = [args.sequences[0][:-1]+x+"." for x in germanAlphabet]
+comb = doChoiceListRet(examples) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
+examples = [x+"." for x in itos[3:] if x > "_"]
+uni = doChoiceListRet(examples) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
+
+
+z = zip(examples, comb, uni)
+z = sorted(z, key=lambda x:x[1]-x[2])
+print(z)
+
+
+with open("/checkpoint/mhahn/CHAR_SEQUENCES_wiki-german-nospaces-bptt-"+".".join(args.sequences)+"-"+str(args.iterations), "r") as inFile:
+    trigrams =[y.split("\t") for y in inFile.read().strip().split("\n")]
+    
+    trigrams = dict([(lambda x: (x[0], int(x[1])))(y) for y in trigrams])
+
+
+bigramsLeft   = dict([(x[0:2], 0) for x in trigrams])
+bigramsRight  = dict([(x[1:3], 0) for x in trigrams])
+unigramsMid   = dict([(x[1], 0) for x in trigrams])
+unigramsRight = dict([(x[2], 0) for x in trigrams])
+
+total = len(itos)
+for t, count in trigrams.items():
+   total += count
+   bigramsLeft[t[0:2]] += count
+   bigramsRight[t[1:3]] += count
+   unigramsMid[t[1]] += count
+   unigramsRight[t[2]] += count
+
+from math import log
+
+def evaluateNgramProb(x):
+   
+   prob = log(unigramsRight.get(x[0], 0) + 1) - log(total)
+   if x[0:2] in bigramsRight:
+      prob += log(bigramsRight[x[0:2]]) - log(unigramsMid[x[0]])
+   elif x[1] in unigramsRight:
+       prob = log(1+unigramsRight[x[1]]) - log(total)
+   else:
+       prob -= log(total)
+   for i in range(2, len(x)):
+      if x[i-2:i+1] in trigrams:
+           prob += log(trigrams[x[i-2:i+1]]) - log(bigramsLeft[x[i-2:i]])
+      elif x[i-1:i+1] in bigramsRight:
+          prob += log(bigramsRight[x[i-1:i+1]]) - log(unigramsMid[x[i-1]])
+      elif x[i] in unigramsRight:
+          prob += log(1+unigramsRight[x[i]]) - log(total)
+      else:
+          prob -= log(total)
+   return prob
+
+def doChoiceListNgrams(xs):
+    return [-evaluateNgramProb(x) for x in xs]
 
 
 
 
 
-import numpy as np
-losses  = (doChoiceListLosses([".der", ".die", ".das"]))
-losses = np.exp(-losses)
-print(losses/np.sum(losses))
+examples = [args.sequences[0][:-1]+x+"." for x in germanAlphabet]
+comb = doChoiceListNgrams(examples) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
+examples = [x+"." for x in itos[3:] if x > "_"]
+uni = doChoiceListNgrams(examples) # if we replace "sind" with "ist", the pattern changes massively (these 'odd' words are apparently preferred to be neuters)
+
+
+z = zip(examples, comb, uni)
+z = sorted(z, key=lambda x:x[1]-x[2])
+print(z)
+
 

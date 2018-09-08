@@ -8,19 +8,19 @@ parser.add_argument("--save-to", dest="save_to", type=str)
 
 import random
 
-parser.add_argument("--batchSize", type=int, default=random.choice([32, 64, 128, 128]))
-parser.add_argument("--char_embedding_size", type=int, default=random.choice([100, 100, 100, 200, 200, 200, 200]))
+parser.add_argument("--batchSize", type=int, default=random.choice([128, 128, 128, 256]))
+parser.add_argument("--char_embedding_size", type=int, default=random.choice([100, 200, 200, 300, 300, 300, 300, 1024]))
 parser.add_argument("--hidden_dim", type=int, default=random.choice([1024]))
-parser.add_argument("--layer_num", type=int, default=random.choice([2,3]))
-parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.0, 0.01, 0.05, 0.1]))
-parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.0, 0.0, 0.01, 0.02,0.03,  0.05, 0.1,  0.15, 0.2]))
-parser.add_argument("--char_dropout_prob", type=float, default=random.choice([0.0, 0.001, 0.01, 0.01]))
+parser.add_argument("--layer_num", type=int, default=random.choice([1, 2]))
+parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.0, 0.0, 0.0, 0.01]))
+parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.0, 0.05, 0.15, 0.2]))
+parser.add_argument("--char_dropout_prob", type=float, default=random.choice([0.0, 0.0, 0.001, 0.01, 0.01]))
 parser.add_argument("--char_noise_prob", type = float, default=random.choice([0.0, 0.0]))
-parser.add_argument("--learning_rate", type = float, default= random.choice([2.0, 2.2, 2.4, 2.6, 2.8, 2.9, 3.0, 3.0, 3.1, 3.2, 3.3, 3.4, 3.5,3.6, 3.7, 3.8, 3.9, 4.0, 3.1, 3.2, 3.3, 3.4, 3.5,3.6, 3.7, 3.8, 3.9, 4.0, 3.1, 3.2, 3.3, 3.4, 3.5,3.6, 3.7, 3.8, 3.9, 4.0, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 5.0, 3.1, 3.2, 3.3, 3.4, 3.5,3.6, 3.7, 3.8, 3.9, 4.0, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 5.0, 5.0]))
+parser.add_argument("--learning_rate", type = float, default= random.choice([0.6, 0.7, 0.8, 0.9, 1.0,1.0,  1.1, 1.1, 1.2, 1.2, 1.2, 1.2, 1.3, 1.3, 1.4, 1.5, 1.6]))
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
-parser.add_argument("--sequence_length", type=int, default=random.choice([50, 50, 50, 80]))
+parser.add_argument("--sequence_length", type=int, default=random.choice([50]))
 parser.add_argument("--verbose", type=bool, default=False)
-parser.add_argument("--lr_decay", type=float, default=random.choice([0.5, 0.7, 0.9, 0.95, 0.98, 0.98, 0.98, 0.98, 1.0]))
+parser.add_argument("--lr_decay", type=float, default=random.choice([0.7, 0.9, 0.95, 0.98, 0.98, 1.0]))
 
 
 import math
@@ -30,11 +30,13 @@ args=parser.parse_args()
 if "MYID" in args.save_to:
    args.save_to = args.save_to.replace("MYID", str(args.myID))
 
+assert "word" in args.save_to, args.save_to
+
 print(args)
 
 
 
-import corpusIteratorHolmes
+import corpusIteratorWikiWords
 
 
 
@@ -44,26 +46,10 @@ def plus(it1, it2):
    for x in it2:
       yield x
 
-try:
-   with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "r") as inFile:
-     itos = inFile.read().strip().split("\n")
-except FileNotFoundError:
-    assert False
-    print("Creating new vocab")
-    char_counts = {}
-    # get symbol vocabulary
+char_vocab_path = {"german" : "/private/home/mhahn/data/WIKIPEDIA/german-wiki-word-vocab.txt", "italian" : "/private/home/mhahn/data/WIKIPEDIA/itwiki/italian-wiki-word-vocab.txt", "english" : "/private/home/mhahn/data/WIKIPEDIA/enwiki/english-wiki-word-vocab.txt"}[args.language]
 
-    with open("/private/home/mhahn/data/WIKIPEDIA/"+args.language+"-vocab.txt", "r") as inFile:
-      words = inFile.read().strip().split("\n")
-      for word in words:
-         for char in word.lower():
-            char_counts[char] = char_counts.get(char, 0) + 1
-    char_counts = [(x,y) for x, y in char_counts.items()]
-    itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
-    with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "w") as outFile:
-       print("\n".join(itos), file=outFile)
-#itos = sorted(itos)
-print(itos)
+with open(char_vocab_path, "r") as inFile:
+     itos = [x.split("\t")[0] for x in inFile.read().strip().split("\n")[:50000]]
 stoi = dict([(itos[i],i) for i in range(len(itos))])
 
 
@@ -111,7 +97,7 @@ learning_rate = args.learning_rate
 
 optim = torch.optim.SGD(parameters(), lr=learning_rate, momentum=0.0) # 0.02, 0.9
 
-named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings} #, "optim" : optim}
+named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
 
 if args.load_from is not None:
   checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
@@ -132,10 +118,10 @@ def prepareDatasetChunks(data, train=True):
       print("Prepare chunks")
       numerified = []
       for chunk in data:
-       print(len(chunk))
+       #print(len(chunk))
        for char in chunk:
-         if char == " ":
-           continue
+#         if char == " ":
+ #          continue
          count += 1
 #         if count % 100000 == 0:
 #             print(count/len(data))
@@ -143,17 +129,33 @@ def prepareDatasetChunks(data, train=True):
        #  if len(numeric) > args.sequence_length:
         #    yield numeric
          #   numeric = [0]
-       cutoff = int(len(numerified)/(args.batchSize*args.sequence_length)) * (args.batchSize*args.sequence_length)
-       numerifiedCurrent = numerified[:cutoff]
-       numerified = numerified[cutoff:]
-       numerifiedCurrent = torch.LongTensor(numerifiedCurrent).view(args.batchSize, -1, args.sequence_length).transpose(0,1).transpose(1,2).cuda()
-       #print(numerifiedCurrent.size())
-       #quit()
-       numberOfSequences = numerifiedCurrent.size()[0]
-       for i in range(numberOfSequences):
-#           print(numerifiedCurrent[i].size())
-           yield numerifiedCurrent[i]
-       hidden = None
+  #     print(len(numerified))
+ #      print(args.batchSize)
+#       print(args.sequence_length)
+
+       if len(numerified) > (args.batchSize*args.sequence_length):
+         sequenceLengthHere = args.sequence_length
+#         elif len(numerified) > args.batchSize:
+#            print("Taking small sequence")
+#            sequenceLengthHere = int(len(numerified) / args.batchSize)
+#            assert sequenceLengthHere < args.sequence_length
+#            assert  sequenceLengthHere > 0
+
+         cutoff = int(len(numerified)/(args.batchSize*sequenceLengthHere)) * (args.batchSize*sequenceLengthHere)
+         numerifiedCurrent = numerified[:cutoff]
+         numerified = numerified[cutoff:]
+        
+         #print(len(numerifiedCurrent))
+         numerifiedCurrent = torch.LongTensor(numerifiedCurrent).view(args.batchSize, -1, sequenceLengthHere).transpose(0,1).transpose(1,2).cuda()
+         #print(numerifiedCurrent.size())
+         #quit()
+         numberOfSequences = numerifiedCurrent.size()[0]
+         for i in range(numberOfSequences):
+  #           print(numerifiedCurrent[i].size())
+             yield numerifiedCurrent[i]
+         hidden = None
+       else:
+         print("Skipping")
 
 def prepareDatasetChunksPrevious(data, train=True):
       numeric = [0]
@@ -235,7 +237,7 @@ def forward(numeric, train=True, printHere=False):
       
       loss = train_loss(log_probs.view(-1, len(itos)+3), target_tensor.view(-1))
 
-      if printHere and args.verbose:
+      if printHere:
          lossTensor = print_loss(log_probs.view(-1, len(itos)+3), target_tensor.view(-1)).view(-1, args.batchSize)
          losses = lossTensor.data.cpu().numpy()
          numericCPU = numeric.cpu().data.numpy()
@@ -247,7 +249,7 @@ def forward(numeric, train=True, printHere=False):
    #            boundaries_index[0] += 1
     #        else:
      #          boundary = False
-            print((losses[i][0], "OOV" if numericCPU[i+1][0]==2 else itos[numericCPU[i+1][0]-3]  ))
+            print((losses[i][0], itos[numericCPU[i+1][0]-3]))
       return loss, target_tensor.view(-1).size()[0]
 
 def backward(loss, printHere):
@@ -259,14 +261,17 @@ def backward(loss, printHere):
       optim.step()
 
 
-
+lossHasBeenBad = 0
 
 import time
+
+totalStartTime = time.time()
+
 
 devLosses = []
 for epoch in range(10000):
    print(epoch)
-   training_data = corpusIteratorHolmes.training(args.language)
+   training_data = corpusIteratorWikiWords.training(args.language)
    print("Got data")
    training_chars = prepareDatasetChunks(training_data, train=True)
 
@@ -286,23 +291,36 @@ for epoch in range(10000):
       printHere = (counter % 50 == 0)
       loss, charCounts = forward(numeric, printHere=printHere, train=True)
       backward(loss, printHere)
+      if loss.data.cpu().numpy() > 15.0:
+          lossHasBeenBad += 1
+      else:
+          lossHasBeenBad = 0
+      if lossHasBeenBad > 100:
+          print("Loss exploding, has been bad for a while")
+          print(loss)
+          quit()
       trainChars += charCounts 
       if printHere:
+          print(("Loss here", loss))
           print((epoch,counter))
           print("Dev losses")
           print(devLosses)
           print("Chars per sec "+str(trainChars/(time.time()-startTime)))
           print(learning_rate)
           print(args)
-      if counter % 20000 == 0 and epoch <= 1:
+      if counter % 20000 == 0: # and epoch == 0:
         if args.save_to is not None:
            torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), "/checkpoint/mhahn/"+args.save_to+".pth.tar")
+      if (time.time() - totalStartTime)/60 > 4200:
+          print("Breaking early to get some result within 72 hours")
+          totalStartTime = time.time()
+          break
 
-
+ #     break
    rnn_drop.train(False)
 
 
-   dev_data = corpusIteratorHolmes.dev(args.language)
+   dev_data = corpusIteratorWikiWords.dev(args.language)
    print("Got data")
    dev_chars = prepareDatasetChunks(dev_data, train=False)
 
@@ -324,15 +342,13 @@ for epoch in range(10000):
        dev_char_count += numberOfCharacters
    devLosses.append(dev_loss/dev_char_count)
    print(devLosses)
+#   quit()
    with open("/checkpoint/mhahn/"+args.language+"_"+__file__+"_"+str(args.myID), "w") as outFile:
       print(" ".join([str(x) for x in devLosses]), file=outFile)
       print(" ".join(sys.argv), file=outFile)
       print(str(args), file=outFile)
    if len(devLosses) > 1 and devLosses[-1] > devLosses[-2]:
       break
-   if devLosses[-1] > 5.0:
-      print("Bad loss, aborting")
-      quit()
    if args.save_to is not None:
       torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), "/checkpoint/mhahn/"+args.save_to+".pth.tar")
 

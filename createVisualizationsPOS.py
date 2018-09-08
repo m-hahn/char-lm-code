@@ -20,12 +20,12 @@ if True:
    prefix = "char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2.py_wiki-german-nospaces-bugfix-checkpoints_CHECKPOINT"
    files = [x for x in os.listdir(basePath) if language in x]
    print(basePath+"/"+prefix)
-   data = {"LM" : [], "Baseline" : []}
+   data = {"LM" : [], "Baseline" : [], "RNN" : [], "Words" : []}
    for filename in files:
        with open(basePath+"/"+filename, "r") as inFile:
            dataNew = inFile.read().strip().split("\n")
            trainSize = int(dataNew[1])
-           model = "LM" if "bptt" in dataNew[2] else "Baseline"
+           model = ("RNN" if "rnn" in dataNew[2] else ("Words" if "word" in dataNew[2] else "LM")) if "bptt" in dataNew[2] else "Baseline"
            result = float(dataNew[3])
            data[model].append((trainSize, result))
    print(data)

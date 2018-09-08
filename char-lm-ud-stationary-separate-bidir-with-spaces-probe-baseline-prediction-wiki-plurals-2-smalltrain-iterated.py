@@ -112,8 +112,8 @@ if args.load_from is not None:
   for name, module in named_modules.items():
       print(checkpoint[name].keys())
       module.load_state_dict(checkpoint[name])
-#else:
-#   assert False
+else:
+   assert False
 ####################################
 
 
@@ -315,132 +315,130 @@ def doChoice(x, y):
     print(losses)
     return 0 if losses[0] < losses[1] else 1
 
+#TRAIN_SIZE = 20.0
 
 # classify singulars vs plurals
 print("trained on n, s, e")
 encodedPlurals = encodeListOfWords(["."+y for x, y in plusL([formations["n"], formations["s"], formations["e"]])])
 encodedSingulars = encodeListOfWords(["."+x for x, y in plusL([formations["n"], formations["s"], formations["e"]])])
 
-predictors = encodedPlurals + encodedSingulars
 
-dependent = [0 for _ in encodedSingulars] + [1 for _ in encodedPlurals]
-
-from sklearn.model_selection import train_test_split
-x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=0.1, random_state=0, shuffle=True)
-
-
-from sklearn.linear_model import LogisticRegression
-
-print("regression")
-
-logisticRegr = LogisticRegression()
-
-logisticRegr.fit(x_train, y_train)
-
-predictions = logisticRegr.predict(x_test)
-
-
-score = logisticRegr.score(x_test, y_test)
-print(["test on n, s, e",score])
-
-evaluationPoints = []
-evaluationPoints.append(("NSE", "NSE", score))
-
-
-
-# test on R plurals
 encodedPluralsR = encodeListOfWords(["."+y for x, y in formations["r"]])
 encodedSingularsR = encodeListOfWords(["."+x for x, y in formations["r"]])
 
-predictors = encodedPluralsR + encodedSingularsR
-dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
 
-score = logisticRegr.score(predictors, dependent)
-print(["r plurals",score])
+formations["same"] = [(x, y) for x, y in formations["same"] if x[-1] == y[-1]]
 
-evaluationPoints.append(("NSE", "R", score))
+encodedPluralsSame = encodeListOfWords(["."+y for x, y in formations["same"]])
+encodedSingularsSame = encodeListOfWords(["."+x for x, y in formations["same"]])
 
-# test on R plurals
-encodedPluralsR = encodeListOfWords(["."+y for x, y in formations["same"]])
-encodedSingularsR = encodeListOfWords(["."+x for x, y in formations["same"]])
-
-predictors = encodedPluralsR + encodedSingularsR
-dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
-
-score = logisticRegr.score(predictors, dependent)
-print(["same length plurals", score])
-
-evaluationPoints.append(("NSE", "same", score))
-
-
-
-
-# adjective plural
-
-
-adjectivePlurals = set()
-
-for sentence in training.iterator():
- for line in sentence:
-   if line["posUni"] == "ADJ":
-      morph = line["morph"]
-      if "Number=Plur" in morph:
-          adjectivePlurals.add(line["word"].lower())
-          
-predictors = encodeListOfWords(["."+x for x in adjectivePlurals])
-dependent = [1 for _ in predictors]
-score = logisticRegr.score(predictors, dependent)
-print(["adjective plurals", score])
-
-# now look at other words that end in n, s, e
+print(formations["same"])
+#quit()
 
 wordsEndingIn = {"r" : set(), "s" : set(), "n" : set(), "e" : set()}
 
 for sentence in training.iterator():
- for line in sentence:
-   if line["posUni"] == "NOUN":
-      morph = line["morph"]
-      if "Number=Plur" not in  morph and "Case=Dat" not in morph:
-        if line["word"][-1] in wordsEndingIn:
-          wordsEndingIn[line["word"][-1]].add(line["word"].lower())
+      for line in sentence:
+        if line["posUni"] == "NOUN":
+           morph = line["morph"]
+           if "Number=Plur" not in  morph and "Case=Dat" not in morph:
+             if line["word"][-1] in wordsEndingIn:
+               wordsEndingIn[line["word"][-1]].add(line["word"].lower())
 
-predictors = encodeListOfWords(["."+x for x in wordsEndingIn["r"]])
-dependent = [0 for _ in predictors]
-score = logisticRegr.score(predictors, dependent)
-print(["r", score])
-
-evaluationPoints.append(("NSE", "r_distract", score))
+predictorsFoilsE = encodeListOfWords(["."+x for x in wordsEndingIn["e"]])
+predictorsFoilsR = encodeListOfWords(["."+x for x in wordsEndingIn["r"]])
+predictorsFoilsS = encodeListOfWords(["."+x for x in wordsEndingIn["s"]])
+predictorsFoilsN = encodeListOfWords(["."+x for x in wordsEndingIn["n"]])
 
 
+evaluationPoints = []
 
-predictors = encodeListOfWords(["."+x for x in wordsEndingIn["s"]])
-dependent = [0 for _ in predictors]
-score = logisticRegr.score(predictors, dependent)
-print(["s", score])
+from sklearn.model_selection import train_test_split
+with open(f"/checkpoint/mhahn/plural-results-{args.load_from}.txt", "w") as outFile:
+ for TRAIN_SIZE in range(4, 100, 4):
+   print(TRAIN_SIZE)
+   evaluationPoints.append((TRAIN_SIZE, []))
 
-evaluationPoints.append(("NSE", "s_distract", score))
-
-
-
-predictors = encodeListOfWords(["."+x for x in wordsEndingIn["n"]])
-dependent = [0 for _ in predictors]
-score = logisticRegr.score(predictors, dependent)
-print(["n", score])
-
-evaluationPoints.append(("NSE", "n_distract", score))
+   for trial in range(20):
+     predictors = encodedPlurals + encodedSingulars
+     
+     dependent = [0 for _ in encodedSingulars] + [1 for _ in encodedPlurals]
 
 
+     x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=1-TRAIN_SIZE/len(dependent), random_state=random.randint(0,100), shuffle=True, stratify=dependent)
+     from sklearn.linear_model import LogisticRegression
+     
+     
+     logisticRegr = LogisticRegression()
+     
+     logisticRegr.fit(x_train, y_train)
+     
+     predictions = logisticRegr.predict(x_test)
+     
+     
+     score = logisticRegr.score(x_test, y_test)
+     #print(["test on n, s, e",score])
+     
+     evaluationPoints[-1][1].append(("NSE", "NSE", score))
+     
+     
+     
+     # test on R plurals
+    
+     predictors = encodedPluralsR + encodedSingularsR
+     dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
+     
+     score = logisticRegr.score(predictors, dependent)
+     #print(["r plurals",score])
+     
+     evaluationPoints[-1][1].append(("NSE", "R", score))
+     
+     # test on R plurals
+    
+     predictors = encodedPluralsSame + encodedSingularsSame
+     dependent = [0 for _ in encodedSingularsSame] + [1 for _ in encodedPluralsSame]
+     
+     score = logisticRegr.score(predictors, dependent)
+     #print(["same length plurals", score])
+     
+     evaluationPoints[-1][1].append(("NSE", "same", score))
+     
+    
+    
+     
+     dependent = [0 for _ in predictorsFoilsR]
+     score = logisticRegr.score(predictorsFoilsR, dependent)
+     #print(["r", score])
+     
+     evaluationPoints[-1][1].append(("NSE", "r_distract", score))
+     
+     
+     
+     dependent = [0 for _ in predictorsFoilsS]
+     score = logisticRegr.score(predictorsFoilsS, dependent)
+     #print(["s", score])
+     
+     evaluationPoints[-1][1].append(("NSE", "s_distract", score))
+     
 
-
-predictors = encodeListOfWords(["."+x for x in wordsEndingIn["e"]])
-dependent = [0 for _ in predictors]
-score = logisticRegr.score(predictors, dependent)
-print(["e", score])
-
-evaluationPoints.append(("NSE", "e_distract", score))
-
-
-
+     dependent = [0 for _ in predictorsFoilsN]
+     score = logisticRegr.score(predictorsFoilsN, dependent)
+    # print(["n", score])
+     
+     evaluationPoints[-1][1].append(("NSE", "n_distract", score))
+     
+     
+     
+     
+     dependent = [0 for _ in predictorsFoilsE]
+     score = logisticRegr.score(predictorsFoilsE, dependent)
+    # print(["e", score])
+     
+     evaluationPoints[-1][1].append(("NSE", "e_distract", score))
+     
+   for x in evaluationPoints[-1][1]:
+       print(TRAIN_SIZE, " ".join([str(y) for y in list(x)]), file=outFile)
+quit()
 
 
 ###################################
@@ -454,7 +452,7 @@ predictors = encodedPlurals + encodedSingulars
 dependent = [0 for _ in encodedSingulars] + [1 for _ in encodedPlurals]
 
 from sklearn.model_selection import train_test_split
-x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=0.1, random_state=0, shuffle=True)
+x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=1-TRAIN_SIZE/len(dependent), random_state=0, shuffle=True, stratify=dependent)
 
 
 from sklearn.linear_model import LogisticRegression
@@ -555,7 +553,7 @@ predictors = encodedPlurals + encodedSingulars
 dependent = [0 for _ in encodedSingulars] + [1 for _ in encodedPlurals]
 
 from sklearn.model_selection import train_test_split
-x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=0.1, random_state=0, shuffle=True)
+x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=1-TRAIN_SIZE/len(dependent), random_state=0, shuffle=True, stratify=dependent)
 
 
 from sklearn.linear_model import LogisticRegression
@@ -987,7 +985,7 @@ for _ in masc:
 # create logistic regression for gender
 
 from sklearn.model_selection import train_test_split
-x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=0.1, random_state=0, shuffle=True)
+x_train, x_test, y_train, y_test = train_test_split(predictors, dependent, test_size=1-TRAIN_SIZE/len(dependent), random_state=0, shuffle=True, stratify=dependent)
 
 
 from sklearn.linear_model import LogisticRegression

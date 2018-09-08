@@ -1,4 +1,7 @@
 
+
+# Clear evidence that the model isn't leveraging evidence about the subcategorization of the verb.
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--language", dest="language", type=str)
@@ -44,6 +47,15 @@ def plus(it1, it2):
       yield x
    for x in it2:
       yield x
+
+
+word_vocab_path = {"german" : "/private/home/mhahn/data/WIKIPEDIA/german-wiki-word-vocab.txt", "italian" : "/private/home/mhahn/data/WIKIPEDIA/itwiki/italian-wiki-word-vocab.txt"}[args.language]
+
+with open(word_vocab_path, "r") as inFile:
+     itos_words = [x.split("\t")[0] for x in inFile.read().strip().split("\n")[:50000]]
+stoi_words = dict([(itos_words[i],i) for i in range(len(itos_words))])
+
+
 
 try:
    with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "r") as inFile:
@@ -130,7 +142,7 @@ from torch.autograd import Variable
 #from embed_regularize import embedded_dropout
 
 def encodeWord(word):
-      numeric = [[]]
+      numeric = [[0]]
       for char in word:
            numeric[-1].append((stoi[char]+3 if char in stoi else 2) if True else 2+random.randint(0, len(itos)))
       return numeric
@@ -260,6 +272,24 @@ out2, hidden2 = encodeSequenceBatchForward(encodeWord("katzem"))
 #print(torch.dot(hidden1[0], hidden2[0]))
 #print(torch.dot(hidden1[1], hidden2[1]))
 
+print(torch.nn.functional.cosine_similarity(out1, out2, dim=0))
+#print(torch.nn.functional.cosine_similarity(hidden1, hidden2, dim=0))
+#print(torch.nn.functional.cosine_similarity(cell1, cell2, dim=0))
+
+#print("willmach")
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ichmach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".dumach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ermach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".siemach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esmach"))))
+#
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ichmach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".dumach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".ermach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".siemach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esmach"))))
+#print(keepGenerating(encodeSequenceBatchForward(encodeWord(".esdenk"))))
+#
 def doChoiceList(xs, printHere=True):
     if printHere:
       for x in xs:
@@ -268,6 +298,7 @@ def doChoiceList(xs, printHere=True):
     if printHere:
       print(losses)
     return np.argmin(losses)
+
 def doChoiceListLosses(xs, printHere=True):
     if printHere:
       for x in xs:
@@ -276,19 +307,102 @@ def doChoiceListLosses(xs, printHere=True):
     if printHere:
       print(losses)
     return losses
-
-
-
 def doChoice(x, y):
     print(x)
     print(y)
     losses = choice(encodeWord(x), encodeWord(y))
     print(losses)
     return 0 if losses[0] < losses[1] else 1
+#
+#doChoice(".ichmachedas.", ".ichmachstdas.")
+#doChoice(".dumachendas.", ".dumachstdas.")
+#doChoice(".ermachendas.", ".ermachtdas.")
+#doChoice(".wirmachendas.", ".wirmachtdas.")
+#
+#doChoice(".ichvergeigedas.", ".ichvergeigstdas.")
+#doChoice(".duvergeigendas.", ".duvergeigstdas.")
+#doChoice(".ervergeigendas.", ".ervergeigtdas.")
+#doChoice(".wirvergeigendas.", ".wirvergeigtdas.")
+#
+#
+#
+#
+#
+#doChoice(".ichwilldas.", ".ichwillstdas.")
+#doChoice(".duwollendas.", ".duwillstdas.")
+#doChoice(".erwollendas.", ".erwilldas.")
+#doChoice(".wirwollendas.", ".wirwilldas.")
+#
+#
+#doChoice("indashaus.", "indiehaus.")
+#doChoice("indascomputermaus.", "indiecomputermaus.")
+#
+#doChoice(".ichgeheindashaus.", ".ichgeheindemhaus.")
+#doChoice(".ichlebeindashaus.", ".ichlebeindemhaus.")
+#
+#
+#doChoice(".ichlebeindashausmeisterzimmer.", ".ichlebeindemhausmeisterzimmer.")
+#
+#
+#doChoice(".zweihaus.", ".zweihäuser.")
+#doChoice(".zweilampen.", ".zweilampe.")
+#doChoice(".zweilampenpfahl.", ".zweilampenpfähle.")
+#doChoice(".zweihauspfähle.", ".zweihäuserpfähle.")
+#doChoice(".zweinasenbär.", ".zweinasenbären.")
+#
+#doChoice(".einhaus.", ".einhäuser.")
+#doChoice(".einlampenpfahl.", ".einlampenpfähle.")
+#doChoice(".einhauspfähle.", ".einhäuserpfähle.")
+#doChoice(".einnasenbär.", ".einnasenbären.")
 
-from corpusIterator import CorpusIterator
 
-adjectives = []
+correctDat = [0,0]
+correctGen = [0,0]
+
+
+# mit der + must have feminine noun, not masculine noun
+# mit den  + must have dat plur noun, not masculine accusative noun
+
+
+feminineDatives = set()
+masculineNominatives = set()
+
+pluralDatives = set()
+masculineAccusatives = set()
+
+with open("germanNounDeclension.txt") as inFile:
+    data = inFile.read().strip().split("###")[1:]
+    for noun in data:
+       noun = noun.strip().split("\n")[1:]
+       noun = [x.split("\t") for x in noun]
+       noun = {x[0] : [y.lower() for y in x[1:]] for x in noun}
+       if "Genus" in noun:
+         if "m" in noun["Genus"]: # record the nominative
+             for x in noun["Nominativ Singular"]:
+                 masculineNominatives.add(x)
+             for x in noun["Akkusativ Singular"]:
+                 masculineAccusatives.add(x)
+         if "f" in noun["Genus"]:
+             for x in noun["Dativ Singular"]:
+                 feminineDatives.add(x)
+         if "Dativ Plural" not in noun:
+            print("ERROR")
+            continue
+         for x in noun["Dativ Plural"]:
+             pluralDatives.add(x)
+
+common = pluralDatives & masculineAccusatives
+pluralDatives = pluralDatives - common
+masculineAccusatives = masculineAccusatives - common
+
+feminineDatives = list(feminineDatives)
+masculineNominatives = list(masculineNominatives)
+pluralDatives = list(pluralDatives)
+masculineAccusatives = list(masculineAccusatives)
+
+
+# more ~/data/WIKIPEDIA/german-train-tagged.txt  | awk '{print $2,tolower($3)}' 
+# sort ~/data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS.txt | uniq -c > ~/data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS-uniq.txt
 wentThroughAdjectives = False
 with open("/private/home/mhahn//data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as inFile:
     adjectives = []
@@ -301,98 +415,143 @@ with open("/private/home/mhahn//data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS
              continue
       else:
         wentThroughAdjectives = True
-      if line[2] == "<unknown>":
-         continue
-      if len(line[2]) == 1:
-        continue
-      if "." in line[2]:
-        continue
       if int(line[0]) > 100 and not line[2].endswith("r"):
-         adjectives.append(line[2])
+        if line[2]+"en" in stoi_words and line[2]+"e" in stoi_words:
+           adjectives.append(line[2])
+      
+print(len(adjectives))
+
+from corpusIterator import CorpusIterator
+data = CorpusIterator("German", partition="train", removePunctuation=False).iterator()
+frames = []
+for sentence in data:
+  mits = []
+  for word in sentence:
+     if word["lemma"] == "mit" and word["posUni"] == "ADP" and word["dep"] == "case":
+         head = word["head"] - 1
+         if head < 0:
+              continue
+         if sentence[head]["posUni"] not in ["NOUN", "PROPN"]:
+              continue
+         mits.append(word)
+  if len(mits) > 0:
+ #    print(len(mits))
+     mit = random.choice(mits)
+  #   print(mit)
+     head = mit["head"] - 1
+#     if head < 0:
+#        print(sentence)
+#        continue
+#     print(sentence[head]["posUni"], sentence[head]["dep"])
+     assert head >= 0
+     sentence[head]["remove"] = True
+   #  print(len(sentence), [x["head"] for x in sentence])
+    # print(len(sentence), [x["index"] for x in sentence])
+
+     for i in range(0, len(sentence)):
+        if i == head:
+            sentence[i]["remove"] = True
+        elif "remove" not in sentence[i]:
+           stack = [i]
+           while True:
+               headH = sentence[stack[-1]]["head"]-1
+               assert headH < len(sentence), headH
+               if headH < 0 :
+                   for j in stack:
+                       sentence[j]["remove"] = False
+                   break
+               elif "remove" in sentence[headH]:
+                   for j in stack:
+                      sentence[j]["remove"] = sentence[headH]["remove"]
+                   break
+               stack.append(headH) 
+        assert "remove" in sentence[i]
+     badIndices = [i for i in range(len(sentence)) if sentence[i]["remove"]]
+#     print(badIndices)
+     if len(badIndices) != badIndices[-1] - badIndices[0] + 1: # remove examples wit
+ #       print(badIndices)
+        continue
+     if badIndices[0] != mit["index"] -1:
+#        print(mit, badIndices, [(l["word"], l["head"]) for l in sentence] )
+        continue
+     frames.append(([x["word"] for x in sentence[:badIndices[0]]], [x["word"] for x in sentence[badIndices[-1]+1:]]))
+print(frames[:10])
+# Hypothesis: the model is capable of getting this right when the adjective distinguishes the case, but not so easily when case marking on the noun is required. 
+# (Removing the noun, accuracy is even perfect in the case where the adjective helps distinguish)
+
+import random
+
+preposition = "mit"
 
 
-def genderTest(mode):
-   training = CorpusIterator("German", partition="train", storeMorph=True, removePunctuation=True)
-   genders = dict([("Gender="+x, set()) for x in ["Masc", "Fem", "Neut"]])
-   for sentence in training.iterator():
-       for line in sentence:
-        if line["posUni"] == "NOUN" and "|" not in line["lemma"]:
-        
-           morph = line["morph"]
-           if "Number=Sing" in morph and "Case=Nom" in morph:
-            gender = [x for x in morph if x.startswith("Gender=")]
-            if len(gender) > 0:
-              genders[gender[0]].add(line["lemma"].lower())
-              
-   #print(genders)
-   counter = 0
+correctDer = {}
+correctControlDer = {}
+correctByPMI = {}
 
-   results = [[0,0,0] for _ in range(3)]
-   for genderIndex, gender in enumerate(["Gender="+x for x in ["Masc", "Fem", "Neut"]]):
-     with open(f"stimuli/german-gender-{gender}-{mode}.txt", "w") as outFile:
-       counter = 0
-       for noun in genders[gender]:
-         counter += 1
-     #    adverbs = ["sehr"]
-      #   adjective = "" #"".join(adverbs)+random.choice(adjectives)+"e"
-         if mode == "nothing":
-           noun = noun
-           nounStimulus = [noun]
-         elif mode == "adjective":
-            adjective = random.choice(adjectives)+"e"
-            nounStimulus = [adjective, noun]
-            noun = adjective+noun
-         elif mode == "sehr + adjective":
-            adjective = random.choice(adjectives)+"e"
-            nounStimulus = ["sehr", adjective, noun]
-            noun = "sehr"+adjective+noun
-         elif mode == "sehr + extrem + adjective":
-            adjective = random.choice(adjectives)+"e"
-            nounStimulus = ["sehr", "extrem", adjective, noun]
-            noun = "sehr"+"extrem"+adjective+noun
+for condition in ["none", "sehr", "sehr_extrem", "sehr_extrem_unglaublich"]:
+   correctDer[condition] = 0.0 # this one is stable --> here, the adjective helps distinguish
+   #correctDen = 0 # this one is less strong, and deteriorates to chance with longer infixes (adjective with adverbs) --> here, the adjective doesn't distinguish between the two forms
+   
+   correctControlDer[condition] = 0.0 # this one is stable --> here, the adjective helps distinguish
+   #correctControlDen = 0 # this one is less strong, and deteriorates to chance with longer infixes (adjective with adverbs) --> here, the adjective doesn't distinguish between the two forms
+   
+   #correctNoAdjDer = 0 # this one is better. why?
+   #correctNoAdjDen = 0 # 
+   correctByPMI[condition] = 0.0
 
-
- 
-         stimuli = []
-         print(" ".join(["der"] + nounStimulus), file=outFile)
-         print(" ".join(["die"] + nounStimulus), file=outFile)
-         print(" ".join(["das"] + nounStimulus), file=outFile)
-         
- 
-  #       noun = f"{adjective}{noun}"
-         results[genderIndex][doChoiceList([f".der{noun}.", f".die{noun}.", f".das{noun}."], printHere=(random.random() > 0.98))] += 1
-  #       results[doChoiceList([".ein"+noun+".", ".eine"+noun+"."])] += 1
-         if random.random() > 0.98:
-            print([[round(x/(counter if genderIndex == i else 1), 2) for x in results[i]] for i in range(len(results))])
-       results[genderIndex] = [x/counter for x in results[genderIndex]]
-   return results
-
-
-#   # test separation of feminine from masc/neuter via indefinite
-#   results = [0,0,0] 
-#   for noun in genders["Gender=Masc"].union(genders["Gender=Neut"]):
-#       counter += 1
-##       results[doChoiceList([".der"+noun+".", ".die"+noun+".", ".das"+noun+"."])] += 1
-#       results[doChoiceList([".ein"+noun+".", ".eine"+noun+"."])] += 1
-#       print([x/counter for x in results])
-#   return [x/counter for x in results]
+   if True: 
+   #with open("stimuli/german-prep-case-"+condition+".txt", "w") as outFile:
+   # with open("stimuli/german-prep-case-control-"+condition+".txt", "w") as outFileControl:
+     for i in range(1,len(frames)):
+       frame = frames[i]
+       left = "".join(frame[0])
+       right = "".join(frame[1])
+       adverbs = ["sehr"] #,"extrem","unglaublich"]
+       adjectiveWord = random.choice(adjectives)
+       if condition == "none":
+          adverbs = []
+       elif condition == "sehr":
+          adverbs = ["sehr"]
+       elif condition == "sehr_extrem":
+          adverbs = ["sehr", "extrem"]
+       elif condition == "sehr_extrem_unglaublich":
+         adverbs = ["sehr", "extrem", "unglaublich"]
+       else:
+          assert False 
+       adjective = "".join(adverbs)+adjectiveWord
+     
+#       print(" ".join([preposition, "der"] + adverbs + [adjectiveWord+"en"]), file=outFile)
+#       print(" ".join([preposition, "der"] + adverbs + [adjectiveWord+"e"]), file=outFile)
 #
-confusion1 = genderTest("nothing")
-confusion2 = genderTest("adjective")
-confusion3 = genderTest("sehr + adjective")
-confusion4 = genderTest("sehr + extrem + adjective")
+#       print(" ".join(["der"] + adverbs + [adjectiveWord+"en"]), file=outFileControl)
+#       print(" ".join(["der"] + adverbs + [adjectiveWord+"e"]), file=outFileControl)
+  
+       lossesFull = doChoiceListLosses([f'.{left}{preposition}der{adjective}en{right}', f'.{left}{preposition}der{adjective}e{right}'], printHere=True)
+       lossesSuffix = doChoiceListLosses([f'der{adjective}en{right}', f'der{adjective}e{right}'], printHere=True)
+       pmi = lossesFull - lossesSuffix
+       correctByPMI[condition] += (1 if 0 == np.argmin(pmi) else 0)
+       print("BY PMI", correctByPMI[condition]/i)
+   
+       correctDer[condition] += (1 if 0 == np.argmin(lossesFull) else 0)
+       print("WITH ADJECTIVE", correctDer[condition]/i)
+   
+       correctControlDer[condition] += (1 if 0 == np.argmin(lossesSuffix) else 0)
+       print("CONTROL", correctControlDer[condition]/i)
+   
+   correctDer[condition] /= len(frames)  # this one is stable --> here, the adjective helps distinguish
+   #correctDen = 0 # this one is less strong, and deteriorates to chance with longer infixes (adjective with adverbs) --> here, the adjective doesn't distinguish between the two forms
+   
+   correctControlDer[condition] /= len(frames) # this one is stable --> here, the adjective helps distinguish
+   #correctControlDen = 0 # this one is less strong, and deteriorates to chance with longer infixes (adjective with adverbs) --> here, the adjective doesn't distinguish between the two forms
+   
+   #correctNoAdjDer = 0 # this one is better. why?
+   #correctNoAdjDen = 0 # 
+   correctByPMI[condition] /= len(frames)
 
-print(confusion1)
-print(confusion2)
-print(confusion3)
-print(confusion4)
-
-
-
-
-
-import numpy as np
-losses  = (doChoiceListLosses([".der", ".die", ".das"]))
-losses = np.exp(-losses)
-print(losses/np.sum(losses))
+print("Accuracy") 
+print(correctDer)
+print("Control")
+print(correctControlDer)
+print("By PMI")
+print(correctByPMI)
 

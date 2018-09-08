@@ -20,6 +20,8 @@ parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
 parser.add_argument("--sequence_length", type=int, default=random.choice([50, 50, 80]))
 parser.add_argument("--verbose", type=bool, default=False)
 parser.add_argument("--lr_decay", type=float, default=random.choice([0.5, 0.7, 0.9, 0.95, 0.98, 0.98, 1.0]))
+parser.add_argument("--nonlinearity", type=str, default=random.choice(["tanh", "relu"]))
+
 
 
 import math
@@ -78,7 +80,7 @@ print(torch.__version__)
 from weight_drop import WeightDrop
 
 
-rnn = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num).cuda()
+rnn = torch.nn.RNN(args.char_embedding_size, args.hidden_dim, args.layer_num, args.nonlinearity).cuda()
 
 rnn_parameter_names = [name for name, _ in rnn.named_parameters()]
 print(rnn_parameter_names)
@@ -274,7 +276,7 @@ predictor = [a+b+c+d+e+f+g for a, b, c, d, e, f, g in zip(predictor, predictorSh
 
 
 from sklearn.model_selection import train_test_split
-x_train, x_test, y_train, y_test, chars_train, chars_test = train_test_split(predictor, dependent, chars, test_size=0.9, random_state=0, shuffle=False)
+x_train, x_test, y_train, y_test, chars_train, chars_test = train_test_split(predictor, dependent, chars, test_size=0.5, random_state=0, shuffle=False)
 
 
 from sklearn.linear_model import LogisticRegression
@@ -407,5 +409,4 @@ print(f"P {round(100*precision,2)} R {round(100*recall,2)} F {round(100*f,2)} BP
 #      loss.backward()
 #      optim.step()
 #      
-print("Training examples",len(x_train))
-
+#

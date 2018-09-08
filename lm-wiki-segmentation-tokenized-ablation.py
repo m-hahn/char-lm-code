@@ -17,7 +17,7 @@ parser.add_argument("--char_dropout_prob", type=float, default=0.33)
 parser.add_argument("--char_noise_prob", type = float, default= 0.01)
 parser.add_argument("--learning_rate", type = float, default= 0.1)
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
-parser.add_argument("--sequence_length", type=int, default=random.choice([50, 50, 80]))
+parser.add_argument("--sequence_length", type=int, default=random.choice([50]))
 parser.add_argument("--verbose", type=bool, default=False)
 parser.add_argument("--lr_decay", type=float, default=random.choice([0.5, 0.7, 0.9, 0.95, 0.98, 0.98, 1.0]))
 
@@ -242,7 +242,15 @@ for i in range(len(numeric_full)):
         lastWasUtteranceBoundary = True
      else:
        chars.append(character)
-       predictor.append([pmiFuturePast, char_surprisal[i], char_entropy[i], 1 if lastWasUtteranceBoundary else 0]) #char_surprisal[i], pmiFuturePast]) #pmiFuturePast])
+       predictorHere = []
+       predictorHere.append(pmiFuturePast)
+       #predictorHere.append(char_surprisal[i])
+       #predictorHere.append(char_entropy[i])
+#       predictorHere.append(future_surprisal_with[i])
+       predictorHere.append(1 if lastWasUtteranceBoundary else 0) 
+
+
+       predictor.append(predictorHere) #[pmiFuturePast, char_surprisal[i], char_entropy[i], 1 if lastWasUtteranceBoundary else 0]) #char_surprisal[i], pmiFuturePast]) #pmiFuturePast])
        dependent.append(1 if boundary else 0)
        lastWasUtteranceBoundary = False
 
@@ -274,7 +282,7 @@ predictor = [a+b+c+d+e+f+g for a, b, c, d, e, f, g in zip(predictor, predictorSh
 
 
 from sklearn.model_selection import train_test_split
-x_train, x_test, y_train, y_test, chars_train, chars_test = train_test_split(predictor, dependent, chars, test_size=0.9, random_state=0, shuffle=False)
+x_train, x_test, y_train, y_test, chars_train, chars_test = train_test_split(predictor, dependent, chars, test_size=0.5, random_state=0, shuffle=False)
 
 
 from sklearn.linear_model import LogisticRegression

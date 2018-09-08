@@ -10,18 +10,20 @@ parser.add_argument("--load-from", dest="load_from", type=str)
 import random
 
 parser.add_argument("--batchSize", type=int, default=random.choice([128, 128, 256]))
-parser.add_argument("--char_embedding_size", type=int, default=random.choice([100, 200, 300]))
-parser.add_argument("--hidden_dim", type=int, default=random.choice([1024]))
-parser.add_argument("--layer_num", type=int, default=random.choice([2]))
+parser.add_argument("--char_embedding_size", type=int, default=random.choice([50, 100, 200, 200]))
+parser.add_argument("--hidden_dim", type=int, default=random.choice([256, 512, 1024, 2048]))
+parser.add_argument("--layer_num", type=int, default=random.choice([1,2]))
 parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.0, 0.0, 0.0, 0.01, 0.05, 0.1]))
 parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.0, 0.05, 0.15, 0.2]))
 parser.add_argument("--char_dropout_prob", type=float, default=random.choice([0.0, 0.0, 0.001, 0.01, 0.01]))
 parser.add_argument("--char_noise_prob", type = float, default=random.choice([0.0, 0.0]))
-parser.add_argument("--learning_rate", type = float, default= random.choice([0.8, 0.9, 1.0,1.0,  1.1, 1.1, 1.2, 1.2, 1.2, 1.2, 1.3, 1.3, 1.4, 1.5]))
+parser.add_argument("--learning_rate", type = float, default= random.choice([0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.01, 0.01, 0.1, 0.2]))
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
-parser.add_argument("--sequence_length", type=int, default=random.choice([50, 50, 80]))
+parser.add_argument("--sequence_length", type=int, default=random.choice([10, 20, 30, 50, 50, 80]))
 parser.add_argument("--verbose", type=bool, default=False)
 parser.add_argument("--lr_decay", type=float, default=random.choice([0.5, 0.7, 0.9, 0.95, 0.98, 0.98, 1.0]))
+parser.add_argument("--nonlinearity", type=str, default=random.choice(["tanh", "relu"]))
+
 
 
 import math
@@ -30,13 +32,10 @@ args=parser.parse_args()
 print(args)
 
 
-assert "word" in args.load_from, args.load_from
-
-print(args)
 
 
 
-import corpusIteratorWikiWords
+import corpusIteratorWiki
 
 
 
@@ -46,10 +45,34 @@ def plus(it1, it2):
    for x in it2:
       yield x
 
-char_vocab_path = {"german" : "/private/home/mhahn/data/WIKIPEDIA/german-wiki-word-vocab.txt", "italian" : "/private/home/mhahn/data/WIKIPEDIA/itwiki/italian-wiki-word-vocab.txt"}[args.language]
 
-with open(char_vocab_path, "r") as inFile:
-     itos = [x.split("\t")[0] for x in inFile.read().strip().split("\n")[:50000]]
+word_vocab_path = {"german" : "/private/home/mhahn/data/WIKIPEDIA/german-wiki-word-vocab.txt", "italian" : "/private/home/mhahn/data/WIKIPEDIA/itwiki/italian-wiki-word-vocab.txt"}[args.language]
+
+with open(word_vocab_path, "r") as inFile:
+     itos_words = [x.split("\t")[0] for x in inFile.read().strip().split("\n")[:50000]]
+stoi_words = dict([(itos_words[i],i) for i in range(len(itos_words))])
+
+
+
+try:
+   with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "r") as inFile:
+     itos = inFile.read().strip().split("\n")
+except FileNotFoundError:
+    print("Creating new vocab")
+    char_counts = {}
+    # get symbol vocabulary
+
+    with open("/private/home/mhahn/data/WIKIPEDIA/"+args.language+"-vocab.txt", "r") as inFile:
+      words = inFile.read().strip().split("\n")
+      for word in words:
+         for char in word.lower():
+            char_counts[char] = char_counts.get(char, 0) + 1
+    char_counts = [(x,y) for x, y in char_counts.items()]
+    itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
+    with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "w") as outFile:
+       print("\n".join(itos), file=outFile)
+#itos = sorted(itos)
+print(itos)
 stoi = dict([(itos[i],i) for i in range(len(itos))])
 
 
@@ -65,7 +88,7 @@ print(torch.__version__)
 from weight_drop import WeightDrop
 
 
-rnn = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num).cuda()
+rnn = torch.nn.RNN(args.char_embedding_size, args.hidden_dim, args.layer_num, args.nonlinearity).cuda()
 
 rnn_parameter_names = [name for name, _ in rnn.named_parameters()]
 print(rnn_parameter_names)
@@ -90,12 +113,7 @@ def parameters():
        for param in module.parameters():
             yield param
 
-parameters_cached = [x for x in parameters()]
-
-
-learning_rate = args.learning_rate
-
-optim = torch.optim.SGD(parameters(), lr=learning_rate, momentum=0.0) # 0.02, 0.9
+optim = torch.optim.SGD(parameters(), lr=args.learning_rate, momentum=0.0) # 0.02, 0.9
 
 named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
 
@@ -255,7 +273,7 @@ def doChoiceList(xs, printHere=True):
     if printHere:
       for x in xs:
          print(x)
-    losses = choiceList([encodeWord(x.split(" ")) for x in xs]) #, encodeWord(y))
+    losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
     if printHere:
       print(losses)
     return np.argmin(losses)
@@ -263,7 +281,7 @@ def doChoiceListLosses(xs, printHere=True):
     if printHere:
       for x in xs:
          print(x)
-    losses = choiceList([encodeWord(x.split(" ")) for x in xs]) #, encodeWord(y))
+    losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
     if printHere:
       print(losses)
     return losses
@@ -273,7 +291,7 @@ def doChoiceListLosses(xs, printHere=True):
 def doChoice(x, y):
     print(x)
     print(y)
-    losses = choice(encodeWord(x.split(" ")), encodeWord(y.split(" ")))
+    losses = choice(encodeWord(x), encodeWord(y))
     print(losses)
     return 0 if losses[0] < losses[1] else 1
 
@@ -299,7 +317,8 @@ with open("/private/home/mhahn//data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS
       if "." in line[2]:
         continue
       if int(line[0]) > 100 and not line[2].endswith("r"):
-         adjectives.append(line[2])
+         if line[2]+"e" in stoi_words:
+            adjectives.append(line[2])
 
 
 def genderTest(mode):
@@ -320,36 +339,43 @@ def genderTest(mode):
 
    results = [[0,0,0] for _ in range(3)]
    for genderIndex, gender in enumerate(["Gender="+x for x in ["Masc", "Fem", "Neut"]]):
-
+     with open(f"stimuli/german-gender-{gender}-{mode}.txt", "w") as outFile:
        counter = 0
        for noun in genders[gender]:
-         if noun not in stoi:
+         if noun not in stoi_words:
             continue
          counter += 1
      #    adverbs = ["sehr"]
       #   adjective = "" #"".join(adverbs)+random.choice(adjectives)+"e"
-         chosenAdjective = "_NONE_"
-         while chosenAdjective not in stoi:
-              chosenAdjective = random.choice(adjectives)+"e"
-
          if mode == "nothing":
            noun = noun
            nounStimulus = [noun]
          elif mode == "adjective":
-            adjective = chosenAdjective
+            adjective = random.choice(adjectives)+"e"
             nounStimulus = [adjective, noun]
             noun = adjective+noun
          elif mode == "sehr + adjective":
-            adjective = chosenAdjective
+            adjective = random.choice(adjectives)+"e"
             nounStimulus = ["sehr", adjective, noun]
             noun = "sehr"+adjective+noun
          elif mode == "sehr + extrem + adjective":
-            adjective = chosenAdjective
+            adjective = random.choice(adjectives)+"e"
             nounStimulus = ["sehr", "extrem", adjective, noun]
             noun = "sehr"+"extrem"+adjective+noun
-         results[genderIndex][doChoiceList([f". der "+" ".join(nounStimulus)+" .", f". die "+" ".join(nounStimulus)+" .", f". das "+" ".join(nounStimulus)+" ."], printHere=(random.random() > 0.98))] += 1
+
+
+ 
+         stimuli = []
+         print(" ".join(["der"] + nounStimulus), file=outFile)
+         print(" ".join(["die"] + nounStimulus), file=outFile)
+         print(" ".join(["das"] + nounStimulus), file=outFile)
+         
+ 
+  #       noun = f"{adjective}{noun}"
+         results[genderIndex][doChoiceList([f".der{noun}.", f".die{noun}.", f".das{noun}."], printHere=(random.random() > 0.98))] += 1
+  #       results[doChoiceList([".ein"+noun+".", ".eine"+noun+"."])] += 1
          if random.random() > 0.98:
-           print([[round(x/(counter if genderIndex == i else 1), 2) for x in results[i]] for i in range(len(results))])
+            print([[round(x/(counter if genderIndex == i else 1), 2) for x in results[i]] for i in range(len(results))])
        results[genderIndex] = [x/counter for x in results[genderIndex]]
    return results
 
@@ -378,7 +404,7 @@ print(confusion4)
 
 
 import numpy as np
-losses  = (doChoiceListLosses([". der", ". die", ". das"]))
+losses  = (doChoiceListLosses([".der", ".die", ".das"]))
 losses = np.exp(-losses)
 print(losses/np.sum(losses))
 

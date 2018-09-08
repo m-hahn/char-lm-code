@@ -153,7 +153,7 @@ for chunk in data:
       numeric_with_blanks.append(stoi[char]+3 if char in stoi else 2)
 
 # select a portion
-numeric_with_blanks = numeric_with_blanks[:100000]
+numeric_with_blanks = numeric_with_blanks[:10000000]
 
 boundaries = []
 numeric_full = []
@@ -274,7 +274,7 @@ predictor = [a+b+c+d+e+f+g for a, b, c, d, e, f, g in zip(predictor, predictorSh
 
 
 from sklearn.model_selection import train_test_split
-x_train, x_test, y_train, y_test, chars_train, chars_test = train_test_split(predictor, dependent, chars, test_size=0.9, random_state=0, shuffle=False)
+x_train, x_test, y_train, y_test, chars_train, chars_test = train_test_split(predictor, dependent, chars, test_size=0.5, random_state=0, shuffle=False)
 
 
 from sklearn.linear_model import LogisticRegression
@@ -295,30 +295,145 @@ for char, predicted, real, predictor in zip(chars_test, predictions, y_test, x_t
 
 realLexicon = set()
 extractedLexicon = {}
+extractedLexiconWithReal = {}
 currentWord = ""
 currentWordReal = ""
 realWords = 0
 predictedWords = 0
+
+# for each predicted word, count whether it is an example of:
 agreement = 0
+oversegmented = 0
+undersegmented = 0
+missegmented = 0
+
+# for each REAL word
+wasOversegmented = 0
+wasUndersegmented = 0
 
 
-for char, predicted, real in zip(chars_test, predictions, y_test):
+lastPredictedStartCoincidedWithRealStart = True
+
+
+oversegmentations = {}
+undersegmentations = {}
+missegmentations = {}
+
+
+for char, predicted, real, char_index in zip(chars_test, predictions, y_test, range(len(y_test))):
    assert char != " "
    if real ==1:
-       realWords += 1
        if predicted == 1 and currentWord == currentWordReal:
            agreement += 1
+       elif predicted == 1 and lastPredictedStartCoincidedWithRealStart:
+         wasUndersegmented += 1
+#         undersegmentations[currentWord] = undersegmentations.get(currentWord, 0)+1
+       elif predicted == 1 and lastRealStartCoincidedWithPredictedStart:
+         wasOversegmented += 1
+ #        oversegmentations[currentWord] = oversegmentations.get(currentWord, 0)+1
+
+# oversegmentation:
+       # wasOversegmented
+       #  wasUndersegmented
+       # wasMissegmented
+
+
+
+#       realLexicon.add(currentWordReal)
+ #      currentWordReal = char
+   #else:
+  #     currentWordReal += char
+
+   if predicted == 1:
+       if real == 1 and lastPredictedStartCoincidedWithRealStart:
+           # correct or undersegmented
+          if currentWord == currentWordReal:
+             _ = _
+          elif len(currentWord) == len(currentWordReal):
+              assert currentWord == currentWordReal, (currentWord, currentWordReal)
+          elif len(currentWord) < len(currentWordReal):
+              print(currentWord, currentWordReal)
+              quit()
+          else:
+             assert len(currentWord) > len(currentWordReal)
+             undersegmented += 1
+             undersegmentations[currentWord] = undersegmentations.get(currentWord, 0)+1
+       elif real == 1 and not lastPredictedStartCoincidedWithRealStart:
+          if len(currentWord) > len(currentWordReal): # missegmented
+             missegmented += 1
+          else:
+             assert len(currentWord) < len(currentWordReal), (currentWord, currentWordReal)
+             oversegmented += 1
+             oversegmentations[currentWord] = oversegmentations.get(currentWord, [0, set()])
+             oversegmentations[currentWord][0] += 1
+             getEndOfCurrentWord = y_test.index(1, char_index)
+             fullCurrentWord = currentWordReal+"$"+("".join(chars_test[char_index:getEndOfCurrentWord]))
+             print(fullCurrentWord)
+             oversegmentations[currentWord][1].add(fullCurrentWord)
+       elif real == 0 and len(currentWord) <= len(currentWordReal):
+             oversegmented += 1
+             oversegmentations[currentWord] = oversegmentations.get(currentWord, [0, set()])
+             oversegmentations[currentWord][0] += 1
+             getEndOfCurrentWord = y_test.index(1, char_index)
+             fullCurrentWord = currentWordReal+"$"+("".join(chars_test[char_index:getEndOfCurrentWord]))
+             print(fullCurrentWord)
+             oversegmentations[currentWord][1].add(fullCurrentWord)
+       elif real == 0 and len(currentWord) > len(currentWordReal):
+            missegmented += 1
+            missegmentations[currentWord] = missegmentations.get(currentWord, 0)+1
+
+
+       if real == 1:
+          lastPredictedStartCoincidedWithRealStart = True
+       else:
+          lastPredictedStartCoincidedWithRealStart = False
+  
+   if real == 1:
+       if predicted == 1:
+          lastRealStartCoincidedWithPredictedStart = True
+       else:
+          lastRealStartCoincidedWithPredictedStart = False
+ 
+   if predicted == 1:
+       predictedWords += 1
+       extractedLexicon[currentWord] = extractedLexicon.get(currentWord, 0) + 1
+       extractedLexiconWithReal[(currentWord, currentWordReal, real==1)] = extractedLexiconWithReal.get((currentWord, currentWordReal, real==1), 0) + 1
+
+       currentWord = char
+   else:
+       currentWord += char
+
+
+   if real ==1:
+       realWords += 1
        realLexicon.add(currentWordReal)
        currentWordReal = char
    else:
        currentWordReal += char
+   print((lastPredictedStartCoincidedWithRealStart, currentWord, currentWordReal))
 
-   if predicted == 1:
-       predictedWords += 1
-       extractedLexicon[currentWord] = extractedLexicon.get(currentWord, 0) + 1
-       currentWord = char
-   else:
-       currentWord += char
+
+
+assert agreement + oversegmented + undersegmented + missegmented == predictedWords
+
+
+undersegmentations = sorted(list(undersegmentations.items()), key=lambda x:x[1])
+missegmentations = sorted(list(missegmentations.items()), key=lambda x:x[1])
+oversegmentations = sorted(list(oversegmentations.items()), key=lambda x:x[1][0])
+
+
+print("Undersegmentations")
+for u in undersegmentations[-200:]:
+   print(u)
+#print(undersegmentations)
+print("=================")
+print("Oversegmentations")
+print("##Formatting: (extracted word, [how often it was extracted, the number of types of real words that were affected, the real words that were affected])")
+for u in oversegmentations[-200:]:
+   print((u[0], [u[1][0], len(u[1][1]), u[1][1]]))
+#print(oversegmentations)
+print("Missegmentations")
+print(missegmentations)
 
 print("Extracted words")
 print(sorted(list(extractedLexicon.items()), key=lambda x:x[1]))
@@ -328,13 +443,17 @@ print(sorted(incorrectWords, key=lambda x:x[1]))
 print("Correct words")
 correctWords = [(x,y) for (x,y) in extractedLexicon.items() if x in set(list(extractedLexicon)).intersection(realLexicon)]
 print(sorted(correctWords, key=lambda x:x[1]))
+annotatedWords = [(x,y) for (x,y) in extractedLexiconWithReal.items()]
+print(sorted(annotatedWords, key=lambda x:x[1]))
+
 print("Lexicon")
 print("Precision")
 print(len(correctWords)/len(extractedLexicon))
 print("Recall")
 print(len(correctWords)/len(realLexicon))
 print("..")
-
+print("Classifying the predicted words", ["Agreement", agreement, "Oversegmented", oversegmented, "Undersegmented", undersegmented, "Missegmented", missegmented])
+print("Classifying the real endpoints", ["over", wasOversegmented, "under", wasUndersegmented])
 print("quality")
 print("Precision")
 print(agreement/predictedWords)
@@ -407,5 +526,4 @@ print(f"P {round(100*precision,2)} R {round(100*recall,2)} F {round(100*f,2)} BP
 #      loss.backward()
 #      optim.step()
 #      
-print("Training examples",len(x_train))
-
+#

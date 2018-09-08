@@ -148,7 +148,7 @@ for i in range(len(numeric_full)):
    print((itos[numeric_full[i]-1], char_surprisal[i], pmiFuturePast, pmiFuturePast < 0 if pmiFuturePast is not None else None, boundary)) # pmiFuturePast < 2 if pmiFuturePast is not None else None,
    if pmiFuturePast is not None:
      chars.append(itos[numeric_full[i]-1])
-     predictor.append([pmiFuturePast]) #char_surprisal[i], pmiFuturePast]) #pmiFuturePast])
+     predictor.append([char_surprisal[i]]) #char_entropy[i]]) #pmiFuturePast]) #char_surprisal[i], pmiFuturePast]) #pmiFuturePast])
      dependent.append(1 if boundary else 0)
 # pmiFuturePast
 # , char_entropy[i]

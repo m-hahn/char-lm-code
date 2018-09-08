@@ -17,9 +17,10 @@ parser.add_argument("--char_dropout_prob", type=float, default=0.33)
 parser.add_argument("--char_noise_prob", type = float, default= 0.01)
 parser.add_argument("--learning_rate", type = float, default= 0.1)
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
-parser.add_argument("--sequence_length", type=int, default=random.choice([50, 50, 80]))
+parser.add_argument("--sequence_length", type=int, default=random.choice([50]))
 parser.add_argument("--verbose", type=bool, default=False)
 parser.add_argument("--lr_decay", type=float, default=random.choice([0.5, 0.7, 0.9, 0.95, 0.98, 0.98, 1.0]))
+parser.add_argument("--window", type=int, default=3)
 
 
 import math
@@ -259,6 +260,7 @@ for i in range(len(numeric_full)):
 
 zeroPredictor = [0]*len(predictor[0])
 
+
 predictorShiftedP1 = predictor[1:]+[zeroPredictor]
 predictorShiftedP2 = predictor[2:]+[zeroPredictor,zeroPredictor]
 predictorShiftedP3 = predictor[3:]+[zeroPredictor,zeroPredictor,zeroPredictor]
@@ -271,10 +273,97 @@ predictorShiftedM4 = [zeroPredictor,zeroPredictor,zeroPredictor,zeroPredictor]+p
 
 predictor = [a+b+c+d+e+f+g for a, b, c, d, e, f, g in zip(predictor, predictorShiftedP1, predictorShiftedP2, predictorShiftedP3, predictorShiftedM1, predictorShiftedM2, predictorShiftedM3)]
 
+predictor1 = [predictor[i] for i in range(len(predictor)) if dependent[i] == 1]
+predictor2 = [predictor[i] for i in range(len(predictor))]
+
+import numpy as np
+
+print(len(predictor1))
+print(len(predictor2))
+predictor1 = np.array(predictor1, dtype=np.float32)
+predictor2 = np.array(predictor2, dtype=np.float32)
+
+predictor1 = predictor1.reshape((-1, 7, 4))
+predictor2 = predictor2.reshape((-1, 7, 4))
+
+
+print(predictor1)
+print(type(predictor1))
+average1 = np.array(predictor1.mean(axis=0))
+print(type(average1))
+print(average1)
+average2 = np.mean(predictor2, axis=0)
+print(average1)
+print(average2)
+index = [0, 1, 2, 3, -1, -2, -3]
+
+
+pmis1 = predictor1[:,:,0]
+surprisals1 = predictor1[:,:,1]
+entropies1 = predictor1[:,:,2]
+
+print(pmis1)
+print(surprisals1)
+print(entropies1)
+
+
+
+pmis2 = predictor2[:,:,0]
+surprisals2 = predictor2[:,:,1]
+entropies2 = predictor2[:,:,2]
+
+print(pmis2)
+print(surprisals2)
+print(entropies2)
+
+
+import matplotlib
+matplotlib.use('agg')
+import matplotlib.pyplot as plt
+
+import numpy as np
+
+
+#for i in range(len(pmis1)):
+#      plt.plot(range(-3, 4), [pmis1[i, index.index(j)] for j in range(-3,4)], label=name, color="grey", alpha=0.1)
+averagePMI1 = pmis1.mean(axis=0)
+plt.plot(range(-3, 4), [averagePMI1[index.index(j)] for j in range(-3,4)], label=name, color="blue", linewidth=4.0)
+averagePMI2 = pmis2.mean(axis=0)
+plt.plot(range(-3, 4), [averagePMI2[index.index(j)] for j in range(-3,4)], label=name, color="red", linewidth=4.0)
+#plt.legend()
+plt.show()
+plt.savefig("/checkpoint/mhahn/segmentation-profile-flattened-pmis-"+args.language+".png")
+plt.close()
+
+
+
+averageSurprisal1 = surprisals1.mean(axis=0)
+plt.plot(range(-3, 4), [averageSurprisal1[index.index(j)] for j in range(-3,4)], label=name, color="blue", linewidth=4.0)
+averageSurprisal2 = surprisals2.mean(axis=0)
+plt.plot(range(-3, 4), [averageSurprisal2[index.index(j)] for j in range(-3,4)], label=name, color="red", linewidth=4.0)
+#plt.legend()
+plt.show()
+plt.savefig("/checkpoint/mhahn/segmentation-profile-flattened-surprisals-"+args.language+".png")
+plt.close()
+
+
+
+averageEntropy1 = entropies1.mean(axis=0)
+plt.plot(range(-3, 4), [averageEntropy1[index.index(j)] for j in range(-3,4)], label=name, color="blue", linewidth=4.0)
+averageEntropy2 = entropies2.mean(axis=0)
+plt.plot(range(-3, 4), [averageEntropy2[index.index(j)] for j in range(-3,4)], label=name, color="red", linewidth=4.0)
+#plt.legend()
+plt.show()
+plt.savefig("/checkpoint/mhahn/segmentation-profile-flattened-entropies-"+args.language+".png")
+plt.close()
+
+
+
+
 
 
 from sklearn.model_selection import train_test_split
-x_train, x_test, y_train, y_test, chars_train, chars_test = train_test_split(predictor, dependent, chars, test_size=0.9, random_state=0, shuffle=False)
+x_train, x_test, y_train, y_test, chars_train, chars_test = train_test_split(predictor, dependent, chars, test_size=0.5, random_state=0, shuffle=False)
 
 
 from sklearn.linear_model import LogisticRegression
@@ -407,5 +496,4 @@ print(f"P {round(100*precision,2)} R {round(100*recall,2)} F {round(100*f,2)} BP
 #      loss.backward()
 #      optim.step()
 #      
-print("Training examples",len(x_train))
-
+#
