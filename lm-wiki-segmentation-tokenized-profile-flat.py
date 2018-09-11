@@ -323,6 +323,9 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 
+matplotlib.rc('xtick', labelsize=30) 
+matplotlib.rc('ytick', labelsize=30) 
+
 
 #for i in range(len(pmis1)):
 #      plt.plot(range(-3, 4), [pmis1[i, index.index(j)] for j in range(-3,4)], label=name, color="grey", alpha=0.1)
@@ -332,7 +335,7 @@ averagePMI2 = pmis2.mean(axis=0)
 plt.plot(range(-3, 4), [averagePMI2[index.index(j)] for j in range(-3,4)], label=name, color="red", linewidth=4.0)
 #plt.legend()
 plt.show()
-plt.savefig("/checkpoint/mhahn/segmentation-profile-flattened-pmis-"+args.language+".png")
+plt.savefig("/checkpoint/mhahn/segmentation-profile-flattened-pmis-"+args.language+".pdf")
 plt.close()
 
 
@@ -343,7 +346,7 @@ averageSurprisal2 = surprisals2.mean(axis=0)
 plt.plot(range(-3, 4), [averageSurprisal2[index.index(j)] for j in range(-3,4)], label=name, color="red", linewidth=4.0)
 #plt.legend()
 plt.show()
-plt.savefig("/checkpoint/mhahn/segmentation-profile-flattened-surprisals-"+args.language+".png")
+plt.savefig("/checkpoint/mhahn/segmentation-profile-flattened-surprisals-"+args.language+".pdf")
 plt.close()
 
 
@@ -354,7 +357,7 @@ averageEntropy2 = entropies2.mean(axis=0)
 plt.plot(range(-3, 4), [averageEntropy2[index.index(j)] for j in range(-3,4)], label=name, color="red", linewidth=4.0)
 #plt.legend()
 plt.show()
-plt.savefig("/checkpoint/mhahn/segmentation-profile-flattened-entropies-"+args.language+".png")
+plt.savefig("/checkpoint/mhahn/segmentation-profile-flattened-entropies-"+args.language+".pdf")
 plt.close()
 
 
