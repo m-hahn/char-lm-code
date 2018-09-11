@@ -125,7 +125,13 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
+matplotlib.rc('font', family='Arial')
+
 labels = alphabetNames
+
+plt.figure(figsize=(5, 1.3)) 
+
+plt.yticks([])
 
 children = clustering.children_
 distance = np.arange(children.shape[0])
@@ -135,7 +141,7 @@ dendrogram(linkage_matrix, labels=labels)
 
 
 plt.show()
-plt.savefig("/checkpoint/mhahn/figures/char-emb-clustering-output_output-phonetic-"+args.load_from+".png")
+plt.savefig("/checkpoint/mhahn/figures/char-emb-clustering-output_output-phonetic-"+args.load_from+".pdf", bbox_inches='tight')
 plt.close()
 
 

@@ -148,7 +148,7 @@ for i in range(len(numeric_full)):
    print((itos[numeric_full[i]-1], char_surprisal[i], pmiFuturePast, pmiFuturePast < 0 if pmiFuturePast is not None else None, boundary)) # pmiFuturePast < 2 if pmiFuturePast is not None else None,
    if pmiFuturePast is not None:
      chars.append(itos[numeric_full[i]-1])
-     predictor.append([char_surprisal[i]]) #char_entropy[i]]) #pmiFuturePast]) #char_surprisal[i], pmiFuturePast]) #pmiFuturePast])
+     predictor.append([char_surprisal[i]]) #pmiFuturePast]) #char_entropy[i]]) #char_surprisal[i]]) #char_entropy[i]]) #pmiFuturePast]) #char_surprisal[i], pmiFuturePast]) #pmiFuturePast])
      dependent.append(1 if boundary else 0)
 # pmiFuturePast
 # , char_entropy[i]
@@ -205,6 +205,7 @@ realWords = 0
 predictedWords = 0
 agreement = 0
 for char, predicted, real in zip(chars_test, predictions, y_test):
+   assert char != " "
    if real ==1:
        realWords += 1
        if predicted == 1 and currentWord == currentWordReal:
@@ -220,17 +221,34 @@ for char, predicted, real in zip(chars_test, predictions, y_test):
    else:
        currentWord += char
 
+print("Extracted words")
 print(sorted(list(extractedLexicon.items()), key=lambda x:x[1]))
-
-correctWords = set(list(extractedLexicon)).intersection(realLexicon)
-print(correctWords)
+print("Incorrect Words")
+incorrectWords = [(x,y) for (x,y) in extractedLexicon.items() if x in set(list(extractedLexicon)).difference(realLexicon)]
+print(sorted(incorrectWords, key=lambda x:x[1]))
+print("Correct words")
+correctWords = [(x,y) for (x,y) in extractedLexicon.items() if x in set(list(extractedLexicon)).intersection(realLexicon)]
+print(sorted(correctWords, key=lambda x:x[1]))
+print("Lexicon")
+print("Precision")
 print(len(correctWords)/len(extractedLexicon))
+print("Recall")
 print(len(correctWords)/len(realLexicon))
 print("..")
 
-
-print(agreement/realWords)
+print("quality")
+print("Precision")
 print(agreement/predictedWords)
+print("Recall")
+print(agreement/realWords)
+
+
+
+# P 27.51 R 42.38 F 33.37 BP 54.29 BR 85.53 BF 66.42 LP 46.9 LR 2.561 LF 4.856
+
+precision = agreement/predictedWords
+recall = agreement/realWords
+f = 2*(precision*recall)/(precision+recall)
 
 predictedBoundariesTotal = 0
 predictedBoundariesCorrect = 0
@@ -239,13 +257,23 @@ realBoundariesTotal = 0
 predictedAndReal = len([1 for x, y in zip(predictions, y_test) if x==1 and x==y])
 predictedCount = sum(predictions)
 targetCount = sum(y_test)
+print("Boundaries")
+print("Precision")
 print(predictedAndReal/predictedCount)
+print("Recall")
 print(predictedAndReal/targetCount)
 
 score = logisticRegr.score(x_test, y_test)
 print(score)
+bp = predictedAndReal/predictedCount
+br = predictedAndReal/targetCount
+bf = 2*bp*br/(bp+br)
 
+lr = len(correctWords)/len(extractedLexicon)
+lp = len(correctWords)/len(realLexicon)
+lf = 2*lr*lp/(lr+lp)
 
+print(f"P {round(100*precision,2)} R {round(100*recall,2)} F {round(100*f,2)} BP {round(100*bp,2)} BR {round(100*br,2)} BF {round(100*bf,2)} LP {round(100*lp,2)} LR {round(100*lr,2)} LF {round(100*lf,2)}")
 
 
 #import matplotlib.pyplot as plt

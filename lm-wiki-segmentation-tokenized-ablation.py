@@ -243,9 +243,9 @@ for i in range(len(numeric_full)):
      else:
        chars.append(character)
        predictorHere = []
-       predictorHere.append(pmiFuturePast)
-       #predictorHere.append(char_surprisal[i])
-       #predictorHere.append(char_entropy[i])
+   #    predictorHere.append(pmiFuturePast)
+      # predictorHere.append(char_surprisal[i])
+       predictorHere.append(char_entropy[i])
 #       predictorHere.append(future_surprisal_with[i])
        predictorHere.append(1 if lastWasUtteranceBoundary else 0) 
 
