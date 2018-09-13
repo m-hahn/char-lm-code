@@ -363,10 +363,31 @@ for _ in range(100):
   print(score)
   accuracies.append(score)
 
+print("--")
+
 print(sum(accuracies)/100)
+
+meanAccuracy = sum(accuracies)/100
+meanSquaredAccuracy = sum([x**2 for x in accuracies])/100
+import math
+standardDeviation = math.sqrt(meanSquaredAccuracy - meanAccuracy**2)
+
+print(standardDeviation)
+
+
+accuracies = sorted(accuracies)
+
+ci_lower = accuracies[int(0.05 * 100)]
+ci_upper = accuracies[int(0.95 * 100)]
+
+print((ci_lower, ci_upper))
+
 with open(f"/checkpoint/mhahn/pos/{__file__}_"+args.language+"_"+str(args.train_size)+"_"+args.load_from, "w") as outFile:
    print(args.language, file=outFile)
    print(args.train_size, file=outFile)
    print(args.load_from, file=outFile)
    print(sum(accuracies)/100, file=outFile)  
+   print(standardDeviation)
+   print(ci_lower)
+   print(ci_upper)
 

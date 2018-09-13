@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+matplotlib.rc('xtick', labelsize=25)
+matplotlib.rc('ytick', labelsize=25)
 
 #for language in ["Japanese", "Sesotho", "Indonesian"]:
 if True:
@@ -34,6 +36,6 @@ if True:
           plt.plot([x[0] for x in datapoints], [x[1] for x in datapoints], label=group)
    plt.legend()
    plt.show()
-   plt.savefig(f"/checkpoint/mhahn/figures/{language}_pos_nouns_verbs.png")
+   plt.savefig(f"/checkpoint/mhahn/figures/{language}_pos_nouns_verbs.pdf", bbox_inches='tight')
    plt.close()
 

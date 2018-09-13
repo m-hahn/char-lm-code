@@ -24,9 +24,6 @@ args=parser.parse_args()
 print(args)
 
 
-
-
-
 from acqdivReader import AcqdivReader, AcqdivReaderPartition
 
 acqdivCorpusReader = AcqdivReader(args.language)
@@ -39,10 +36,11 @@ def plus(it1, it2):
    for x in it2:
       yield x
 
+# read the character vocabulary
 try:
    with open("/checkpoint/mhahn/char-vocab-acqdiv-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
-except FileNotFoundError:
+except FileNotFoundError: # or, if that fails, construct one for the language
     print("Creating new vocab")
     char_counts = {}
     # get symbol vocabulary
@@ -63,29 +61,19 @@ stoi = dict([(itos[i],i) for i in range(len(itos))])
 
 halfSequenceLength = int(args.sequence_length/2)
 
-
-
 import random
-
-
 import torch
-
 print(torch.__version__)
-
 from weight_drop import WeightDrop
 
-
+# Create the neural model
 rnn = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num).cuda()
-
 rnn_parameter_names = [name for name, _ in rnn.named_parameters()]
 print(rnn_parameter_names)
-#quit()
-
-
 rnn_drop = WeightDrop(rnn, [(name, args.weight_dropout_in) for name, _ in rnn.named_parameters() if name.startswith("weight_ih_")] + [ (name, args.weight_dropout_hidden) for name, _ in rnn.named_parameters() if name.startswith("weight_hh_")])
 
-# -1, because whitespace doesn't actually appear
-output = torch.nn.Linear(args.hidden_dim, len(itos)-1+3).cuda()
+
+output = torch.nn.Linear(args.hidden_dim, len(itos)-1+3).cuda() # -1, because whitespace doesn't actually appear
 char_embeddings = torch.nn.Embedding(num_embeddings=len(itos)-1+3, embedding_dim=args.char_embedding_size).cuda()
 
 logsoftmax = torch.nn.LogSoftmax(dim=2)
@@ -106,6 +94,8 @@ optim = torch.optim.SGD(parameters(), lr=args.learning_rate, momentum=0.0) # 0.0
 
 named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
 
+
+# Load the model from the checkpoint
 if args.load_from is not None:
   checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
   for name, module in named_modules.items():
@@ -117,13 +107,13 @@ from torch.autograd import Variable
 data = AcqdivReaderPartition(acqdivCorpusReader, partition="train").reshuffledIterator(blankBeforeEOS=False)
 
 
+# Read the data into a list of integers
 numeric_with_blanks = []
 count = 0
 print("Prepare chunks")
 for chunk in data:
   numeric_with_blanks.append(stoi[" "]+3)
   for char in chunk:
-#    print((char if char != "\n" else "\\n", stoi[char]+3 if char in stoi else 2))
     count += 1
     if char not in stoi:
         print(char)
@@ -132,17 +122,16 @@ for chunk in data:
 # select a portion
 numeric_with_blanks = numeric_with_blanks[:100000]
 
-boundaries = []
-numeric_full = []
+# record word boundaries
+boundaries = [] # the positions of word boundaries in numeric_full -- that is, the indices of every first character of a word
+numeric_full = [] # the corpus without word boundaries ( as a list of integers)
 for entry in numeric_with_blanks:
- # print((entry-3, itos[entry-3]))
-  #assert entry > 3
   if entry > 3 and itos[entry-3] == " ":
      boundaries.append(len(numeric_full))
   else:
      numeric_full.append(entry)
 
-
+# recording the statistics that word segmemtation is based on
 future_surprisal_with = [None for _ in numeric_full]
 future_surprisal_without = [None for _ in numeric_full]
 
@@ -337,36 +326,3 @@ print(score)
 
 
 
-#import matplotlib.pyplot as plt
-#import seaborn as sns
-#from sklearn import metrics
-#
-#cm = metrics.confusion_matrix(y_test, predictions)
-#print(cm)
-
-
-
-#print([x-y if x is not None and y is not None else None for x,y in zip(future_surprisal_without, future_surprisal_with)])
-
-##      print(train[batch*args.batchSize:(batch+1)*args.batchSize])
-#      numeric = [([0] + [stoi[data[x]]+1 for x in range(b, b+args.sequence_length) if x < len(data)]) for b in train[batch*args.batchSize:(batch+1)*batchSize]]
-#     # print(numeric)
-#      input_tensor = Variable(torch.LongTensor(numeric[:-1]).transpose(0,1).cuda(), requires_grad=False)
-#      target_tensor = Variable(torch.LongTensor(numeric[1:]).transpose(0,1).cuda(), requires_grad=False)
-#
-#    #  print(char_embeddings)
-#      embedded = char_embeddings(input_tensor)
-#      out, _ = rnn(embedded, None)
-#      logits = output(out) 
-#      log_probs = logsoftmax(logits)
-#   #   print(logits)
-#  #    print(log_probs)
-# #     print(target_tensor)
-#      loss = train_loss(log_probs.view(-1, len(itos)+1), target_tensor.view(-1))
-#      optim.zero_grad()
-#      if batch % 10 == 0:
-#         print(loss)
-#      loss.backward()
-#      optim.step()
-#      
-#
