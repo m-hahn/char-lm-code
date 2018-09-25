@@ -5,10 +5,11 @@ import random
 import sys
   
 header = ["index", "word", "lemma", "posUni", "posFine", "morph", "head", "dep", "_", "_"]
-  
+
+from config import UD_HOME
   
 def readUDCorpus(language, partition):
-      basePaths = ["/private/home/mhahn/data/"]
+      basePaths = [UD_HOME]
       files = []
       while len(files) == 0:
         if len(basePaths) == 0:
