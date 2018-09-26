@@ -19,6 +19,6 @@ TRAJECTORIES_HOME = "/checkpoint/mhahn/trajectories/"
 # for storing visualizations
 VISUALIZATIONS_HOME = "/checkpoint/mhahn/figures/"
 
-UD_HOME = "" #"/home/user/UniversalDependencies/"
+UD_HOME = "./" #"/home/user/UniversalDependencies/"
 
 
