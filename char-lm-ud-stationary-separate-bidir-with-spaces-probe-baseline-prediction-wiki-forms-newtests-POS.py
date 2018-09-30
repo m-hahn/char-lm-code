@@ -1,3 +1,5 @@
+# POS induction: logistic classifier operating on hidden states
+
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -20,7 +22,7 @@ parser.add_argument("--char_noise_prob", type = float, default= 0.01)
 parser.add_argument("--learning_rate", type = float, default= 0.1)
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
 parser.add_argument("--sequence_length", type=int, default=50)
-parser.add_argument("--train_size", type=int, default=25)
+parser.add_argument("--train_size", type=int, default=20)
 
 
 
@@ -45,10 +47,11 @@ def plus(it1, it2):
    for x in it2:
       yield x
 
+# Open the character vocabulary
 try:
    with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
-except FileNotFoundError:
+except FileNotFoundError: # Create it from scratch if it doesn't exist yet
     print("Creating new vocab")
     char_counts = {}
     # get symbol vocabulary
@@ -78,13 +81,10 @@ print(torch.__version__)
 
 from weight_drop import WeightDrop
 
-
+# Create the language model
 rnn = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num).cuda()
 
 rnn_parameter_names = [name for name, _ in rnn.named_parameters()]
-print(rnn_parameter_names)
-#quit()
-
 
 rnn_drop = WeightDrop(rnn, [(name, args.weight_dropout_in) for name, _ in rnn.named_parameters() if name.startswith("weight_ih_")] + [ (name, args.weight_dropout_hidden) for name, _ in rnn.named_parameters() if name.startswith("weight_hh_")])
 
@@ -116,161 +116,54 @@ if args.load_from is not None:
       module.load_state_dict(checkpoint[name])
 else:
    assert False
+
+
+
 ####################################
-
-
-
 
 
 from torch.autograd import Variable
 
 
-# ([0] + [stoi[training_data[x]]+1 for x in range(b, b+sequence_length) if x < len(training_data)]) 
 
-#from embed_regularize import embedded_dropout
+# Do not do dropout here (no training will happem)
+rnn_drop.train(False)
 
+lossModule = torch.nn.NLLLoss(size_average=False, reduce=False, ignore_index=0)
+
+# Takes a string and transforms into a list of integers
 def encodeWord(word):
-      numeric = [[]]
+      numeric = []
       for char in word:
-           numeric[-1].append((stoi[char]+3 if char in stoi else 2) if True else 2+random.randint(0, len(itos)))
+           numeric.append(stoi[char]+3 if char in stoi else 2) # 2 is the code for OOV
       return numeric
 
 
 
-rnn_drop.train(False)
-#rnn_forward_drop.train(False)
-#rnn_backward_drop.train(False)
-
-#baseline_rnn_encoder_drop.train(False)
-
-lossModule = torch.nn.NLLLoss(size_average=False, reduce=False, ignore_index=0)
-
-
-def choice(numeric1, numeric2):
-     assert len(numeric1) == 1
-     assert len(numeric2) == 1
-     numeric = [numeric1[0], numeric2[0]]
-     maxLength = max([len(x) for x in numeric])
-     for i in range(len(numeric)):
-        while len(numeric[i]) < maxLength:
-              numeric[i].append(0)
-     input_tensor_forward = Variable(torch.LongTensor([[0]+x for x in numeric]).transpose(0,1).cuda(), requires_grad=False)
-     
-     target = input_tensor_forward[1:]
-     input_cut = input_tensor_forward[:-1]
-     embedded_forward = char_embeddings(input_cut)
-     out_forward, hidden_forward = rnn_drop(embedded_forward, None)
-
-     prediction = logsoftmax(output(out_forward)) #.data.cpu().view(-1, 3+len(itos)).numpy() #.view(1,1,-1))).view(3+len(itos)).data.cpu().numpy()
-     losses = lossModule(prediction.view(-1, len(itos)+3), target.view(-1)).view(maxLength, 2)
-     losses = losses.sum(0).data.cpu().numpy()
-     return losses
-
-
+# Input: a list of words
+# Output: a list of hidden LSTM states as Numpy arrays
 def encodeListOfWords(words):
-    numeric = [encodeWord(word)[0] for word in words]
+    numeric = [encodeWord(word) for word in words] # transforms each word into a list of integers
     maxLength = max([len(x) for x in numeric])
-    for i in range(len(numeric)):
+    for i in range(len(numeric)): # pad at the beginning, if necessary, so that all lists have the same length
        numeric[i] = ([0]*(maxLength-len(numeric[i]))) + numeric[i]
-    input_tensor_forward = Variable(torch.LongTensor([[0]+x for x in numeric]).transpose(0,1).cuda(), requires_grad=False)
+    input_tensor_forward = Variable(torch.LongTensor([[0]+x for x in numeric]).transpose(0,1).cuda(), requires_grad=False) # create a tensor from the integer lists
     
-    input_cut = input_tensor_forward #[:-1]
-    embedded_forward = char_embeddings(input_cut)
-    out_forward, hidden_forward = rnn_drop(embedded_forward, None)
-    hidden = hidden_forward[0].data.cpu().numpy()
-    return [hidden[0][i] for i in range(len(words))]
-
-
-
-
-def choiceList(numeric):
-     for x in numeric:
-       assert len(x) == 1
-#     assert len(numeric1) == 1
- #    assert len(numeric2) == 1
-     numeric = [x[0] for x in numeric] #, numeric2[0]]
-     maxLength = max([len(x) for x in numeric])
-     for i in range(len(numeric)):
-        while len(numeric[i]) < maxLength:
-              numeric[i].append(0)
-     input_tensor_forward = Variable(torch.LongTensor([[0]+x for x in numeric]).transpose(0,1).cuda(), requires_grad=False)
-     
-     target = input_tensor_forward[1:]
-     input_cut = input_tensor_forward[:-1]
-     embedded_forward = char_embeddings(input_cut)
-     out_forward, hidden_forward = rnn_drop(embedded_forward, None)
-
-     prediction = logsoftmax(output(out_forward)) #.data.cpu().view(-1, 3+len(itos)).numpy() #.view(1,1,-1))).view(3+len(itos)).data.cpu().numpy()
-     losses = lossModule(prediction.view(-1, len(itos)+3), target.view(-1)).view(maxLength, len(numeric))
-     losses = losses.sum(0).data.cpu().numpy()
-     return losses
-
-
-
-def encodeSequenceBatchForward(numeric):
-      input_tensor_forward = Variable(torch.LongTensor([[0]+x for x in numeric]).transpose(0,1).cuda(), requires_grad=False)
-
-#      target_tensor_forward = Variable(torch.LongTensor(numeric).transpose(0,1)[2:].cuda(), requires_grad=False).view(args.sequence_length+1, len(numeric), 1, 1)
-      embedded_forward = char_embeddings(input_tensor_forward)
-      out_forward, hidden_forward = rnn_drop(embedded_forward, None)
-#      out_forward = out_forward.view(args.sequence_length+1, len(numeric), -1)
- #     logits_forward = output(out_forward) 
-  #    log_probs_forward = logsoftmax(logits_forward)
-      return (out_forward[-1], hidden_forward)
-
-
-
-def encodeSequenceBatchBackward(numeric):
-#      print([itos[x-3] for x in numeric[0]])
-#      print([[0]+(x[::-1]) for x in numeric])
-      input_tensor_backward = Variable(torch.LongTensor([[0]+(x[::-1]) for x in numeric]).transpose(0,1).cuda(), requires_grad=False)
-#      target_tensor_backward = Variable(torch.LongTensor([x[::-1] for x in numeric]).transpose(0,1)[:-2].cuda(), requires_grad=False).view(args.sequence_length+1, len(numeric), 1, 1)
-      embedded_backward = char_embeddings(input_tensor_backward)
-      out_backward, hidden_backward = rnn_backward_drop(embedded_backward, None)
-#      out_backward = out_backward.view(args.sequence_length+1, len(numeric), -1)
-#      logits_backward = output(out_backward) 
-#      log_probs_backward = logsoftmax(logits_backward)
-
-      return (out_backward[-1], hidden_backward)
+    input_cut = input_tensor_forward
+    embedded_forward = char_embeddings(input_cut) # run through the embedding layer
+    out_forward, hidden_forward = rnn_drop(embedded_forward, None) # run the LSTM
+    hidden = hidden_forward[0].data.cpu().numpy() # obtain the final hidden state of the LSTM
+    return [hidden[0][i] for i in range(len(words))] # return, for each input word, the corresponding final LSTM state
 
 
 import numpy as np
 
-def predictNext(encoded, preventBoundary=True):
-     out, hidden = encoded
-     prediction = logsoftmax(output(out.unsqueeze(0))).data.cpu().view(3+len(itos)).numpy() #.view(1,1,-1))).view(3+len(itos)).data.cpu().numpy()
-     predicted = np.argmax(prediction[:-1] if preventBoundary else prediction)
-     return itos[predicted-3] #, prediction
 
-def keepGenerating(encoded, length=100, backwards=False):
-    out, hidden = encoded
-    output_string = ""
-   
-#    rnn_forward_drop.train(True)
-
-    for _ in range(length):
-      prediction = logsoftmax(2*output(out.unsqueeze(0))).data.cpu().view(3+len(itos)).numpy() #.view(1,1,-1))).view(3+len(itos)).data.cpu().numpy()
-#      predicted = np.argmax(prediction).items()
-      predicted = np.random.choice(3+len(itos), p=np.exp(prediction))
-
-      output_string += itos[predicted-3]
-
-      input_tensor_forward = Variable(torch.LongTensor([[predicted]]).transpose(0,1).cuda(), requires_grad=False)
-
-      embedded_forward = char_embeddings(input_tensor_forward)
-      
-      out, hidden = (rnn_drop if not backwards else rnn_backward_drop)(embedded_forward, hidden)
-      out = out[-1]
-
- #   rnn_forward_drop.train(False)
-
-
-    return output_string if not backwards else output_string[::-1]
-
-
+# paths of vocabularies with POS annotation
 vocabPath = {"german" : "/private/home/mhahn/data/WIKIPEDIA/german-wiki-word-vocab-POS.txt", "italian" : "/private/home/mhahn/data/WIKIPEDIA/itwiki/italian-wiki-word-vocab-POS.txt"}[args.language]
 
 
+# language-specific rules for detecting verbs and nouns from the POS annotation
 def detectVerb(pos):
   if args.language == "german":
       return pos.startswith("v")
@@ -282,6 +175,7 @@ def detectNoun(pos):
    elif args.language == "italian":
        return pos == "noun"
 
+# Select all nouns and verbs from the POS-annotated vocabularies
 nouns = []
 verbs = []
 nounsTotal = set()
@@ -302,12 +196,13 @@ with open(vocabPath, "r") as inFile:
     if incorporating and len(line[2]) <= 3 and int(line[2]) < 10:
         incorporating = False
 
+# Restrict to words that only occur with one of the two POS labels
 nouns = [x for x in nouns if x not in verbsTotal]
 verbs = [x for x in verbs if x not in nounsTotal]
 print(len(nouns))
 print(len(verbs))
 
-
+# Here we define which words we consider. In the German and Italian experiments, we restricted to words with a fixed ending to rule out the most basic morphological cues.
 def criterion(word):
     if args.language == "german":
        return word.endswith("en")
@@ -316,33 +211,38 @@ def criterion(word):
 
 nounsInN = [x for x in nouns if criterion(x)]
 verbsInN = [x for x in verbs if criterion(x)]
+
+# How many words do we get?
 print(len(nounsInN))
 print(len(verbsInN))
 
 print(nounsInN[:100])
 print(verbsInN[:100])
 
+# How many words we consider in each run of the experiment (This is set to 500 to make each run faster. With hindsight, an alternative would have been to precompute the LSTM encodings and reuse them in every step.)
 sampleSize = 500
 
 accuracies = []
-for _ in range(100):
+for _ in range(100): # do 100 runs of the experiment
+
+  # randomly select a subset
   random.shuffle(nounsInN)
   random.shuffle(verbsInN)
-
-
   nounsInNSelected = nounsInN[:sampleSize]# len(verbsInN)]
   verbsInNSelected = verbsInN[:sampleSize] #len(verbsInN)]
   
+  # collect the hidden states for all selected words
   encodedNounsInN = encodeListOfWords([x for x in nounsInNSelected])
   encodedVerbsInN = encodeListOfWords([x for x in verbsInNSelected])
   
+  # predictor and dependent variable for logistic regression
   predictors = encodedNounsInN + encodedVerbsInN
-  
   dependent = [0 for _ in encodedNounsInN] + [1 for _ in encodedVerbsInN]
   
+  # split into training and test partition
   from sklearn.model_selection import train_test_split
-  x_train_nouns, x_test_nouns, y_train_nouns, y_test_nouns = train_test_split(encodedNounsInN, [0 for _ in encodedNounsInN], test_size=1-args.train_size/500, shuffle=True)
-  x_train_verbs, x_test_verbs, y_train_verbs, y_test_verbs = train_test_split(encodedVerbsInN, [1 for _ in encodedVerbsInN], test_size=1-args.train_size/500, shuffle=True)
+  x_train_nouns, x_test_nouns, y_train_nouns, y_test_nouns = train_test_split(encodedNounsInN, [0 for _ in encodedNounsInN], test_size=1-args.train_size/sampleSize, shuffle=True)
+  x_train_verbs, x_test_verbs, y_train_verbs, y_test_verbs = train_test_split(encodedVerbsInN, [1 for _ in encodedVerbsInN], test_size=1-args.train_size/sampleSize, shuffle=True)
 
   x_train = x_train_nouns + x_train_verbs
   y_train = y_train_nouns + y_train_verbs
@@ -350,19 +250,16 @@ for _ in range(100):
   y_test = y_test_nouns + y_test_verbs
 
 
-
+  # Train the logistic regression
   from sklearn.linear_model import LogisticRegression
-  
   print("regression")
-  
   logisticRegr = LogisticRegression()
-  
   logisticRegr.fit(x_train, y_train)
-  
   score = logisticRegr.score(x_test, y_test)
   print(score)
   accuracies.append(score)
 
+# Compute average, standard deviation, and 0.05/0.95 quantiles of accuracy.
 print("--")
 
 print(sum(accuracies)/100)
@@ -377,10 +274,10 @@ print(standardDeviation)
 
 accuracies = sorted(accuracies)
 
-ci_lower = accuracies[int(0.05 * 100)]
-ci_upper = accuracies[int(0.95 * 100)]
+quantile_lower = accuracies[int(0.05 * 100)]
+quantile_upper = accuracies[int(0.95 * 100)]
 
-print((ci_lower, ci_upper))
+print((quantile_lower, quantile_upper))
 
 with open(f"/checkpoint/mhahn/pos/{__file__}_"+args.language+"_"+str(args.train_size)+"_"+args.load_from, "w") as outFile:
    print(args.language, file=outFile)
@@ -388,6 +285,6 @@ with open(f"/checkpoint/mhahn/pos/{__file__}_"+args.language+"_"+str(args.train_
    print(args.load_from, file=outFile)
    print(sum(accuracies)/100, file=outFile)  
    print(standardDeviation)
-   print(ci_lower)
-   print(ci_upper)
+   print(quantile_lower)
+   print(quantile_upper)
 
