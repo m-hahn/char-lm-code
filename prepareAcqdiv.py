@@ -63,3 +63,33 @@ for name in names:
 #reader = AcqdivReader("Japanese")
 
 
+
+def find_child_lines(speakers_file):
+        child_id=[]
+        for line_ in speakers_file:
+                if "Target_Child" in line_:
+                        column=line_.split("\t")
+                        if column[2] not in child_id:
+                                child_id.append(column[2])
+        return child_id
+
+
+speakers_file=open( (basePathOut + "speakers.tsv"), "r")
+list_=(find_child_lines(speakers_file))
+speakers_file.close()
+
+utterances_file=open((basePathOut + "utterances.tsv"), "r")
+lines_=utterances_file.readlines()
+utterances_file.close()
+
+
+def remove_child_lines(utterances_file):
+        for line_ in lines_:
+                column=line_.split("\t")
+                if column[3] not in list_:
+                        utterances_file.write(line_)
+
+utterances_file=open((basePathOut + "utterances.tsv"),"w")
+remove_child_lines(utterances_file)
+utterances_file.close()
+
