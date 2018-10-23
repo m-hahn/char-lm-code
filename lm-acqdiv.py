@@ -270,11 +270,6 @@ for epoch in range(10000):
 
 print(min_loss)
 
-#with open(CHECKPOINT_HOME + "/results.txt", 'a') as f:
- #  if len(devLosses) > 1 and devLosses[-1] > devLosses[-2]:
-  #    f.write(' '.join(( args, (epoch-1), devLosses [-2])) + '\n')
-   #else:
-    #  if len(devLosses)>1:
-     # 		f.write(' '.join(( args, epoch, devLosses [-1])) + '\n')
+
 
 	
