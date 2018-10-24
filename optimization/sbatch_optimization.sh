@@ -3,10 +3,10 @@
 # Grid search for lm-acqdiv. Run multiple jobs using SLURM sbatch,
 # each job scheduled separatly.
 #
-# Logged as 'gloukatou', run this script like:
+# Run this script like:
 #     ./sbatch_optimization.sh Indonesian
 #     # use squeue and wait all the jobs are terminated
-#     optimal_values=$(python ../min_loss.py 2>&1)
+#     optimal_values=$(python ../min_loss.py 2>&1) --to fix
 #     echo "Epoch MinDevloss = ${optimal_values##*)}, Optimal Parameters = ${optimal_values%)*}"
 
 
@@ -56,7 +56,7 @@ do
 						--save-to acqdiv-$language_lower-initial"
 
                                         # # for testing just run 3 jobs (2 should be launched
-                                        # # immediatly and the 3rd waiting)
+                                        # # immediatly and the 3rd waiting for lscp cluster)
                                         # count=$(( $count + 1 ))
                                         # [ $count -eq 3 ] && exit
                                     done
