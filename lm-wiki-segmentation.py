@@ -1,4 +1,7 @@
 
+assert False, "Use lm-wiki-segmentation-tokenized.py instead"
+
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--language", dest="language", type=str)
