@@ -48,6 +48,32 @@ python char-lm-ud-stationary-vocab-wiki-nospaces-bptt-2-encoderbaseline.py --lan
 ## Clustering Character Embeddings
 
 
+Agglomerative clustering:
+```
+python char-lm-ud-stationary-vocab-wiki-nospaces-embeddings-clustering-output.py --language english --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 3 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-english-nospaces-bptt-282506230 
+
+python char-lm-ud-stationary-vocab-wiki-nospaces-embeddings-clustering-output.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
+
+python char-lm-ud-stationary-vocab-wiki-nospaces-embeddings-clustering-output.py --language italian --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-italian-nospaces-bptt-855947412
+```
+
+t-SNE:
+```
+python char-lm-ud-stationary-vocab-wiki-nospaces-embeddings-tsne-output.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
+```
+
+
+```
+python char-lm-ud-stationary-vocab-wiki-nospaces-embeddings-clustering-output-phonetic.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
+
+python char-lm-ud-stationary-vocab-wiki-nospaces-embeddings-clustering-output-phonetic.py --language italian --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-italian-nospaces-bptt-855947412
+
+python char-lm-ud-stationary-vocab-wiki-nospaces-embeddings-clustering-output-phonetic.py --language english --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 3 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-english-nospaces-bptt-282506230 
+```
+
+
+
+
 ## Phonotactics
 Training:
 ```
@@ -61,9 +87,15 @@ python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-predictio
 
 
 
+
+
+
+
+
 ## Segmentation
 
 ### LSTM CRNN
+
 ```
 python lm-wiki-segmentation-tokenized.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
 
@@ -71,6 +103,16 @@ python lm-wiki-segmentation-tokenized.py --language italian --batchSize 128 --ch
 
 python lm-wiki-segmentation-tokenized.py --language english  --batchSize 128 --char_dropout_prob 0.001 --char_embedding_size 200 --char_noise_prob 0.0 --hidden_dim 1024 --language english --layer_num 3 --learning_rate 3.6  --lr_decay 0.95 --myID 282506230 --load-from wiki-english-nospaces-bptt-282506230 --sequence_length 80 --verbose True --weight_dropout_hidden 0.01 --weight_dropout_in 0.0
 ```
+
+
+
+```
+python lm-wiki-segmentation-tokenized-analysis.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909 --sequence_length 50
+
+python lm-wiki-segmentation-tokenized-analysis.py --language english  --batchSize 128 --char_dropout_prob 0.001 --char_embedding_size 200 --char_noise_prob 0.0 --hidden_dim 1024 --language english --layer_num 3 --learning_rate 3.6  --lr_decay 0.95 --myID 282506230 --load-from wiki-english-nospaces-bptt-282506230 --sequence_length 80 --verbose True --weight_dropout_hidden 0.01 --weight_dropout_in 0.0
+```
+
+
 
 ### RNN CRNN
 
@@ -96,6 +138,25 @@ python lm-wiki-segmentation-tokenized-profile-flat.py  --language english  --bat
 python lm-wiki-segmentation-tokenized-profile-flat-ci.py  --language english  --batchSize 128 --char_dropout_prob 0.001 --char_embedding_size 200 --char_noise_prob 0.0 --hidden_dim 1024 --language english --layer_num 3 --learning_rate 3.6  --lr_decay 0.95 --myID 282506230 --load-from wiki-english-nospaces-bptt-282506230 --sequence_length 80 --verbose True --weight_dropout_hidden 0.01 --weight_dropout_in 0.0
 ```
 
+
+### N-Gram Baseline
+```
+python lm-wiki-segmentation-tokenized-analysis-ngrams.py --language german 
+
+python lm-wiki-segmentation-tokenized-analysis-ngrams.py --language italian 
+
+python lm-wiki-segmentation-tokenized-analysis-ngrams.py --language english
+```
+
+
+### Syntactic Height
+
+```
+python lm-wiki-segmentation-tokenized-syntax.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
+```
+
+
+
 ### Ablation
 
 
@@ -106,10 +167,6 @@ python lm-wiki-segmentation-tokenized-ablation.py --language italian --batchSize
 
 python lm-wiki-segmentation-tokenized-ablation.py --language english  --batchSize 128 --char_dropout_prob 0.001 --char_embedding_size 200 --char_noise_prob 0.0 --hidden_dim 1024 --language english --layer_num 3 --learning_rate 3.6  --lr_decay 0.95 --myID 282506230 --load-from wiki-english-nospaces-bptt-282506230 --sequence_length 80 --verbose True --weight_dropout_hidden 0.01 --weight_dropout_in 0.0
 ```
-
-
-
-
 
 
 ### Word boundary classification
@@ -178,6 +235,64 @@ python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-predictio
 python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
 ```
 
+
+
+
+
+### Baseline
+```
+python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-baseline.py --language German --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from-baseline german-autoencoder-var-words
+```
+
+### CRNN
+```
+python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
+```
+
+```
+python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-autoencoder
+```
+
+```
+python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
+```
+
+```
+python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-autoencoder
+```
+
+### Vanilla CRNN
+```
+python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-RNN.py  --batchSize 256 --char_dropout_prob 0.01 --char_embedding_size 50 --char_noise_prob 0.0 --hidden_dim 2048 --language german --layer_num 2 --learning_rate 0.1 --nonlinearity tanh --load-from wiki-german-nospaces-bptt-rnn-237671415 --sequence_length 30 --weight_dropout_hidden 0.0 --weight_dropout_in 0.0
+```
+
+```
+python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-words.py  --language german --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-words-966024846
+```
+
+
+```
+python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-words-withOOV.py  --language german --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-words-966024846
+```
+
+
+
+
+### for inspecting the data set
+```
+python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-look_at_data.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
+```
+
+
+
+
+
+
+
+
+
+
+
 ## Morphosyntax
 
 ### Gender
@@ -226,118 +341,6 @@ python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-predictio
 python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-forms-newtests-prep-noun-cleaned-RNN-LEXICON.py --language german --batchSize 128 --char_embedding_size 50 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-rnn-52168083
 
 python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-forms-newtests-prep-noun-cleaned-LEXICON.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
-```
-
-
-
-## Phonotactics
-
-
-## Segmentation
-
-```
-python lm-wiki-segmentation-tokenized-analysis.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909 --sequence_length 50
-
-python lm-wiki-segmentation-tokenized-analysis.py --language english  --batchSize 128 --char_dropout_prob 0.001 --char_embedding_size 200 --char_noise_prob 0.0 --hidden_dim 1024 --language english --layer_num 3 --learning_rate 3.6  --lr_decay 0.95 --myID 282506230 --load-from wiki-english-nospaces-bptt-282506230 --sequence_length 80 --verbose True --weight_dropout_hidden 0.01 --weight_dropout_in 0.0
-```
-
-N-Gram Baseline
-```
-python lm-wiki-segmentation-tokenized-analysis-ngrams.py --language german 
-
-python lm-wiki-segmentation-tokenized-analysis-ngrams.py --language italian 
-
-python lm-wiki-segmentation-tokenized-analysis-ngrams.py --language english
-```
-
-
-Syntactic Height
-
-```
-python lm-wiki-segmentation-tokenized-syntax.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
-```
-
-
-# plural classification
-
-## Baseline
-```
-python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-baseline.py --language German --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from-baseline german-autoencoder-var-words
-```
-
-## CRNN
-```
-python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
-```
-
-```
-python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-autoencoder
-```
-
-```
-python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
-```
-
-```
-python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-autoencoder
-```
-
-## Vanilla CRNN
-```
-python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-RNN.py  --batchSize 256 --char_dropout_prob 0.01 --char_embedding_size 50 --char_noise_prob 0.0 --hidden_dim 2048 --language german --layer_num 2 --learning_rate 0.1 --nonlinearity tanh --load-from wiki-german-nospaces-bptt-rnn-237671415 --sequence_length 30 --weight_dropout_hidden 0.0 --weight_dropout_in 0.0
-```
-
-```
-python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-words.py  --language german --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-words-966024846
-```
-
-
-```
-python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-words-withOOV.py  --language german --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-words-966024846
-```
-
-
-
-
-# for inspecting the data set
-```
-python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-look_at_data.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
-```
-
-
-
-
-
-```
-python char-lm-ud-stationary-vocab-wiki-nospaces-embeddings-clustering-output.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
-```
-
-
-
-```
-python char-lm-ud-stationary-vocab-wiki-nospaces-embeddings-clustering-output.py --language italian --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-italian-nospaces-bptt-855947412
-```
-
-
-```
-python char-lm-ud-stationary-vocab-wiki-nospaces-embeddings-tsne-output.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
-```
-
-
-```
-python char-lm-ud-stationary-vocab-wiki-nospaces-embeddings-clustering-output-phonetic.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
-```
-
-```
-python char-lm-ud-stationary-vocab-wiki-nospaces-embeddings-clustering-output-phonetic.py --language italian --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-italian-nospaces-bptt-855947412
-```
-
-```
-python char-lm-ud-stationary-vocab-wiki-nospaces-embeddings-clustering-output-phonetic.py --language english --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 3 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-english-nospaces-bptt-282506230 
-```
-
-```
-python char-lm-ud-stationary-vocab-wiki-nospaces-embeddings-clustering-output.py --language english --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 3 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-english-nospaces-bptt-282506230 
 ```
 
 
@@ -433,26 +436,6 @@ python char-lm-ud-stationary-completion-rnn.py --batchSize 256 --char_dropout_pr
 python char-lm-ud-stationary-completion-rnn.py --batchSize 256 --char_dropout_prob 0.001 --char_embedding_size 200 --char_noise_prob 0.0 --hidden_dim 2048 --language english --layer_num 2 --learning_rate 0.01 --nonlinearity relu --load-from wiki-english-nospaces-bptt-rnn-891035072 --sequence_length 50 --weight_dropout_hidden 0.05 --weight_dropout_in 0.01
 ```
 
-
-
-
-# Word Vectors and Probing Tasks
-
-```
-python char-lm-ud-stationary-wordVectors.py --language english --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 3 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-english-nospaces-bptt-282506230 
-```
-
-```
-python char-lm-ud-stationary-wordVectors-pool.py --language english --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 3 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-english-nospaces-bptt-282506230 
-```
-
-```
-python char-lm-ud-stationary-probing.py --language english --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 3 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-english-nospaces-bptt-282506230 
-```
-
-```
-python char-lm-ud-stationary-probing-pool.py --language english --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 3 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-english-nospaces-bptt-282506230 
-```
 
 
 
