@@ -1,3 +1,5 @@
+from paths import LOG_HOME
+from paths import MODELS_HOME
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -90,7 +92,7 @@ optim = torch.optim.SGD(parameters(), lr=args.learning_rate, momentum=0.0) # 0.0
 named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
 
 if args.load_from is not None:
-  checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
+  checkpoint = torch.load(MODELS_HOME+"/"+args.load_from+".pth.tar")
   for name, module in named_modules.items():
       module.load_state_dict(checkpoint[name])
 
@@ -219,12 +221,13 @@ for epoch in range(10000):
        dev_char_count += numberOfCharacters
    devLosses.append(dev_loss/dev_char_count)
    print(devLosses)
-   with open("/checkpoint/mhahn/"+args.language+"_"+__file__+"_"+str(args.myID), "w") as outFile:
+   with open(LOG_HOME+"/"+args.language+"_"+__file__+"_"+str(args.myID), "w") as outFile:
       print(" ".join([str(x) for x in devLosses]), file=outFile)
 
    if len(devLosses) > 1 and devLosses[-1] > devLosses[-2]:
       break
    if args.save_to is not None:
-      torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), "/checkpoint/mhahn/"+args.save_to+".pth.tar")
+      torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), MODELS_HOME+"/"+args.save_to+".pth.tar")
+
 
 

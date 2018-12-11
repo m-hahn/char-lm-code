@@ -1,3 +1,4 @@
+from paths import WIKIPEDIA_HOME
 import random
  
 
@@ -5,7 +6,7 @@ def load(language, partition, sequence, sequences=None):
     chunks = []
     skippedLines = 0
     totalLines = 0
-    with open("/private/home/mhahn/data/WIKIPEDIA/"+language+"-"+partition+".txt", "r") as inFile:
+    with open(WIKIPEDIA_HOME+""+language+"-"+partition+".txt", "r") as inFile:
       for line in inFile:
         line = line.strip().lower()
         totalLines += 1
@@ -37,4 +38,5 @@ def load(language, partition, sequence, sequences=None):
 
 def training(language, sequence, sequences=None):
   return load(language, "train", sequence, sequences=sequences)
+
 

@@ -1,10 +1,11 @@
+from paths import WIKIPEDIA_HOME
 import random
  
 
 def load(language, partition):
   if language == "italian":
     chunks = []
-    with open("/private/home/mhahn/data/WIKIPEDIA/itwiki/itwiki-"+partition+".txt", "r") as inFile:
+    with open(WIKIPEDIA_HOME+"itwiki/itwiki-"+partition+".txt", "r") as inFile:
       for line in inFile:
         chunks.append(line.strip().lower())
         if len(chunks) > 20000:
@@ -15,7 +16,7 @@ def load(language, partition):
   else:
     chunks = []
     pathInfix = {"german" : "", "english" : "/enwiki/"}[language]
-    with open("/private/home/mhahn/data/WIKIPEDIA/"+pathInfix+language+"-"+partition+".txt", "r") as inFile:
+    with open(WIKIPEDIA_HOME+""+pathInfix+language+"-"+partition+".txt", "r") as inFile:
       for line in inFile:
         chunks.append(line.strip().lower())
         if len(chunks) > 20000:
@@ -26,7 +27,7 @@ def load(language, partition):
 
 def training(language):
   return load(language, "train")
-#   with open("/private/home/mhahn/data/WIKIPEDIA/"+language+"-train.txt", "r") as inFile:
+#   with open(WIKIPEDIA_HOME+""+language+"-train.txt", "r") as inFile:
 #     data = inFile.read().strip().lower().split("\n")
 #     print("Shuffling")
 #     random.shuffle(data)
@@ -34,7 +35,7 @@ def training(language):
 #     return "".join(data)
 def dev(language):
   return load(language, "valid")
-#   with open("/private/home/mhahn/data/WIKIPEDIA/"+language+"-valid.txt", "r") as inFile:
+#   with open(WIKIPEDIA_HOME+""+language+"-valid.txt", "r") as inFile:
 #     data = inFile.read().strip().lower().split("\n")
 #     print("Shuffling")
 #     random.shuffle(data)
@@ -44,4 +45,5 @@ def dev(language):
 
 #     for line in data:
 #        yield line
+
 

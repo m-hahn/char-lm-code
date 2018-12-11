@@ -1,3 +1,7 @@
+from paths import WIKIPEDIA_HOME
+from paths import CHAR_VOCAB_HOME
+from paths import FIGURES_HOME
+from paths import MODELS_HOME
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -43,21 +47,21 @@ def plus(it1, it2):
       yield x
 
 try:
-   with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "r") as inFile:
+   with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
 except FileNotFoundError:
     print("Creating new vocab")
     char_counts = {}
     # get symbol vocabulary
 
-    with open("/private/home/mhahn/data/WIKIPEDIA/"+args.language+"-vocab.txt", "r") as inFile:
+    with open(WIKIPEDIA_HOME+"/"+args.language+"-vocab.txt", "r") as inFile:
       words = inFile.read().strip().split("\n")
       for word in words:
          for char in word.lower():
             char_counts[char] = char_counts.get(char, 0) + 1
     char_counts = [(x,y) for x, y in char_counts.items()]
     itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
-    with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "w") as outFile:
+    with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
 itos.append("\n")
@@ -115,7 +119,7 @@ named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embedd
 
 print("Loading model")
 if args.load_from is not None:
-  checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
+  checkpoint = torch.load(MODELS_HOME+"/"+args.load_from+".pth.tar")
   for name, module in named_modules.items():
       print(checkpoint[name].keys())
       module.load_state_dict(checkpoint[name])
@@ -335,7 +339,7 @@ averagePMI2 = pmis2.mean(axis=0)
 plt.plot(range(-3, 4), [averagePMI2[index.index(j)] for j in range(-3,4)], label=name, color="red", linewidth=4.0)
 #plt.legend()
 plt.show()
-plt.savefig("/checkpoint/mhahn/segmentation-profile-flattened-pmis-"+args.language+".pdf")
+plt.savefig(FIGURES_HOME+"/segmentation-profile-flattened-pmis-"+args.language+".pdf")
 plt.close()
 
 
@@ -346,7 +350,7 @@ averageSurprisal2 = surprisals2.mean(axis=0)
 plt.plot(range(-3, 4), [averageSurprisal2[index.index(j)] for j in range(-3,4)], label=name, color="red", linewidth=4.0)
 #plt.legend()
 plt.show()
-plt.savefig("/checkpoint/mhahn/segmentation-profile-flattened-surprisals-"+args.language+".pdf")
+plt.savefig(FIGURES_HOME+"/segmentation-profile-flattened-surprisals-"+args.language+".pdf")
 plt.close()
 
 
@@ -357,7 +361,7 @@ averageEntropy2 = entropies2.mean(axis=0)
 plt.plot(range(-3, 4), [averageEntropy2[index.index(j)] for j in range(-3,4)], label=name, color="red", linewidth=4.0)
 #plt.legend()
 plt.show()
-plt.savefig("/checkpoint/mhahn/segmentation-profile-flattened-entropies-"+args.language+".pdf")
+plt.savefig(FIGURES_HOME+"/segmentation-profile-flattened-entropies-"+args.language+".pdf")
 plt.close()
 
 
@@ -500,3 +504,4 @@ print(f"P {round(100*precision,2)} R {round(100*recall,2)} F {round(100*f,2)} BP
 #      optim.step()
 #      
 #
+

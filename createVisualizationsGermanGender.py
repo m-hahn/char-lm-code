@@ -1,3 +1,4 @@
+from paths import FIGURES_HOME
 import os
 basePath = "/checkpoint/mhahn/trajectories/"
 
@@ -32,6 +33,7 @@ if True:
         plt.plot(range(len(values)), values, label=article)
      plt.legend()
      plt.show()
-     plt.savefig("/checkpoint/mhahn/figures/german_gender_"+gender+".png")
+     plt.savefig(FIGURES_HOME+"/figures/german_gender_"+gender+".png")
      plt.close()
+
 

@@ -1,3 +1,5 @@
+from paths import WIKIPEDIA_HOME
+from paths import CHAR_VOCAB_HOME
 import sys
 
 import argparse
@@ -24,21 +26,21 @@ def plus(it1, it2):
       yield x
 
 try:
-   with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "r") as inFile:
+   with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
 except FileNotFoundError:
     print("Creating new vocab")
     char_counts = {}
     # get symbol vocabulary
 
-    with open("/private/home/mhahn/data/WIKIPEDIA/"+args.language+"-vocab.txt", "r") as inFile:
+    with open(WIKIPEDIA_HOME+"/"+args.language+"-vocab.txt", "r") as inFile:
       words = inFile.read().strip().split("\n")
       for word in words:
          for char in word.lower():
             char_counts[char] = char_counts.get(char, 0) + 1
     char_counts = [(x,y) for x, y in char_counts.items()]
     itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
-    with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "w") as outFile:
+    with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 print("".join(itos))
 stoi = dict([(itos[i],i) for i in range(len(itos))])
@@ -57,5 +59,6 @@ with open("/checkpoint/mhahn/italian-bigrams-filtered.txt", "w") as outFile:
       print(bigram, file=outFile)
 
 quit()
+
 
 

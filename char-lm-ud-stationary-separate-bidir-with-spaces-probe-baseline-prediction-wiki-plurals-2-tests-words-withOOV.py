@@ -1,3 +1,5 @@
+from paths import WIKIPEDIA_HOME
+from paths import MODELS_HOME
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -43,7 +45,7 @@ def plus(it1, it2):
    for x in it2:
       yield x
 
-char_vocab_path = {"german" : "/private/home/mhahn/data/WIKIPEDIA/german-wiki-word-vocab.txt", "italian" : "/private/home/mhahn/data/WIKIPEDIA/itwiki/italian-wiki-word-vocab.txt"}[args.language]
+char_vocab_path = {"german" : WIKIPEDIA_HOME+"/german-wiki-word-vocab.txt", "italian" : WIKIPEDIA_HOME+"/itwiki/italian-wiki-word-vocab.txt"}[args.language]
 
 with open(char_vocab_path, "r") as inFile:
      itos = [x.split("\t")[0] for x in inFile.read().strip().split("\n")[:50000]]
@@ -93,7 +95,7 @@ named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embedd
 
 print("Loading model")
 if args.load_from is not None:
-  checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
+  checkpoint = torch.load(MODELS_HOME+"/"+args.load_from+".pth.tar")
   for name, module in named_modules.items():
       print(checkpoint[name].keys())
       module.load_state_dict(checkpoint[name])
@@ -543,5 +545,6 @@ for entry in firstEntries:
 
 
 quit()
+
 
 

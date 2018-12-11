@@ -1,8 +1,9 @@
+from paths import MSR_COMP_HOME
 unigrams = {}
 
 
-pathIn = "/private/home/mhahn/data/similarity/msr-completion/holmes-tokenized-train.txt"
-pathOut = "/private/home/mhahn/data/similarity/msr-completion/holmes-word-vocab.txt"
+pathIn = MSR_COMP_HOME+"//holmes-tokenized-train.txt"
+pathOut = MSR_COMP_HOME+"//holmes-word-vocab.txt"
 
 import random
 with open(pathIn, "r") as inFile:
@@ -21,3 +22,4 @@ with open(pathOut, "w") as outFile:
   for word, count in unigrams:
       print(f"{word}\t{count}", file=outFile)
       
+

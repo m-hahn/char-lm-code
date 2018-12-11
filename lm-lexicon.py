@@ -1,3 +1,4 @@
+from paths import MODELS_HOME
 
 # final product from Friday
 
@@ -74,7 +75,7 @@ optim = torch.optim.SGD(parameters(), lr=0.1, momentum=0.0)
 named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
 
 if args.load_from is not None:
-  checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
+  checkpoint = torch.load(MODELS_HOME+"/"+args.load_from+".pth.tar")
   for name, module in named_modules.items():
       module.load_state_dict(checkpoint[name])
 
@@ -286,4 +287,5 @@ while True:
                 miPastFuture = newMiPastFuture
                 quality = newQuality
            
+
 

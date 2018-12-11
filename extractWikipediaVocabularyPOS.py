@@ -1,11 +1,12 @@
+from paths import WIKIPEDIA_HOME
 unigrams = {}
 
 if False:
- pathIn = "/private/home/mhahn/data/WIKIPEDIA/german-train-tagged.txt"
- pathOut = "/private/home/mhahn/data/WIKIPEDIA/german-wiki-word-vocab-POS.txt"
+ pathIn = WIKIPEDIA_HOME+"german-train-tagged.txt"
+ pathOut = WIKIPEDIA_HOME+"german-wiki-word-vocab-POS.txt"
 else:
  pathIn = "/checkpoint/mbaroni/char-rnn-exchange/tagged_italian_training_corpus.txt"
- pathOut = "/private/home/mhahn/data/WIKIPEDIA/itwiki/italian-wiki-word-vocab-POS.txt"
+ pathOut = WIKIPEDIA_HOME+"itwiki/italian-wiki-word-vocab-POS.txt"
 
 import random
 with open(pathIn, "r") as inFile:
@@ -29,3 +30,4 @@ with open(pathOut, "w") as outFile:
   for word, count in unigrams:
       print(f"{word}\t{count}", file=outFile)
       
+

@@ -1,3 +1,4 @@
+from paths import WIKIPEDIA_HOME
 
 
 from corpusIterator import CorpusIterator
@@ -54,7 +55,7 @@ def processTable(word, declensionTable):
 
 currentPage = None
 declensionTable = None
-with open("/private/home/mhahn/data/WIKIPEDIA/dewiktionary-20180720-pages-articles.xml", "r") as inFile:
+with open(WIKIPEDIA_HOME+"dewiktionary-20180720-pages-articles.xml", "r") as inFile:
   for line in inFile:
     if line == "  <page>\n":
        currentPage = None
@@ -79,4 +80,5 @@ with open("/private/home/mhahn/data/WIKIPEDIA/dewiktionary-20180720-pages-articl
              if end:
                processTable(word, declensionTable)
                declensionTable = None
+
 

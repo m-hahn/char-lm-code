@@ -1,3 +1,4 @@
+from paths import WIKIPEDIA_HOME
 
 
 import argparse
@@ -22,7 +23,7 @@ def plus(it1, it2):
    for x in it2:
       yield x
 
-char_vocab_path = {"german" : "/private/home/mhahn/data/WIKIPEDIA/german-wiki-word-vocab.txt", "italian" : "/private/home/mhahn/data/WIKIPEDIA/itwiki/italian-wiki-word-vocab.txt"}[args.language]
+char_vocab_path = {"german" : WIKIPEDIA_HOME+"/german-wiki-word-vocab.txt", "italian" : WIKIPEDIA_HOME+"/itwiki/italian-wiki-word-vocab.txt"}[args.language]
 
 with open(char_vocab_path, "r") as inFile:
      itos = [x.split("\t") for x in inFile.read().strip().split("\n")]
@@ -115,6 +116,7 @@ print(choicePl[0] / sum(choicePl))
 print("/checkpoint/mbaroni/char-rnn-exchange/candidate_eadj_aonoun_testset.txt")
 print(choice2Masc[0] / sum(choice2Masc))
 print(choice2Fem[1] / sum(choice2Fem))
+
 
 
 

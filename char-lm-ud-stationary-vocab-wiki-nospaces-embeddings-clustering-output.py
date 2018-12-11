@@ -1,3 +1,7 @@
+from paths import WIKIPEDIA_HOME
+from paths import CHAR_VOCAB_HOME
+from paths import FIGURES_HOME
+from paths import MODELS_HOME
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -38,21 +42,21 @@ def plus(it1, it2):
       yield x
 
 try:
-   with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "r") as inFile:
+   with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
 except FileNotFoundError:
     print("Creating new vocab")
     char_counts = {}
     # get symbol vocabulary
 
-    with open("/private/home/mhahn/data/WIKIPEDIA/"+args.language+"-vocab.txt", "r") as inFile:
+    with open(WIKIPEDIA_HOME+"/"+args.language+"-vocab.txt", "r") as inFile:
       words = inFile.read().strip().split("\n")
       for word in words:
          for char in word.lower():
             char_counts[char] = char_counts.get(char, 0) + 1
     char_counts = [(x,y) for x, y in char_counts.items()]
     itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
-    with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "w") as outFile:
+    with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
 print(itos)
@@ -86,7 +90,7 @@ output = torch.nn.Linear(args.hidden_dim, len(itos)+3).cuda()
 named_modules = {"output" : output}
 
 if args.load_from is not None:
-  checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
+  checkpoint = torch.load(MODELS_HOME+"/"+args.load_from+".pth.tar")
   for name, module in named_modules.items():
       module.load_state_dict(checkpoint[name])
 else:
@@ -124,7 +128,8 @@ dendrogram(linkage_matrix, labels=labels)
 
 
 plt.show()
-plt.savefig("/checkpoint/mhahn/figures/char-emb-clustering-output_output-"+args.load_from+".png")
+plt.savefig(FIGURES_HOME+"/figures/char-emb-clustering-output_output-"+args.load_from+".png")
 plt.close()
+
 
 

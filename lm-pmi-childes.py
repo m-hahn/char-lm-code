@@ -1,3 +1,4 @@
+from paths import MODELS_HOME
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -69,7 +70,7 @@ optim = torch.optim.SGD(parameters(), lr=0.1, momentum=0.0)
 named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
 
 if args.load_from is not None:
-  checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
+  checkpoint = torch.load(MODELS_HOME+"/"+args.load_from+".pth.tar")
   for name, module in named_modules.items():
       module.load_state_dict(checkpoint[name])
 
@@ -143,7 +144,7 @@ for epoch in range(100):
       loss = forward(partitions[batch*batchSize:(batch+1)*batchSize], printHere=printHere)
       backward(loss, printHere)
    if args.save_to is not None:
-      torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), "/checkpoint/mhahn/"+args.save_to+".pth.tar")
+      torch.save(dict([(name, module.state_dict()) for name, module in named_modules.items()]), MODELS_HOME+"/"+args.save_to+".pth.tar")
 
 
 ##      print(train[batch*batchSize:(batch+1)*batchSize])
@@ -168,3 +169,4 @@ for epoch in range(100):
 #      optim.step()
 #      
 #
+

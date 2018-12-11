@@ -1,3 +1,6 @@
+from paths import MSR_COMP_HOME
+from paths import WIKIPEDIA_HOME
+from paths import MODELS_HOME
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -47,7 +50,7 @@ def plus(it1, it2):
    for x in it2:
       yield x
 
-char_vocab_path = {"german" : "/private/home/mhahn/data/WIKIPEDIA/german-wiki-word-vocab.txt", "italian" : "/private/home/mhahn/data/WIKIPEDIA/itwiki/italian-wiki-word-vocab.txt", "english" : "/private/home/mhahn/data/WIKIPEDIA/enwiki/english-wiki-word-vocab.txt"}[args.language]
+char_vocab_path = {"german" : WIKIPEDIA_HOME+"/german-wiki-word-vocab.txt", "italian" : WIKIPEDIA_HOME+"/itwiki/italian-wiki-word-vocab.txt", "english" : WIKIPEDIA_HOME+"enwiki/english-wiki-word-vocab.txt"}[args.language]
 
 with open(char_vocab_path, "r") as inFile:
      itos = [x.split("\t")[0] for x in inFile.read().strip().split("\n")[:50000]]
@@ -96,7 +99,7 @@ named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embedd
 
 print("Loading model")
 if args.load_from is not None:
-  checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
+  checkpoint = torch.load(MODELS_HOME+"/"+args.load_from+".pth.tar")
   for name, module in named_modules.items():
       print(checkpoint[name].keys())
       module.load_state_dict(checkpoint[name])
@@ -271,11 +274,11 @@ def doChoiceListLosses(xs, printHere=True):
       print(losses)
     return losses
 
-with open("/private/home/mhahn/data/similarity/msr-completion/test_answer.csv", "r") as inFile:
+with open(MSR_COMP_HOME+"//test_answer.csv", "r") as inFile:
    answers = [x.split(",") for x in inFile.read().strip().split("\n")[1:]]
 
 correct = 0.0
-with open("/private/home/mhahn/data/similarity/msr-completion/testing_data.csv", "r") as inFile:
+with open(MSR_COMP_HOME+"//testing_data.csv", "r") as inFile:
    completion = inFile.read().strip().split("\n")[1:]
 for i in range(len(completion)):
   x = completion[i].split(",")
@@ -296,5 +299,6 @@ for i in range(len(completion)):
   chosenChar = "abcde"[chosen]
   correct += (1 if chosenChar == answers[i][1] else 0)
   print(correct/(i+1))
+
 
 

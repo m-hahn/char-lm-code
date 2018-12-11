@@ -1,3 +1,5 @@
+from paths import WIKIPEDIA_HOME
+from paths import MODELS_HOME
 
 
 # Clear evidence that the model isn't leveraging evidence about the subcategorization of the verb.
@@ -49,7 +51,7 @@ def plus(it1, it2):
    for x in it2:
       yield x
 
-char_vocab_path = {"german" : "/private/home/mhahn/data/WIKIPEDIA/german-wiki-word-vocab.txt", "italian" : "/private/home/mhahn/data/WIKIPEDIA/itwiki/italian-wiki-word-vocab.txt"}[args.language]
+char_vocab_path = {"german" : WIKIPEDIA_HOME+"/german-wiki-word-vocab.txt", "italian" : WIKIPEDIA_HOME+"/itwiki/italian-wiki-word-vocab.txt"}[args.language]
 
 with open(char_vocab_path, "r") as inFile:
      itos = [x.split("\t")[0] for x in inFile.read().strip().split("\n")[:50000]]
@@ -104,7 +106,7 @@ named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embedd
 
 print("Loading model")
 if args.load_from is not None:
-  checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
+  checkpoint = torch.load(MODELS_HOME+"/"+args.load_from+".pth.tar")
   for name, module in named_modules.items():
       print(checkpoint[name].keys())
       module.load_state_dict(checkpoint[name])
@@ -398,7 +400,7 @@ masculineAccusatives = list(masculineAccusatives)
 # more ~/data/WIKIPEDIA/german-train-tagged.txt  | awk '{print $2,tolower($3)}' 
 # sort ~/data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS.txt | uniq -c > ~/data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS-uniq.txt
 wentThroughAdjectives = False
-with open("/private/home/mhahn//data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as inFile:
+with open(WIKIPEDIA_HOME+"german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as inFile:
     adjectives = []
     for line in inFile:
       line = line.strip().split(" ")
@@ -533,3 +535,4 @@ print(correctControlDer)
 print("By PMI")
 print(correctByPMI)
      
+

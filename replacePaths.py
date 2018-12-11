@@ -10,7 +10,7 @@ import os
 files = os.listdir(".")
 
 for name in files:
-    if name == "replacePaths.py" or name == "config.py":
+    if name == "replacePaths.py" or name == "config.py" or name == "paths.py":
         continue
     if name.endswith(".py"):
         required = set()
@@ -51,7 +51,7 @@ for name in files:
             if '"/private/home/mhahn//data/WIKIPEDIA/' in line:
                 line = line.replace('"/private/home/mhahn//data/WIKIPEDIA/', 'WIKIPEDIA_HOME+"')
                 required.add("WIKIPEDIA_HOME")
-
+            content[i] = line
 
 #                print(line)
 
@@ -65,5 +65,5 @@ for name in files:
                 for line in content:
                    print >> outFile, line
             print(name)
-            quit()
+#            quit()
 

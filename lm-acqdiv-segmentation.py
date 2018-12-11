@@ -1,3 +1,4 @@
+from paths import MODELS_HOME
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -97,7 +98,7 @@ named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embedd
 
 # Load the model from the checkpoint
 if args.load_from is not None:
-  checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
+  checkpoint = torch.load(MODELS_HOME+"/"+args.load_from+".pth.tar")
   for name, module in named_modules.items():
       module.load_state_dict(checkpoint[name])
 
@@ -322,6 +323,7 @@ print(predictedAndReal/targetCount)
 
 score = logisticRegr.score(x_test, y_test)
 print(score)
+
 
 
 

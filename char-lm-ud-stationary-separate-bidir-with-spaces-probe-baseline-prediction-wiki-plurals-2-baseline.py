@@ -1,3 +1,4 @@
+from paths import MODELS_HOME
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -100,7 +101,7 @@ optim = torch.optim.SGD(baseline_parameters(), lr=args.learning_rate, momentum=0
 baseline_named_modules = {"rnn_encoder" : baseline_rnn_encoder,  "output" : baseline_output, "char_embeddings" : baseline_char_embeddings}
 
 if args.load_from_baseline is not None:
-  checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from_baseline+".pth.tar")
+  checkpoint = torch.load(MODELS_HOME+"/"+args.load_from_baseline+".pth.tar")
   for name, module in baseline_named_modules.items():
       print(name)
       print(checkpoint[name])
@@ -931,6 +932,7 @@ predictions = logisticRegr.predict(x_test)
 
 score = logisticRegr.score(x_test, y_test)
 print(score)
+
 
 
 

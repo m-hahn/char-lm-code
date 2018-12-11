@@ -1,3 +1,6 @@
+from paths import WIKIPEDIA_HOME
+from paths import CHAR_VOCAB_HOME
+from paths import MODELS_HOME
 # POS induction: logistic classifier operating on hidden states
 
 
@@ -49,21 +52,21 @@ def plus(it1, it2):
 
 # Open the character vocabulary
 try:
-   with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "r") as inFile:
+   with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
 except FileNotFoundError: # Create it from scratch if it doesn't exist yet
     print("Creating new vocab")
     char_counts = {}
     # get symbol vocabulary
 
-    with open("/private/home/mhahn/data/WIKIPEDIA/"+args.language+"-vocab.txt", "r") as inFile:
+    with open(WIKIPEDIA_HOME+"/"+args.language+"-vocab.txt", "r") as inFile:
       words = inFile.read().strip().split("\n")
       for word in words:
          for char in word.lower():
             char_counts[char] = char_counts.get(char, 0) + 1
     char_counts = [(x,y) for x, y in char_counts.items()]
     itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
-    with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "w") as outFile:
+    with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
 print(itos)
@@ -110,7 +113,7 @@ named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embedd
 
 print("Loading model")
 if args.load_from is not None:
-  checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
+  checkpoint = torch.load(MODELS_HOME+"/"+args.load_from+".pth.tar")
   for name, module in named_modules.items():
       print(checkpoint[name].keys())
       module.load_state_dict(checkpoint[name])
@@ -160,7 +163,7 @@ import numpy as np
 
 
 # paths of vocabularies with POS annotation
-vocabPath = {"german" : "/private/home/mhahn/data/WIKIPEDIA/german-wiki-word-vocab-POS.txt", "italian" : "/private/home/mhahn/data/WIKIPEDIA/itwiki/italian-wiki-word-vocab-POS.txt"}[args.language]
+vocabPath = {"german" : WIKIPEDIA_HOME+"german-wiki-word-vocab-POS.txt", "italian" : WIKIPEDIA_HOME+"itwiki/italian-wiki-word-vocab-POS.txt"}[args.language]
 
 
 # language-specific rules for detecting verbs and nouns from the POS annotation
@@ -287,4 +290,5 @@ with open(f"/checkpoint/mhahn/pos/{__file__}_"+args.language+"_"+str(args.train_
    print(standardDeviation)
    print(quantile_lower)
    print(quantile_upper)
+
 

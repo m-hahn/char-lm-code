@@ -1,9 +1,10 @@
+from paths import WIKIPEDIA_HOME
 
 bigrams = {}
 
 lastLine = "."
 counter = 0
-with open("/private/home/mhahn/data/WIKIPEDIA/german-train-tagged.txt", "r") as inFile:
+with open(WIKIPEDIA_HOME+"german-train-tagged.txt", "r") as inFile:
     for line in inFile:
       if line.startswith("<"): # == "<br>\n" or line == "<br >\n":
          lastLine = "."
@@ -27,5 +28,6 @@ with open("/checkpoint/mhahn/bigrams-german.txt", "w") as outFile:
             if value == 1:
                  continue
             print(f"{entry}\t{value}", file=outFile)
+
 
 

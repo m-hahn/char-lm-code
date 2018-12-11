@@ -1,3 +1,4 @@
+from paths import MODELS_HOME
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -101,7 +102,7 @@ named_modules = {"rnn_forward" : rnn_forward, "rnn_backward" : rnn_backward, "ou
 
 print("Loading model")
 if args.load_from is not None:
-  checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
+  checkpoint = torch.load(MODELS_HOME+"/"+args.load_from+".pth.tar")
   for name, module in named_modules.items():
       print(checkpoint[name].keys())
       module.load_state_dict(checkpoint[name])
@@ -401,6 +402,7 @@ predictions = logisticRegr.predict(x_test)
 
 score = logisticRegr.score(x_test, y_test)
 print(score)
+
 
 
 

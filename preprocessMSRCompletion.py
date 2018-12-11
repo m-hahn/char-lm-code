@@ -1,10 +1,11 @@
+from paths import MSR_COMP_HOME
 
 import os
 import sys
 import codecs
 
-path = "/private/home/mhahn/data/similarity/msr-completion/Holmes_Training_Data/"
-with open("/private/home/mhahn/data/similarity/msr-completion/holmes_training_data.txt", "w") as outFile:
+path = MSR_COMP_HOME+"//Holmes_Training_Data/"
+with open(MSR_COMP_HOME+"//holmes_training_data.txt", "w") as outFile:
  for fileName in os.listdir(path):
    print(path+fileName)
    try:
@@ -37,3 +38,4 @@ with open("/private/home/mhahn/data/similarity/msr-completion/holmes_training_da
  
  
  
+

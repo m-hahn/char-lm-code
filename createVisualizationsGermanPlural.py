@@ -1,3 +1,4 @@
+from paths import FIGURES_HOME
 import os
 basePath = "/checkpoint/mhahn/trajectories/"
 
@@ -34,6 +35,7 @@ if True:
           plt.plot(range(len(values)), values, label=test)
      plt.legend()
      plt.show()
-     plt.savefig("/checkpoint/mhahn/figures/german_plural_"+train+".png")
+     plt.savefig(FIGURES_HOME+"/figures/german_plural_"+train+".png")
      plt.close()
+
 

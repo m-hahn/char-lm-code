@@ -1,3 +1,6 @@
+from paths import WIKIPEDIA_HOME
+from paths import CHAR_VOCAB_HOME
+from paths import MODELS_HOME
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -40,7 +43,7 @@ def plus(it1, it2):
       yield x
 
 
-word_vocab_path = {"german" : "/private/home/mhahn/data/WIKIPEDIA/german-wiki-word-vocab.txt", "italian" : "/private/home/mhahn/data/WIKIPEDIA/itwiki/italian-wiki-word-vocab.txt"}[args.language]
+word_vocab_path = {"german" : WIKIPEDIA_HOME+"/german-wiki-word-vocab.txt", "italian" : WIKIPEDIA_HOME+"/itwiki/italian-wiki-word-vocab.txt"}[args.language]
 
 with open(word_vocab_path, "r") as inFile:
      itos_words = [x.split("\t")[0] for x in inFile.read().strip().split("\n")[:50000]]
@@ -49,21 +52,21 @@ stoi_words = dict([(itos_words[i],i) for i in range(len(itos_words))])
 
 
 try:
-   with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "r") as inFile:
+   with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
 except FileNotFoundError:
     print("Creating new vocab")
     char_counts = {}
     # get symbol vocabulary
 
-    with open("/private/home/mhahn/data/WIKIPEDIA/"+args.language+"-vocab.txt", "r") as inFile:
+    with open(WIKIPEDIA_HOME+"/"+args.language+"-vocab.txt", "r") as inFile:
       words = inFile.read().strip().split("\n")
       for word in words:
          for char in word.lower():
             char_counts[char] = char_counts.get(char, 0) + 1
     char_counts = [(x,y) for x, y in char_counts.items()]
     itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
-    with open("/checkpoint/mhahn/char-vocab-wiki-"+args.language, "w") as outFile:
+    with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
 print(itos)
@@ -113,7 +116,7 @@ named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embedd
 
 print("Loading model")
 if args.load_from is not None:
-  checkpoint = torch.load("/checkpoint/mhahn/"+args.load_from+".pth.tar")
+  checkpoint = torch.load(MODELS_HOME+"/"+args.load_from+".pth.tar")
   for name, module in named_modules.items():
       print(checkpoint[name].keys())
       module.load_state_dict(checkpoint[name])
@@ -293,7 +296,7 @@ from corpusIterator import CorpusIterator
 
 adjectives = []
 wentThroughAdjectives = False
-with open("/private/home/mhahn//data/WIKIPEDIA/german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as inFile:
+with open(WIKIPEDIA_HOME+"german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as inFile:
     adjectives = []
     for line in inFile:
       line = line.strip().split(" ")
@@ -401,4 +404,5 @@ import numpy as np
 losses  = (doChoiceListLosses([".der", ".die", ".das"]))
 losses = np.exp(-losses)
 print(losses/np.sum(losses))
+
 
