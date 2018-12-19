@@ -289,7 +289,7 @@ stimuli = sorted(list(zip(relevantWords, dependent)), key=lambda x:x[0])
 
 with open("/u/scr/mhahn/FAIR18/english-wiki-word-vocab.txt", "r") as inFile:
   print("reading")
-  lexicon = [x.split("\t") for x in inFile.read().strip().split("\n")[:10000]]
+  lexicon = [x.split("\t") for x in inFile.read().strip().split("\n")] #[:10000]]
 print("sorting")
 lexicon = sorted(lexicon, key=lambda x:x[0])
 print("done")
@@ -298,6 +298,7 @@ print(lexicon[:100])
 #quit()
 
 last = 0
+predictions = []
 for stimulus, isBoundary in stimuli:
 #  print("SEARCHING FOR", stimulus)
   # find the postion of the word
@@ -305,7 +306,6 @@ for stimulus, isBoundary in stimuli:
   j = len(lexicon)-1
   while True:
      mid = int((i+j)/2)
-#     print(stimulus, i, lexicon[i], mid, lexicon[mid], j, lexicon[j], sorted([stimulus, lexicon[i][0], lexicon[mid][0], lexicon[j][0]]))
      assert mid >= i
      if i == mid:
         break
@@ -315,22 +315,47 @@ for stimulus, isBoundary in stimuli:
      else:
         assert inMid > stimulus, (inMid, stimulus)
         j = mid
-#  assert inMid <= stimulus, (inMid, stimulus, lexicon[mid][0])
-#  if not lexicon[i][0] == stimulus:
-#      _ = 5
-#      print(["DIFFERENCE", stimulus, lexicon[i]])
-#  else:
-#      print(["AGREE", stimulus, lexicon[i]])
   if not lexicon[i][0].startswith(stimulus):
+    predictions.append(1 if random.random() > 0.5 else 0)
     print ("NO SUFFIX FOUND", (stimulus, lexicon[i-1], lexicon[i], stimulus >= lexicon[i][0], stimulus <= lexicon[i-1][0]))
-  assert not lexicon[i-1][0].startswith(stimulus), (stimulus, lexicon[i-1], lexicon[i], stimulus >= lexicon[i][0], stimulus <= lexicon[i-1][0])
-  if lexicon[i+1][0] < stimulus:
-        assert i+1 == len(lexicon), (lexicon[i], lexicon[i+1], stimulus, i, j)
-  #assert stimulus <= lexicon[i][0] and stimulus >= lexicon[i-1][0], (stimulus, lexicon[i-1], lexicon[i], stimulus >= lexicon[i][0], stimulus <= lexicon[i-1][0])
-  last = i
+  else:
+     assert not lexicon[i-1][0].startswith(stimulus), (stimulus, lexicon[i-1], lexicon[i], stimulus >= lexicon[i][0], stimulus <= lexicon[i-1][0])
+     if lexicon[i+1][0] < stimulus:
+           assert i+1 == len(lexicon), (lexicon[i], lexicon[i+1], stimulus, i, j)
+     #assert stimulus <= lexicon[i][0] and stimulus >= lexicon[i-1][0], (stimulus, lexicon[i-1], lexicon[i], stimulus >= lexicon[i][0], stimulus <= lexicon[i-1][0])
+     last = i
+   
+     r = i
+     s = len(lexicon)-1
+     while True:
+        mid = int((r+s)/2)
+ #       print(r, mid, s, stimulus, lexicon[r], lexicon[s])
+        assert mid >= r
+        if r == mid:
+           break
+        inMid = lexicon[mid][0]
+        assert inMid >= stimulus
+        if not inMid.startswith(stimulus):
+           s = mid
+        else:
+   #        assert inMid > stimulus, (inMid, stimulus)
+           r = mid
+     print(stimulus, lexicon[r], lexicon[s], i, j, r, s)
+     assert lexicon[s-1][0].startswith(stimulus)
+     assert not lexicon[s][0].startswith(stimulus)
+     # from lexicon[i] to lexicon[s-1] is the span
+     if lexicon[i][0] != stimulus:
+         predictions.append(1)
+     else:
+         countsWord = int(lexicon[i][1])
+         countsOther = sum([int(lexicon[q][1]) for q in range(i+1, s)])
+         print(stimulus, countsWord, countsOther)
+         predictions.append(1 if (countsWord > countsOther) else 0)
 
-
-
+#     quit()
+assert len(predictions) == len(dependent)
+print(len(predictions))
+print(sum([x==y for x, y in zip(predictions, dependent)])/len(predictions))
 quit()
 
 
