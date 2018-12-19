@@ -15,7 +15,7 @@ def load(language, partition):
     yield "".join(chunks)
   else:
     chunks = []
-    pathInfix = {"german" : "", "english" : "/enwiki/"}[language]
+    pathInfix = {"german" : "", "english" : "//"}[language]
     with open(WIKIPEDIA_HOME+""+pathInfix+language+"-"+partition+".txt", "r") as inFile:
       for line in inFile:
         chunks.append(line.strip().lower())

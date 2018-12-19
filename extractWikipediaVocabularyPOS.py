@@ -1,12 +1,12 @@
 from paths import WIKIPEDIA_HOME
 unigrams = {}
 
-if False:
+if True:
  pathIn = WIKIPEDIA_HOME+"german-train-tagged.txt"
  pathOut = WIKIPEDIA_HOME+"german-wiki-word-vocab-POS.txt"
 else:
- pathIn = "/checkpoint/mbaroni/char-rnn-exchange/tagged_italian_training_corpus.txt"
- pathOut = WIKIPEDIA_HOME+"itwiki/italian-wiki-word-vocab-POS.txt"
+ pathIn = WIKIPEDIA_HOME+"itwiki-train-tagged.txt"
+ pathOut = WIKIPEDIA_HOME+"italian-wiki-word-vocab-POS.txt"
 
 import random
 with open(pathIn, "r") as inFile:
