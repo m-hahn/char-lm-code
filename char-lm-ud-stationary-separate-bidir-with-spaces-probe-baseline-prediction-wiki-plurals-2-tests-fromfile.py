@@ -130,6 +130,12 @@ if args.load_from is not None:
 
 from torch.autograd import Variable
 
+
+rnn_drop.train(False)
+
+
+
+
 def encodeWord(word):
       numeric = [[]]
       for char in word:
@@ -138,10 +144,7 @@ def encodeWord(word):
 
 
 
-rnn_drop.train(False)
-
-
-def encodeListOfWords(words):
+def encodeListOfWordsOld(words):
     numeric = [encodeWord(word)[0] for word in words]
     maxLength = max([len(x) for x in numeric])
     for i in range(len(numeric)):
@@ -154,6 +157,37 @@ def encodeListOfWords(words):
     out_forward, hidden_forward = rnn_drop(embedded_forward, None)
     hidden = hidden_forward[0].data.cpu().numpy()
     return [hidden[0][i] for i in range(len(words))]
+
+
+
+def encodeListOfWords(words):
+    numeric = [encodeWord(word)[0] for word in words]
+    lengths = [len(x) for x in numeric]
+    maxLength = max(lengths)
+
+    for i in range(len(numeric)):
+       numeric[i] = numeric[i] + ([0]*(maxLength-len(numeric[i])))
+    input_tensor_forward = Variable(torch.LongTensor([[0]+x for x in numeric]).transpose(0,1).cuda(), requires_grad=False)
+    
+    target = input_tensor_forward[1:]
+    input_cut = input_tensor_forward[:-1]
+    embedded_forward = char_embeddings(input_cut)
+    
+    result = [None for _ in words]
+
+    lengthsToWords = {}
+    for i in range(len(lengths)):
+        lengthsToWords[lengths[i]] = lengthsToWords.get(lengths[i], []) + [i]
+
+    hidden_forward = None
+    for i in range(1,maxLength+1):
+       out_forward, hidden_forward = rnn_drop(embedded_forward[i-1].unsqueeze(0), hidden_forward)
+       if i in lengthsToWords:
+          for j in lengthsToWords[i]:
+#               print(j, len(result), hidden_forward[0].size())
+               result[j] = hidden_forward[0][:,j].flatten().data.cpu().numpy()
+
+    return result
 
 
 import numpy as np
@@ -179,19 +213,99 @@ print("trained on n, s, e")
 
 encodedPluralsTotal = [] #encodeListOfWords(["."+y for y in plurals])
 encodedSingularsTotal = [] #encodeListOfWords(["."+x for x in singulars])
+
+def redprod1(stimuli):
+     encodedPluralsTotalD = dict(encodedPluralsTotal)
+     encodedSingularsTotalD = dict(encodedSingularsTotal)
+
+     encodedPluralsR = [encodedPluralsTotalD[y] for x, y in stimuli]
+     encodedSingularsR = [encodedSingularsTotalD[x] for x, y in stimuli]
+    
+     encodedPlurals2 =   encodeListOfWords(["."+y for x, y in stimuli])
+     encodedSingulars2 =   encodeListOfWords(["."+x for x, y in stimuli])
+
+     encodedPlurals3 =   encodeListOfWords(["."+y for x, y in stimuli])
+     encodedSingulars3 =   encodeListOfWords(["."+x for x, y in stimuli])
+
+
+     for i in range(len(stimuli)):
+
+   #      print(stimuli[i])
+   #      print(encodedPluralsR[i] - encodedPlurals2[i])
+   #      print(encodedSingularsR[i] - encodedSingulars2[i])
+   #      print(encodedSingularsR[i] - encodedSingulars3[i])
+
+         if max(encodedSingularsR[i] - encodedSingulars2[i]) > 0.00000001:
+            assert False, stimuli[i]
+
+
+
+
+def redprod2(stimuli):
+
+     encodedPluralsR = [encodedPluralsTotal[y] for x, y in stimuli]
+     encodedSingularsR = [encodedSingularsTotal[x] for x, y in stimuli]
+    
+     encodedPlurals2 =   encodeListOfWords(["."+y for x, y in stimuli])
+     encodedSingulars2 =   encodeListOfWords(["."+x for x, y in stimuli])
+
+     encodedPlurals3 =   encodeListOfWords(["."+y for x, y in stimuli])
+     encodedSingulars3 =   encodeListOfWords(["."+x for x, y in stimuli])
+
+
+     for i in range(len(stimuli)):
+
+#         print(stimuli[i])
+#         print(encodedPluralsR[i] - encodedPlurals2[i])
+#         print(encodedSingularsR[i] - encodedSingulars2[i])
+#         print(encodedSingularsR[i] - encodedSingulars3[i])
+
+         if max(encodedSingularsR[i] - encodedSingulars2[i]) > 0.00000001:
+            assert False, stimuli[i]
+
+
+hasVisitedS = False
+
+print("Encoding...")
  
 for group, pairs in formations.items():
+  print(group)
   pairs = list(pairs)
   sings = [x[0] for x in pairs]
   plurs = [x[1] for x in pairs]
   for pair in pairs:
          assert pair[0] not in encodedSingularsTotal
          assert pair[1] not in encodedPluralsTotal
-  encodedSingularsTotal += zip(sings, encodeListOfWords(["."+x for x in sings]))
-  encodedPluralsTotal += zip(plurs, encodeListOfWords(["."+x for x in plurs]))
+  encodedSingularsTotal += zip(sings, encodeListOfWords(["."+x+"." for x in sings]))
+  encodedPluralsTotal += zip(plurs, encodeListOfWords(["."+x+"." for x in plurs]))
+  assert len(encodedSingularsTotal) == len(encodedPluralsTotal)
+#  redprod1(formations[group])
+#  hasVisitedS = (hasVisitedS or (group == "s"))
+#  if hasVisitedS:
+  #   print(group)
+   #  print(dict(encodedSingularsTotal)["band"])
+    # print(encodeListOfWords(["."+"band"])[0])
+#     redprod1(formations["s"])
+
+
+#redprod1(formations["s"])
+#redprod1(formations["r"])
+#redprod1(formations["e"])
+#redprod1(formations["n"])
+#redprod1(formations["same"])
+
+
 
 encodedPluralsTotal = dict(encodedPluralsTotal)
 encodedSingularsTotal = dict(encodedSingularsTotal)
+
+
+
+#redprod2(formations["s"])
+#redprod2(formations["r"])
+#redprod2(formations["e"])
+#redprod2(formations["n"])
+#redprod2(formations["same"])
 
 
 
@@ -225,16 +339,6 @@ def getResult(stimuli, logisticRegr):
      encodedPluralsR = [encodedPluralsTotal[y] for x, y in stimuli]
      encodedSingularsR = [encodedSingularsTotal[x] for x, y in stimuli]
     
-     encodedPlurals2 =   encodeListOfWords(["."+y for x, y in stimuli])
-     encodedSingulars2 =   encodeListOfWords(["."+x for x, y in stimuli])
-     for i in range(len(stimuli)):
-
-         print(stimuli[i])
-         print(encodedPluralsR[i] - encodedPlurals2[i])
-         print(encodedSingularsR[i] - encodedSingulars2[i])
-         if max(encodedSingularsR[i] - encodedSingulars2[i]) > 0.00000001:
-            assert False, (singulars, plurals)
-
      predictors =  encodedSingularsR + encodedPluralsR
      dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
      
@@ -287,7 +391,7 @@ formationsBackup = formations
 from sklearn.linear_model import LogisticRegression
 
 random.seed(1)
-for _ in range(20):
+for _ in range(200):
      formations = {x : sorted(list(y)[:]) for x, y in formationsBackup.items()}
      singulars, plurals = selectTrainingSet(formations)
      plurals = plurals["n"] + plurals["s"] + plurals["e"]
