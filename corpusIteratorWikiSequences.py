@@ -1,3 +1,5 @@
+# For phonotactic experiments
+
 from paths import WIKIPEDIA_HOME
 import random
  

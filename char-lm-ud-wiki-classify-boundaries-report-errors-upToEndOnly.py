@@ -1,4 +1,4 @@
-# python char-lm-ud-wiki-classify-boundaries-report-errors-upToEndOnly-lexCountBaseline.py --language english
+# python char-lm-ud-wiki-classify-boundaries-report-errors-upToEndOnly.py --language english  --batchSize 128 --char_dropout_prob 0.001 --char_embedding_size 200 --char_noise_prob 0.0 --hidden_dim 1024 --language english --layer_num 3 --learning_rate 3.6  --myID 282506230 --load-from wiki-english-nospaces-bptt-282506230 --sequence_length 80 --weight_dropout_hidden 0.01 --weight_dropout_in 0.0
 
 
 from paths import WIKIPEDIA_HOME
@@ -77,18 +77,18 @@ print(torch.__version__)
 from weight_drop import WeightDrop
 
 
-#rnn = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num).cuda()
+rnn = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num).cuda()
 
-#rnn_parameter_names = [name for name, _ in rnn.named_parameters()]
-#print(rnn_parameter_names)
+rnn_parameter_names = [name for name, _ in rnn.named_parameters()]
+print(rnn_parameter_names)
 #quit()
 
 
-#rnn_drop = WeightDrop(rnn, [(name, args.weight_dropout_in) for name, _ in rnn.named_parameters() if name.startswith("weight_ih_")] + [ (name, args.weight_dropout_hidden) for name, _ in rnn.named_parameters() if name.startswith("weight_hh_")])
+rnn_drop = WeightDrop(rnn, [(name, args.weight_dropout_in) for name, _ in rnn.named_parameters() if name.startswith("weight_ih_")] + [ (name, args.weight_dropout_hidden) for name, _ in rnn.named_parameters() if name.startswith("weight_hh_")])
 
-#output = torch.nn.Linear(args.hidden_dim, len(itos)+3).cuda()
+output = torch.nn.Linear(args.hidden_dim, len(itos)+3).cuda()
 
-#char_embeddings = torch.nn.Embedding(num_embeddings=len(itos)+3, embedding_dim=args.char_embedding_size).cuda()
+char_embeddings = torch.nn.Embedding(num_embeddings=len(itos)+3, embedding_dim=args.char_embedding_size).cuda()
 
 logsoftmax = torch.nn.LogSoftmax(dim=2)
 
@@ -96,22 +96,22 @@ train_loss = torch.nn.NLLLoss(ignore_index=0)
 print_loss = torch.nn.NLLLoss(size_average=False, reduce=False, ignore_index=0)
 char_dropout = torch.nn.Dropout2d(p=args.char_dropout_prob)
 
-#modules = [rnn, output, char_embeddings]
-#def parameters():
-#   for module in modules:
-#       for param in module.parameters():
-#            yield param
+modules = [rnn, output, char_embeddings]
+def parameters():
+   for module in modules:
+       for param in module.parameters():
+            yield param
 
-#parameters_cached = [x for x in parameters()]
+parameters_cached = [x for x in parameters()]
 
-#optim = torch.optim.SGD(parameters(), lr=args.learning_rate, momentum=0.0) # 0.02, 0.9
+optim = torch.optim.SGD(parameters(), lr=args.learning_rate, momentum=0.0) # 0.02, 0.9
 
-#named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
+named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
 
-#if args.load_from is not None:
-#  checkpoint = torch.load(MODELS_HOME+"/"+args.load_from+".pth.tar")
-#  for name, module in named_modules.items():
-#      module.load_state_dict(checkpoint[name])
+if args.load_from is not None:
+  checkpoint = torch.load(MODELS_HOME+"/"+args.load_from+".pth.tar")
+  for name, module in named_modules.items():
+      module.load_state_dict(checkpoint[name])
 
 from torch.autograd import Variable
 
@@ -187,14 +187,14 @@ def forward(numeric, train=True, printHere=False):
 #      print(numeric)
  #     print(boundaries)
 
-#      input_tensor = Variable(torch.LongTensor(numeric).transpose(0,1)[:-1].cuda(), requires_grad=False)
- #     target_tensor = Variable(torch.LongTensor(numeric).transpose(0,1)[1:].cuda(), requires_grad=False)
+      input_tensor = Variable(torch.LongTensor(numeric).transpose(0,1)[:-1].cuda(), requires_grad=False)
+      target_tensor = Variable(torch.LongTensor(numeric).transpose(0,1)[1:].cuda(), requires_grad=False)
 
-  #    embedded = char_embeddings(input_tensor)
-   #   if train:
-    #     embedded = char_dropout(embedded)
+      embedded = char_embeddings(input_tensor)
+      if train:
+         embedded = char_dropout(embedded)
 
-     # out, _ = rnn_drop(embedded, None)
+      out, _ = rnn_drop(embedded, None)
 #      if train:
 #          out = dropout(out)
 
@@ -212,7 +212,7 @@ def forward(numeric, train=True, printHere=False):
            if (lambda x:((x is None if target == False else x not in wordsSoFar)))(boundaries[i][j]):
  #             print(i, target, true,soFar)
               if random.random() < 1/(true-soFar):
-#                  hidden_states.append(out[j-1,i].detach().data.cpu().numpy())
+                  hidden_states.append(out[j-1,i].detach().data.cpu().numpy())
                   labels.append(1 if target else 0)
                   relevantWords.append(boundariesAll[i][j])
                   relevantNextWords.append(([boundaries[i][k] for k in range(j+1, len(boundaries[i])) if boundaries[i][k] is not None]+["END_OF_SEQUENCE"])[0])
@@ -227,17 +227,17 @@ def forward(numeric, train=True, printHere=False):
 #      print(hidden_states)
 #      print(labels)
 
-#      logits = output(out) 
-#      log_probs = logsoftmax(logits)
+      logits = output(out) 
+      log_probs = logsoftmax(logits)
    #   print(logits)
   #    print(log_probs)
  #     print(target_tensor)
 
- #     loss = train_loss(log_probs.view(-1, len(itos)+3), target_tensor.view(-1))
+      loss = train_loss(log_probs.view(-1, len(itos)+3), target_tensor.view(-1))
 
       if printHere:
-  #       lossTensor = print_loss(log_probs.view(-1, len(itos)+3), target_tensor.view(-1)).view(args.sequence_length, len(numeric))
-   #      losses = lossTensor.data.cpu().numpy()
+         lossTensor = print_loss(log_probs.view(-1, len(itos)+3), target_tensor.view(-1)).view(args.sequence_length, len(numeric))
+         losses = lossTensor.data.cpu().numpy()
 #         boundaries_index = [0 for _ in numeric]
          for i in range((args.sequence_length-1)-1):
  #           if boundaries_index[0] < len(boundaries[0]) and i+1 == boundaries[0][boundaries_index[0]]:
@@ -245,7 +245,7 @@ def forward(numeric, train=True, printHere=False):
    #            boundaries_index[0] += 1
     #        else:
      #          boundary = False
-            print((itos[numeric[0][i+1]-3], "read:", itos[numeric[0][i]-3], boundariesAll[0][i], boundariesAll[0][i+1] if i < args.sequence_length-2 else "EOS"))
+            print((losses[i][0], itos[numeric[0][i+1]-3], "read:", itos[numeric[0][i]-3], boundariesAll[0][i], boundariesAll[0][i+1] if i < args.sequence_length-2 else "EOS"))
          print((labels_sum, len(labels)))
      # return loss, len(numeric) * args.sequence_length
 
@@ -262,7 +262,7 @@ if True:
 
 
 
-   #rnn_drop.train(False)
+   rnn_drop.train(False)
    startTime = time.time()
    trainChars = 0
    counter = 0
@@ -286,99 +286,6 @@ if True:
 
 predictors = hidden_states
 dependent = labels
-
-
-stimuli = sorted(list(zip(relevantWords, dependent)), key=lambda x:x[0])
-stimuliUnique = {}
-for prefix, dependent in stimuli:
-    if prefix not in stimuliUnique:
-       stimuliUnique[prefix] = [0,0]
-    stimuliUnique[prefix][dependent] += 1
-
-with open("/u/scr/mhahn/FAIR18/english-wiki-word-vocab.txt", "r") as inFile:
-  print("reading")
-  lexicon = [x.split("\t") for x in inFile.read().strip().split("\n")] #[:10000]]
-print("sorting")
-lexicon = sorted(lexicon, key=lambda x:x[0])
-print("done")
-print(lexicon[:100])
-
-#quit()
-print(stimuliUnique)
-
-correct = 0
-incorrect = 0
-
-last = 0
-predictions = []
-for stimulus, isAndIsntBoundary in stimuliUnique.items():
-#  print("SEARCHING FOR", stimulus)
-  # find the postion of the word
-  i = last
-  j = len(lexicon)-1
-  while True:
-     mid = int((i+j)/2)
-     assert mid >= i
-     if i == mid:
-        break
-     inMid = lexicon[mid][0]
-     if inMid <= stimulus:
-        i = mid
-     else:
-        assert inMid > stimulus, (inMid, stimulus)
-        j = mid
-  if not lexicon[i][0].startswith(stimulus):
-    predictions.append(1 if random.random() > 0.5 else 0)
-    print ("NO SUFFIX FOUND", (stimulus, lexicon[i-1], lexicon[i], stimulus >= lexicon[i][0], stimulus <= lexicon[i-1][0]))
-  else:
-     assert not lexicon[i-1][0].startswith(stimulus), (stimulus, lexicon[i-1], lexicon[i], stimulus >= lexicon[i][0], stimulus <= lexicon[i-1][0])
-     if lexicon[i+1][0] < stimulus:
-           assert i+1 == len(lexicon), (lexicon[i], lexicon[i+1], stimulus, i, j)
-     #assert stimulus <= lexicon[i][0] and stimulus >= lexicon[i-1][0], (stimulus, lexicon[i-1], lexicon[i], stimulus >= lexicon[i][0], stimulus <= lexicon[i-1][0])
-     last = i
-   
-     r = i
-     s = len(lexicon)-1
-     while True:
-        mid = int((r+s)/2)
- #       print(r, mid, s, stimulus, lexicon[r], lexicon[s])
-        assert mid >= r
-        if r == mid:
-           break
-        inMid = lexicon[mid][0]
-        assert inMid >= stimulus
-        if not inMid.startswith(stimulus):
-           s = mid
-        else:
-   #        assert inMid > stimulus, (inMid, stimulus)
-           r = mid
-     print(stimulus, lexicon[r], lexicon[s], i, j, r, s)
-     assert lexicon[s-1][0].startswith(stimulus)
-     assert not lexicon[s][0].startswith(stimulus)
-     # from lexicon[i] to lexicon[s-1] is the span
-     if lexicon[i][0] != stimulus:
-         predictions.append(1)
-     else:
-         countsWord = int(lexicon[i][1])
-         countsOther = sum([int(lexicon[q][1]) for q in range(i+1, s)])
-         prediction = 1 if (countsWord > countsOther) else 0
-         print(stimulus, countsWord, countsOther, isAndIsntBoundary)
-         if prediction == 0:
-           correct += isAndIsntBoundary[0]
-           incorrect += isAndIsntBoundary[1]
-         elif prediction == 1:
-           correct += isAndIsntBoundary[1]
-           incorrect += isAndIsntBoundary[0]
-         print(correct, incorrect, correct/(1+correct+incorrect))
-
-#         predictions.append()
-         
-#     quit()
-#assert len(predictions) == len(dependent)
-#print(len(predictions))
-#print(sum([x==y for x, y in zip(predictions, dependent)])/len(predictions))
-quit()
-
 
 from sklearn.model_selection import train_test_split
 x_train, x_test, y_train, y_test, words_train, words_test, next_words_train, next_words_test = train_test_split(predictors, dependent, relevantWords, relevantNextWords, test_size=0.91, random_state=0, shuffle=True)
@@ -416,4 +323,32 @@ print("Balance ",sum(y_test)/len(y_test))
 print(score)
 
 
+#   dev_data = corpusIteratorWiki.dev(args.language)
+#   print("Got data")
+#   dev_chars = prepareDataset(dev_data, train=True) if args.language == "italian" else prepareDatasetChunks(dev_data, train=True)
+#
+#
+#     
+#   dev_loss = 0
+#   dev_char_count = 0
+#   counter = 0
+#
+#   while True:
+#       counter += 1
+#       try:
+#          numeric = [next(dev_chars) for _ in range(args.batchSize)]
+#       except StopIteration:
+#          break
+#       printHere = (counter % 50 == 0)
+#       loss, numberOfCharacters = forward(numeric, printHere=printHere, train=False)
+#       dev_loss += numberOfCharacters * loss.cpu().data.numpy()[0]
+#       dev_char_count += numberOfCharacters
+#   devLosses.append(dev_loss/dev_char_count)
+#   print(devLosses)
+#   with open(LOG_HOME+"/"+args.language+"_"+__file__+"_"+str(args.myID), "w") as outFile:
+#      print(" ".join([str(x) for x in devLosses]), file=outFile)
+#
+#   if len(devLosses) > 1 and devLosses[-1] > devLosses[-2]:
+#      break
+#
 

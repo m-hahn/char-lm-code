@@ -4,9 +4,9 @@ import random
 
 def load(language, partition):
   if language == "italian":
-    path = WIKIPEDIA_HOME+"itwiki/itwiki-"+partition+"-tagged.txt"
+    path = WIKIPEDIA_HOME+"/itwiki-"+partition+"-tagged.txt"
   elif language == "english":
-    path = WIKIPEDIA_HOME+"enwiki/english-"+partition+"-tagged.txt"
+    path = WIKIPEDIA_HOME+"/english-"+partition+"-tagged.txt"
   elif language == "german":
     path = WIKIPEDIA_HOME+""+language+"-"+partition+"-tagged.txt"
   else:

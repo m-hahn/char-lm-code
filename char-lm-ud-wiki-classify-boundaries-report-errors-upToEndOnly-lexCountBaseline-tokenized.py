@@ -1,4 +1,4 @@
-# python char-lm-ud-wiki-classify-boundaries-report-errors-upToEndOnly-lexCountBaseline.py --language english
+# python char-lm-ud-wiki-classify-boundaries-report-errors-upToEndOnly-lexCountBaseline-tokenized.py --language english
 
 
 from paths import WIKIPEDIA_HOME
@@ -33,7 +33,7 @@ print(args)
 #assert args.language == "german"
 
 
-import corpusIteratorWiki
+import corpusIteratorWikiWords
 
 
 
@@ -130,47 +130,28 @@ def prepareDatasetChunks(data, train=True):
       currentWord = ""
       print("Prepare chunks")
       for chunk in data:
-       print(len(chunk))
-       for char in chunk:
-         if char == " ":
-           boundaries[len(numeric)] = currentWord
-           boundariesAll[len(numeric)] = currentWord
-
-           currentWord = ""
-           continue
-         else:
-           if boundariesAll[len(numeric)] is None:
-               boundariesAll[len(numeric)] = currentWord
-
-         count += 1
-         currentWord += char
-#         if count % 100000 == 0:
-#             print(count/len(data))
-         numeric.append((stoi[char]+3 if char in stoi else 2) if (not train) or random.random() > args.char_noise_prob else 2+random.randint(0, len(itos)))
-         if len(numeric) > args.sequence_length:
-            yield numeric, boundaries, boundariesAll
-            numeric = [0]
-            boundaries = [None for _ in range(args.sequence_length+1)]
-            boundariesAll = [None for _ in range(args.sequence_length+1)]
-
-
-
-
-
-#def prepareDataset(data, train=True):
-#      numeric = [0]
-#      count = 0
-#      for char in data:
-#         if char == " ":
-#           continue
-#         count += 1
-##         if count % 100000 == 0:
-##             print(count/len(data))
-#         numeric.append((stoi[char]+3 if char in stoi else 2) if (not train) or random.random() > args.char_noise_prob else 2+random.randint(0, len(itos)))
-#         if len(numeric) > args.sequence_length:
-#            yield numeric
-#            numeric = [0]
-#
+          print(len(chunk))
+          for word in chunk:
+             for char in word:
+                if boundariesAll[len(numeric)] is None:
+                      boundariesAll[len(numeric)] = currentWord
+       
+                count += 1
+                currentWord += char
+                numeric.append((stoi[char]+3 if char in stoi else 2) if (not train) or random.random() > args.char_noise_prob else 2+random.randint(0, len(itos)))
+                if len(numeric) > args.sequence_length:
+                   yield numeric, boundaries, boundariesAll
+                   numeric = [0]
+                   boundaries = [None for _ in range(args.sequence_length+1)]
+                   boundariesAll = [None for _ in range(args.sequence_length+1)]
+      
+             assert currentWord == word, (currentWord, word)
+             boundaries[len(numeric)] = currentWord
+             boundariesAll[len(numeric)] = currentWord
+       
+             currentWord = ""
+       
+  
 
 # from each bath element, get one positive example OR one negative example
 
@@ -206,7 +187,7 @@ def forward(numeric, train=True, printHere=False):
             continue
          soFar = 0
 #         print(list(zip(boundaries[i], boundariesAll[i])))
-         for j in range(len(boundaries[i])):
+         for j in range(len(boundaries[i])-5):
            if j < int(len(boundaries[i])/2):
                continue
            if (lambda x:((x is None if target == False else x not in wordsSoFar)))(boundaries[i][j]):
@@ -256,7 +237,7 @@ import time
 devLosses = []
 #for epoch in range(10000):
 if True:
-   training_data = corpusIteratorWiki.training(args.language)
+   training_data = corpusIteratorWikiWords.training(args.language)
    print("Got data")
    training_chars = prepareDatasetChunks(training_data, train=True)
 
@@ -295,7 +276,7 @@ for prefix, dependent in stimuli:
        stimuliUnique[prefix] = [0,0]
     stimuliUnique[prefix][dependent] += 1
 
-with open("/u/scr/mhahn/FAIR18/english-wiki-word-vocab.txt", "r") as inFile:
+with open("/u/scr/mhahn/FAIR18/"+args.language+"-wiki-word-vocab.txt", "r") as inFile:
   print("reading")
   lexicon = [x.split("\t") for x in inFile.read().strip().split("\n")] #[:10000]]
 print("sorting")
@@ -316,28 +297,54 @@ for stimulus, isAndIsntBoundary in stimuliUnique.items():
   # find the postion of the word
   i = last
   j = len(lexicon)-1
-  while True:
+  while True: # goal: find i such that  lexicon[i][0] is the last word that is <= stimulus
      mid = int((i+j)/2)
      assert mid >= i
      if i == mid:
+        assert lexicon[i][0] <= stimulus and lexicon[i+1][0] > stimulus, (lexicon[i-1:i+2], stimulus)
+        print("center")
         break
      inMid = lexicon[mid][0]
-     if inMid <= stimulus:
+     if inMid < stimulus:
         i = mid
-     else:
-        assert inMid > stimulus, (inMid, stimulus)
+     elif inMid > stimulus:
+  #      assert inMid > stimulus, (inMid, stimulus)
         j = mid
-  if not lexicon[i][0].startswith(stimulus):
-    predictions.append(1 if random.random() > 0.5 else 0)
-    print ("NO SUFFIX FOUND", (stimulus, lexicon[i-1], lexicon[i], stimulus >= lexicon[i][0], stimulus <= lexicon[i-1][0]))
+     else:
+        i = mid
+        print("from mid")
+        assert lexicon[i][0] == stimulus
+        break
+     assert lexicon[i][0] <= stimulus and stimulus <= lexicon[j][0]
+
+  assert lexicon[i][0] <= stimulus and lexicon[i+1][0] > stimulus, (lexicon[i-1:i+2], stimulus)
+
+  if lexicon[i][0] == stimulus:
+       start = i
   else:
-     assert not lexicon[i-1][0].startswith(stimulus), (stimulus, lexicon[i-1], lexicon[i], stimulus >= lexicon[i][0], stimulus <= lexicon[i-1][0])
-     if lexicon[i+1][0] < stimulus:
-           assert i+1 == len(lexicon), (lexicon[i], lexicon[i+1], stimulus, i, j)
+       start = i+1
+
+  assert lexicon[start][0] >= stimulus
+
+  if not lexicon[start][0].startswith(stimulus):
+    predictions.append(1 if random.random() > 0.5 else 0)
+    print ("NO SUFFIX FOUND", (stimulus, "start-1", lexicon[start-1], "start", lexicon[start], "start+1", lexicon[start+1], lexicon[start+2:start+10], stimulus >= lexicon[start][0], stimulus <= lexicon[start-1][0]))
+    assert False
+    if random.random() > 0.5:
+      correct += isAndIsntBoundary[1]
+      incorrect += isAndIsntBoundary[0]
+    else:
+      correct += isAndIsntBoundary[0]
+      incorrect += isAndIsntBoundary[1]
+
+  else:
+     assert not lexicon[start-1][0].startswith(stimulus), (stimulus, lexicon[start-1], lexicon[start], stimulus >= lexicon[start][0], stimulus <= lexicon[start-1][0])
+     if lexicon[start+1][0] < stimulus:
+           assert start+1 == len(lexicon), (lexicon[start], lexicon[start+1], stimulus, start, j)
      #assert stimulus <= lexicon[i][0] and stimulus >= lexicon[i-1][0], (stimulus, lexicon[i-1], lexicon[i], stimulus >= lexicon[i][0], stimulus <= lexicon[i-1][0])
      last = i
    
-     r = i
+     r = start
      s = len(lexicon)-1
      while True:
         mid = int((r+s)/2)
@@ -352,17 +359,22 @@ for stimulus, isAndIsntBoundary in stimuliUnique.items():
         else:
    #        assert inMid > stimulus, (inMid, stimulus)
            r = mid
-     print(stimulus, lexicon[r], lexicon[s], i, j, r, s)
+     print("START AND END", stimulus, lexicon[start], lexicon[r], lexicon[s], start, j, r, s)
      assert lexicon[s-1][0].startswith(stimulus)
      assert not lexicon[s][0].startswith(stimulus)
      # from lexicon[i] to lexicon[s-1] is the span
-     if lexicon[i][0] != stimulus:
+     if lexicon[start][0] != stimulus: # this is not a word, only a prefix
          predictions.append(1)
+         correct += isAndIsntBoundary[1]
+         incorrect += isAndIsntBoundary[0]
      else:
-         countsWord = int(lexicon[i][1])
-         countsOther = sum([int(lexicon[q][1]) for q in range(i+1, s)])
-         prediction = 1 if (countsWord > countsOther) else 0
-         print(stimulus, countsWord, countsOther, isAndIsntBoundary)
+         countsWord = int(lexicon[start][1])
+         countsOther = sum([int(lexicon[q][1]) for q in range(start+1, s)])
+         if countsWord == countsOther:
+            prediction = (1 if random.random() > 0.5 else 0)
+         else:
+            prediction = 1 if (countsWord > countsOther) else 0
+         print(stimulus, countsWord, countsOther, prediction, isAndIsntBoundary)
          if prediction == 0:
            correct += isAndIsntBoundary[0]
            incorrect += isAndIsntBoundary[1]
@@ -370,50 +382,5 @@ for stimulus, isAndIsntBoundary in stimuliUnique.items():
            correct += isAndIsntBoundary[1]
            incorrect += isAndIsntBoundary[0]
          print(correct, incorrect, correct/(1+correct+incorrect))
-
-#         predictions.append()
-         
-#     quit()
-#assert len(predictions) == len(dependent)
-#print(len(predictions))
-#print(sum([x==y for x, y in zip(predictions, dependent)])/len(predictions))
-quit()
-
-
-from sklearn.model_selection import train_test_split
-x_train, x_test, y_train, y_test, words_train, words_test, next_words_train, next_words_test = train_test_split(predictors, dependent, relevantWords, relevantNextWords, test_size=0.91, random_state=0, shuffle=True)
-
-
-from sklearn.linear_model import LogisticRegression
-
-print("regression")
-
-logisticRegr = LogisticRegression()
-
-logisticRegr.fit(x_train, y_train)
-
-predictions = logisticRegr.predict(x_test)
-
-
-score = logisticRegr.score(x_test, y_test)
-
-errors = []
-for i in range(len(predictions)):
-    if predictions[i] != y_test[i]:
-          errors.append((y_test[i], (words_test[i], next_words_test[i], predictions[i], y_test[i])))
-for error in errors:
-   if error[0] == 0:
-      print(error[1][0]+"|"+error[1][1])
-for error in errors:
-   if error[0] == 1:
-      print(error[1][0]+" "+error[1][1])
-
-
-
-print(len(predictions))
-
-print("Balance ",sum(y_test)/len(y_test))
-print(score)
-
 
 

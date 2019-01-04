@@ -298,23 +298,28 @@ for singular, plural in plurals:
 #    else:
  #      print((singular, plural))
   elif plural.endswith("n"):
+#     if plural not in [singular+"n", singular+"en"]:
+#        print("WARNING", singular, plural)
+#        continue
      formations["n"].add((singular, plural))
-   #  if plural not in [singular+"n", singular+"en"]:
-   #     print("WARNING", singular, plural)
+
   elif plural.endswith("s"):
+#     if plural not in [singular+"s", singular+"es"]:
+#        print("WARNING", singular, plural)
+#        continue
      formations["s"].add((singular, plural))
-   #  if plural not in [singular+"s", singular+"es"]:
-   #     print("WARNING", singular, plural)
 
   elif plural.endswith("e"):
+#     if plural not in [singular+"e"]:
+#        print("WARNING", singular, plural)
+#        continue
      formations["e"].add((singular, plural))
-   #  if plural not in [singular+"e"]:
-   #     print("WARNING", singular, plural)
-  elif plural.endswith("r"):
-     formations["r"].add((singular, plural))
-   #  if plural not in [singular+"r", singular+"er"]:
-   #     print("WARNING", singular, plural)
 
+  elif plural.endswith("r"):
+#     if plural not in [singular+"r", singular+"er"]:
+#        print("WARNING", singular, plural)
+#        continue
+     formations["r"].add((singular, plural))
 
   else:
       print("Excluded:", (singular, plural))
