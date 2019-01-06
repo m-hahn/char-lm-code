@@ -1,7 +1,11 @@
-# This script does the German plural experiments based on the stimulus files
+# This script does the German plural experiments using Wikisource data in addition to the UD data.
 
 
-# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-fromfile.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
+# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-wiktionary.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
+
+
+# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-wiktionary.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-autoencoder
+
 
 from paths import WIKIPEDIA_HOME
 from paths import CHAR_VOCAB_HOME
@@ -196,10 +200,54 @@ import numpy as np
 formations = {"e" : set(), "n" : set(), "s" : set(), "same" : set(), "r" : set()}
 
 
+
 for group in formations:
   with open(f"stimuli/german-plurals-{group}.txt", "r") as inFile:
-     formations[group] = [tuple(x.split(" ")) for x in inFile.read().strip().split("\n")]
+     formations[group] = set([tuple(x.split(" ")) for x in inFile.read().strip().split("\n")])
      print(len(formations[group]))
+
+
+
+pairs = []
+
+with open("germanNounDeclension.txt") as inFile:
+    data = inFile.read().strip().split("###")[1:]
+    for noun in data:
+       noun = noun.strip().split("\n")[1:]
+       noun = [x.split("\t") for x in noun]
+       noun = {x[0] : [y.lower() for y in x[1:]] for x in noun}
+       if "Genus" in noun:
+          singular = noun["Nominativ Singular"][0]
+          plural = noun.get("Nominativ Plural", [None])[0]
+          if plural is None:
+              continue
+          if singular != plural and len(plural) > 1: # some plurals are coded as a hyphen to indicate lack of plural
+             if noun["Genus"][0] in "mfn":
+                pairs.append((singular, plural))
+             else:
+               print(noun)
+print(pairs)
+print(len(pairs))
+
+
+
+for singular, plural in pairs:
+   if len(singular) == len(plural) and singular[-1] == plural[-1]:
+      formations["same"].add((singular,plural))
+   elif plural[-1] in formations:
+      formations[plural[-1]].add((singular,plural))
+
+print(len(formations["same"]))
+#quit()
+
+
+
+for group in formations:
+     formations[group] = list(formations[group]) 
+     print(group, len(formations[group]))
+#quit()
+
+
 
 
 print(formations["n"])
@@ -346,13 +394,13 @@ def getResult(stimuli, logisticRegr):
 
      return score
 
-
+TRAINING_CLASSES = ["n", "s", "e"] #["e", "same"]
 
 def selectTrainingSet(formations):
      global N
      singulars = {}
      plurals = {}
-     for typ in ["n", "s", "e"]:
+     for typ in TRAINING_CLASSES:
         singulars[typ] = []
         plurals[typ] = []
      
@@ -394,8 +442,13 @@ random.seed(1)
 for _ in range(20):
      formations = {x : sorted(list(y)[:]) for x, y in formationsBackup.items()}
      singulars, plurals = selectTrainingSet(formations)
-     plurals = plurals["n"] + plurals["s"] + plurals["e"]
-     singulars = singulars["n"] + singulars["s"] + singulars["e"]
+     plurals2 = []
+     singulars2 = []
+     for c in TRAINING_CLASSES:
+         plurals2 += plurals[c]
+         singulars2 += singulars[c]
+     plurals = plurals2
+     singulars = singulars2
      assert len(plurals) == len(singulars)
      
      
@@ -438,7 +491,7 @@ for entry in ["n","s","e","r","same"]:
    values = sorted(values)
    lower = values[int(0.05*len(values))]
    upper = values[int(0.95*len(values))]
-   print("\t".join([str(x) for x in [entry, round(100*accuracy,1), round(100*sd,1), round(100*lower,1), round(100*upper,1)]]))
+   print("\t".join([str(x) for x in [entry, round(100*accuracy,1), round(100*sd/math.sqrt(len(values)),1), round(100*lower,1), round(100*upper,1)]]))
 
 
 quit()
