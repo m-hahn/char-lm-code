@@ -5,7 +5,7 @@ import random
 def load(language, partition):
   if language == "italian":
     chunks = []
-    with open(WIKIPEDIA_HOME+"itwiki/itwiki-"+partition+".txt", "r") as inFile:
+    with open(WIKIPEDIA_HOME+"/itwiki-"+partition+".txt", "r") as inFile:
       for line in inFile:
         chunks.append(line.strip().lower())
         if len(chunks) > 20000:

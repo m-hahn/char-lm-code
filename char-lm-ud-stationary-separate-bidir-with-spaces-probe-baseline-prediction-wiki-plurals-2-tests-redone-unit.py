@@ -1,6 +1,6 @@
 # Like in the paper (1st round, but more efficient implementation).
 
-# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-redone.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
+# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-redone-unit.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
 
 from paths import WIKIPEDIA_HOME
 from paths import CHAR_VOCAB_HOME
@@ -341,7 +341,7 @@ ratioS = max([x/y if y > 0 else 0.0 for (x,y) in zip(lengths, lengthsS)])
 import random
 
 # from each type, sample N singulars and N plurals
-N = 15
+N = 40
 evaluationPoints = []
 
 
@@ -407,9 +407,28 @@ for _ in range(20):
      encodedPlurals = encodeListOfWords(["."+y for y in plurals])
      encodedSingulars = encodeListOfWords(["."+x for x in singulars])
      
-     #predictors = encodedSingulars + encodedPlurals
+     predictors = torch.Tensor(encodedSingulars + encodedPlurals)
+     dependent = torch.Tensor([0 for _ in encodedSingulars] + [1 for _ in encodedPlurals]).unsqueeze(1)
+
+#     print(predictors.size())
+ #    print(dependent.size())
+     correlations = ((predictors - predictors.mean(dim=0))*(dependent - 0.5)).mean(dim=0)
+     sd1 = torch.sqrt(torch.pow(predictors,2).mean(dim=0) - torch.pow(predictors.mean(dim=0),2))
+     sd2 = torch.sqrt(torch.pow(dependent,2).mean(dim=0) - torch.pow(dependent.mean(dim=0),2))
+  #   print(correlations.size())
+     correlations = correlations/(sd1*sd2)
+   #  print(list(correlations))
+    # print(torch.max(correlations))
+     #print(torch.min(correlations))
      
-     #dependent = [0 for _ in encodedSingulars] + [1 for _ in encodedPlurals]
+     x,y = correlations.max(0)
+     print(x,y)
+     x,y = correlations.min(0)
+     print(x,y)
+     print("545", correlations[545])
+     print("889", correlations[889])
+
+
      
      from sklearn.model_selection import train_test_split
      sx_train, sx_test, sy_train, sy_test, st_train, st_test = train_test_split(encodedSingulars, [0 for _ in encodedSingulars], stratify_types, test_size=0.5, shuffle=True, stratify = stratify_types, random_state=1) # random_state=random.randint(0,100), 
@@ -470,6 +489,29 @@ for _ in range(20):
      print(["same length plurals", score])
      
      evaluationPoints.append(("same", score))
+
+
+     predictors = torch.Tensor(predictors)
+     dependent = torch.Tensor(dependent).unsqueeze(1)
+
+#     print(predictors.size())
+ #    print(dependent.size())
+     correlations = ((predictors - predictors.mean(dim=0))*(dependent - 0.5)).mean(dim=0)
+     sd1 = torch.sqrt(torch.pow(predictors,2).mean(dim=0) - torch.pow(predictors.mean(dim=0),2))
+     sd2 = torch.sqrt(torch.pow(dependent,2).mean(dim=0) - torch.pow(dependent.mean(dim=0),2))
+  #   print(correlations.size())
+     correlations = correlations/(sd1*sd2)
+   #  print(list(correlations))
+    # print(torch.max(correlations))
+     #print(torch.min(correlations))
+     
+     x,y = correlations.max(0)
+     print(x,y)
+     x,y = correlations.min(0)
+     print(x,y)
+
+     print("454", correlations[454])
+     print("415", correlations[415])
 
 
   #   predictions = logisticRegr.predict(predictors)

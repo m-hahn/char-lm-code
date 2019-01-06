@@ -1,6 +1,5 @@
-# Like in the paper (1st round, but more efficient implementation).
 
-# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-redone.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
+# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-redone-distractors.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
 
 from paths import WIKIPEDIA_HOME
 from paths import CHAR_VOCAB_HOME
@@ -341,7 +340,7 @@ ratioS = max([x/y if y > 0 else 0.0 for (x,y) in zip(lengths, lengthsS)])
 import random
 
 
-wordsEndingIn = {"r" : set(), "s" : set(), "n" : set(), "e" : set()}
+wordsEndingIn = {"r" : set(), "s" : set(), "n" : set(), "e" : set(), "g" : set(), "t" : set()}
 
 from corpusIterator import CorpusIterator
 training = CorpusIterator("German", partition="train", storeMorph=True, removePunctuation=True)
@@ -354,15 +353,17 @@ for sentence in training.iterator():
         if line["word"][-1] in wordsEndingIn:
           wordsEndingIn[line["word"][-1]].add(line["word"].lower())
 
-print(wordsEndingIn["r"])
-print(wordsEndingIn["e"])
-print(wordsEndingIn["s"])
+#print(wordsEndingIn["r"])
+#print(wordsEndingIn["e"])
+#print(wordsEndingIn["s"])
 
 
 predictorsR = encodeListOfWords(["."+x for x in wordsEndingIn["r"]])
 predictorsS = encodeListOfWords(["."+x for x in wordsEndingIn["s"]])
 predictorsN = encodeListOfWords(["."+x for x in wordsEndingIn["n"]])
 predictorsE = encodeListOfWords(["."+x for x in wordsEndingIn["e"]])
+predictorsG = encodeListOfWords(["."+x for x in wordsEndingIn["g"]])
+predictorsT = encodeListOfWords(["."+x for x in wordsEndingIn["t"]])
 
 
 
@@ -495,8 +496,34 @@ for _ in range(20):
      print(["e", score])
      
      evaluationPoints.append(("e_distract", score))
-    
+
+
+
+     dependent = [0 for _ in predictorsG]
+     score = logisticRegr.score(predictorsG, dependent)
+     print(["g", score])
      
+     evaluationPoints.append(("g_distract", score))
+
+
+
+     dependent = [0 for _ in predictorsT]
+     score = logisticRegr.score(predictorsT, dependent)
+     print(["t", score])
+     
+     evaluationPoints.append(("t_distract", score))
+
+
+
+
+
+
+
+   #  predictions =     logisticRegr.predict(predictorsS)
+#     print(predictions)
+ #    print([("-",y) for x, y in zip(predictions, wordsEndingIn["e"]) if x  == 1])
+  #   print([("+",y) for x, y in zip(predictions, wordsEndingIn["e"]) if x  == 0])
+   #  print("==============")
      
 
 print("----------------")

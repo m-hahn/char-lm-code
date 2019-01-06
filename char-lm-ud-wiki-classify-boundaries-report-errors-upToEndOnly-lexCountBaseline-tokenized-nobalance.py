@@ -237,7 +237,7 @@ import time
 devLosses = []
 #for epoch in range(10000):
 if True:
-   training_data = corpusIteratorWikiWords.training(args.language)
+   training_data = corpusIteratorWikiWords.dev(args.language)
    print("Got data")
    training_chars = prepareDatasetChunks(training_data, train=True)
 
@@ -262,8 +262,8 @@ if True:
           print(devLosses)
           print("Chars per sec "+str(trainChars/(time.time()-startTime)))
 
-      if len(labels) > 10000:
-         break
+      #if len(labels) > 10000:
+       #  break
 
 predictors = hidden_states
 dependent = labels
@@ -329,7 +329,7 @@ for stimulus, isAndIsntBoundary in stimuliUnique.items():
   if not lexicon[start][0].startswith(stimulus):
     predictions.append(1 if random.random() > 0.5 else 0)
     print ("NO SUFFIX FOUND", (stimulus, "start-1", lexicon[start-1], "start", lexicon[start], "start+1", lexicon[start+1], lexicon[start+2:start+10], stimulus >= lexicon[start][0], stimulus <= lexicon[start-1][0]))
-    assert False
+#    assert False
     if random.random() > 0.5:
       correct += isAndIsntBoundary[1]
       incorrect += isAndIsntBoundary[0]
