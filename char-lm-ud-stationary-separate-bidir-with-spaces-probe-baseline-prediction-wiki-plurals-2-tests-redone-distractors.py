@@ -382,7 +382,7 @@ encodedSingularsR = encodeListOfWords(["."+x for x, y in formations["r"]])
 formationsBackup = formations
 
 random.seed(1)
-for _ in range(20):
+for _ in range(200):
      formations = {x : set(list(y)[:]) for x, y in formationsBackup.items()}
 
 
@@ -534,7 +534,7 @@ firstEntries = list(set([x[0] for x in evaluationPoints]))
 for entry in firstEntries:
    values = [x[1] for x in evaluationPoints if x[0] == entry]
    accuracy = sum(values)/len(values)
-   sd = math.sqrt(sum([x**2 for x in values])/len(values) - accuracy**2)
+   sd = math.sqrt(sum([x**2 for x in values])/len(values) - accuracy**2)/math.sqrt(len(values))
    values = sorted(values)
    lower = values[int(0.05*len(values))]
    upper = values[int(0.95*len(values))]

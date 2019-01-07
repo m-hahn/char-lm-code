@@ -1,0 +1,63 @@
+False Positives
+no|non	114
+a|ai	117
+pri|prima	118
+do|dopo	137
+dal|dalla	140
+dall|dalla	155
+dell|delle	166
+da|dalla	170
+a|all'	172
+del|delle	182
+d|di	190
+an|anche	196
+a|ad	201
+pi|più	206
+a|anche	225
+da|dal	247
+nell|nella	247
+n|non	251
+n|nella	253
+dell|dell'	270
+nel|nella	272
+a|alla	292
+del|dell'	296
+a|al	442
+un|una	550
+dell|della	623
+del|della	629
+n|nel	674
+i|in	1154
+i|il	1723
+
+False Negatives
+e nel	54
+tra i	55
+numero di	55
+e del	56
+per le	56
+e in	57
+ad esempio	58
+e ,	60
+per i	63
+e della	63
+) è	64
+che ha	67
+ad una	68
+e si	70
+e le	74
+ad un	76
+per l'	77
+le sue	83
+e i	92
+e "	93
+e l'	109
+che si	111
+) e	132
+e di	136
+per il	142
+e la	206
+per la	221
+) .	273
+e il	281
+) ,	368

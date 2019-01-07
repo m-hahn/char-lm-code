@@ -1,0 +1,63 @@
+False Positives
+zu|zur	130
+de|dem	130
+ei|einer	133
+eine|einem	136
+a|aus	153
+a|auch	163
+de|des	166
+a|am	168
+e|einer	172
+wur|wurde	174
+e|es	183
+zu|zum	190
+a|an	196
+eine|einer	197
+ei|ein	220
+ei|eine	221
+a|auf	230
+de|den	258
+a|als	301
+i|ist	318
+e|eine	323
+ein|eine	331
+is|ist	338
+e|ein	371
+e|er	547
+i|im	646
+de|der	699
+i|in	1161
+u|und	1334
+un|und	1551
+
+False Negatives
+in die	20
+für die	21
+am 26	21
+in den	21
+am 16	22
+mitte der	22
+am 22	22
+am 15	23
+hat sich	23
+am ende	23
+am 20	23
+dar .	25
+new york	25
+wo sie	26
+hat ,	26
+an das	27
+20 .	27
+da er	28
+hat .	34
+so dass	37
+da die	38
+an ,	61
+am 1	69
+in der	76
+wo er	79
+ab .	82
+an den	82
+an .	100
+an die	108
+an der	413

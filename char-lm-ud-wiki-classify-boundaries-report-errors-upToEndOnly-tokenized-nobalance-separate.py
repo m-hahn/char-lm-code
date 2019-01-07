@@ -9,6 +9,9 @@
 # python char-lm-ud-wiki-classify-boundaries-report-errors-upToEndOnly-tokenized-nobalance-separate.py --language italian --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-italian-nospaces-bptt-855947412
 
 
+
+TRAINING_SIZE = 10000
+
 from paths import WIKIPEDIA_HOME
 from paths import LOG_HOME
 from paths import CHAR_VOCAB_HOME
@@ -266,7 +269,7 @@ if True:
           print(devLosses)
           print("Chars per sec "+str(trainChars/(time.time()-startTime)))
 
-      if len(labels) > 1000:
+      if len(labels) > TRAINING_SIZE:
          break
   
 
@@ -294,7 +297,7 @@ scores = []
 
 examples_count = 0
 
-for _ in range(3):
+for _ in range(300):
 
      hidden_states = []
      labels = []
@@ -369,7 +372,7 @@ for error in errors:
 falsePositives = sorted(list(falsePositives.items()), key=lambda x:x[1])
 falseNegatives = sorted(list(falseNegatives.items()), key=lambda x:x[1])
 
-with open(f"results/segmentation-{args.language}-frequent-errors-disjoint.txt", "w") as outFile:
+with open(f"results/segmentation-{args.language}-frequent-errors-disjoint-{TRAINING_SIZE}.txt", "w") as outFile:
    print("False Positives", file=outFile)
    for error in falsePositives[-30:]:
       print(error[0]+"\t"+str(error[1]), file=outFile)

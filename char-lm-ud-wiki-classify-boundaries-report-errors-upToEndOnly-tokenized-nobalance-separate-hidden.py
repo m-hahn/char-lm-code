@@ -1,3 +1,5 @@
+assert False
+
 # Enforces balancing in the training set, and enforces disjointness of training and test sets
 # (This should be used for evaluation)
 

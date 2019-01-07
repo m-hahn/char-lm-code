@@ -195,72 +195,41 @@ def forward(numeric, train=True, printHere=False, enforceBalancing=True):
       global labels_sum
       numeric, boundaries, boundariesAll = zip(*numeric)
 
-
-#      selected = []
-#      for i in range(len(boundaries)): # for each batch sample
-#         target = (labels_sum + 10 < len(labels)*0.7) or (random.random() < 0.5) # decide whether to get positive or negative sample
-#         true = sum([((x == None) if target == False else (x is not None and y not in wordsSoFar)) for x, y in list(zip(boundaries[i], boundariesAll[i]))[int(args.sequence_length/2):-10]]) # condidates
-# #        print(target, true)
-#         if true == 0:
-#            continue
-#         soFar = 0
-#         for j in range(int(len(boundaries[i])/2), len(boundaries[i])-10):
-#           if (lambda x, y:((x is None if target == False else (x is not None and y not in wordsSoFar))))(boundaries[i][j], boundariesAll[i][j]):
-#              if random.random() < 1/(true-soFar):
-#                  selected.append((len(selected),i,j,target))
-#                  assert (boundaries[i][j] is not None) == target, (boundaries[i][j], boundariesAll[i][j], target)
-#                  break
-#              soFar += 1
-#         assert soFar < true
-#
-#      if len(selected) == 0:
-#         return
-
       numeric_selected = numeric
-#      for _,i,j,_ in selected:
- #       numeric_selected.append(numeric[i][j-40:j+1]) # do not include the actual boundary
       input_tensor = Variable(torch.LongTensor(numeric_selected).transpose(0,1)[:-1].cuda(), requires_grad=False)
       target_tensor = Variable(torch.LongTensor(numeric_selected).transpose(0,1)[1:].cuda(), requires_grad=False)
 
       embedded = char_embeddings(input_tensor)
-#      if False and train:
-#         embedded = char_dropout(embedded)
 
-#      print(embedded.size())
       hidden = None
-      if True:
-#      with open(f"{LOG_HOME}/boundary-neuron/{args.language}_{args.load_from}_{counter}.txt", "w") as outFile:
-         print(len(embedded))
-         for i in range(40, len(embedded)-10):
+      print(len(embedded))
+      for i in range(40, len(embedded)):
             out, hidden = rnn_drop(embedded[i].unsqueeze(0), hidden)
             for j in range(len(embedded[0])):
+                 nextRelevantWord = ([boundaries[j][k] for k in range(i+2, len(boundaries[j])) if boundaries[j][k] is not None]+["END_OF_SEQUENCE"])[0]
+                 if nextRelevantWord == "END_OF_SEQUENCE":
+                    continue
                  target = 1 if boundaries[j][i+1] is not None else 0
-#               if target+label_sum - 
+                 if abs(target+labels_sum - len(labels)/2) > 2:
+                    continue
                  hidden_states.append((hidden[1][:,j,:].flatten()[neuron[0]]).unsqueeze(0).cpu().detach().numpy())
+#                 hidden_states.append((hidden[1][:,j,:].flatten()[neuron]).cpu().detach().numpy())
+
                  labels.append(target)
                  labels_sum += labels[-1]
 
                  relevantWords.append(boundariesAll[j][i+1])
-                 relevantNextWords.append(([boundaries[j][k] for k in range(i+1, len(boundaries[j])) if boundaries[j][k] is not None]+["END_OF_SEQUENCE"])[0])
+                 
+                 relevantNextWords.append(nextRelevantWord)
                  assert boundariesAll[j][i+1] is not None
-                 print(hidden_states[-1], labels[-1], relevantWords[-1], relevantNextWords[-1])  
-                 if (labels == 0) and not relevantNextWords[-1].startswith(relevantWords[-1]):
-                     assert False, boundariesAll[j][i:]
-                 if (labels == 1) and relevantNextWords[-1].startswith(relevantWords[-1]): # this is actually not a hard assertion, it should just be quite unlikely in languages such as English
-                     assert False, boundariesAll[j][i:]
-
-                      
-#            print(" ".join([str(x) for x in ([i, itos[numeric[0][i]-3]] + [float(hidden[1][:,0,:].flatten()[x]) for x in neuron] + [ boundaries[0][i+1]])])) # , "*"*(int(10*(1+round(float(hidden[1][:,0,:].flatten()[neuron]),3))))
-
-
-#            quit()
-#            hidden_states.append(out[-1,i,:].flatten().detach().data.cpu().numpy())
-#            print(target, relevantWords[-1], relevantNextWords[-1])
-
-    #        if enforceBalancing:
-     #          wordsSoFar.add(boundariesAll[i2][j])
-
-
+                 if j == 0:
+                   print(hidden_states[-1], labels[-1], relevantWords[-1], relevantNextWords[-1])  
+                 if (labels[-1] == 0) and not relevantNextWords[-1].startswith(relevantWords[-1]):
+                     assert False, (relevantWords[-1], relevantNextWords[-1], list(zip(boundaries[j][i:], boundariesAll[j][i:])))
+                 if (labels[-1] == 1) and relevantNextWords[-1].startswith(relevantWords[-1]): # this is actually not a hard assertion, it should just be quite unlikely in languages such as English
+                     print("WARNING", list(zip(boundaries[j][i:], boundariesAll[j][i:])))
+#                     if len(relevantWords[-1]) > 1:
+ #                       assert False 
 
 import time
 
@@ -292,7 +261,7 @@ if True:
           print(devLosses)
           print("Chars per sec "+str(trainChars/(time.time()-startTime)))
 
-      if len(labels) > 10000:
+      if len(labels) > 1000:
          break
   
 
@@ -300,7 +269,7 @@ predictors = hidden_states
 dependent = labels
 
 
-TEST_FRACTION = 0.9
+TEST_FRACTION = 0.0
 
 from sklearn.model_selection import train_test_split
 x_train, x_test, y_train, y_test, words_train, words_test, next_words_train, next_words_test = train_test_split(predictors, dependent, relevantWords, relevantNextWords, test_size=TEST_FRACTION, random_state=random.randint(1,100), shuffle=True)
@@ -320,7 +289,7 @@ scores = []
 
 examples_count = 0
 
-for _ in range(3):
+for _ in range(50):
 
      hidden_states = []
      labels = []
@@ -391,7 +360,7 @@ for error in errors:
    elif error[0] == 1:
       record = error[1][0]+" "+error[1][1]
       falseNegatives[record] = falseNegatives.get(record, 0)+1
-      assert error[1][0] != error[1][1], error
+      #assert error[1][0] != error[1][1], error
 
 falsePositives = sorted(list(falsePositives.items()), key=lambda x:x[1])
 falseNegatives = sorted(list(falseNegatives.items()), key=lambda x:x[1])

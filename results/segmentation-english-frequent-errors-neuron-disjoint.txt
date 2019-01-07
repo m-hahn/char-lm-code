@@ -1,0 +1,63 @@
+False Positives
+b|but	59
+ab|about	59
+year|years	59
+i|into	60
+du|during	61
+the|there	62
+natio|national	66
+b|been	71
+i|its	75
+o|on	79
+d|during	80
+a|all	88
+it|its	102
+a|after	113
+thei|their	125
+the|their	128
+the|they	142
+b|be	149
+a|are	154
+a|also	163
+i|it	219
+a|an	234
+a|at	305
+'|'s	322
+b|by	349
+a|as	418
+o|of	420
+i|is	527
+i|in	1426
+a|and	1660
+
+False Negatives
+there is	53
+in "	54
+for his	56
+there were	58
+under the	60
+based on	60
+he had	61
+they were	61
+by the	62
+on a	65
+end of	67
+he is	72
+new york	79
+according to	82
+due to	85
+known as	85
+as a	92
+for a	97
+can be	106
+part of	122
+such as	149
+in a	152
+to be	158
+at the	225
+he was	280
+to the	320
+for the	322
+on the	365
+of the	557
+in the	916
