@@ -8,7 +8,7 @@ if True:
 elif False:
  assert False
  pathIn = WIKIPEDIA_HOME+"german-train-tagged.txt"
- pathOut = WIKIPEDIA_HOME+"/german-wiki-word-vocab.txt"
+ pathOut = "vocabularies/german-wiki-word-vocab-50000.txt"
 else:
  assert False
  pathIn = WIKIPEDIA_HOME+"itwiki-train-tagged.txt"

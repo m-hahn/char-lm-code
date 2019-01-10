@@ -53,7 +53,7 @@ def plus(it1, it2):
    for x in it2:
       yield x
 
-char_vocab_path = {"german" : WIKIPEDIA_HOME+"/german-wiki-word-vocab.txt", "italian" : WIKIPEDIA_HOME+"/itwiki/italian-wiki-word-vocab.txt"}[args.language]
+char_vocab_path = {"german" : "vocabularies/german-wiki-word-vocab-50000.txt", "italian" : "vocabularies/italian-wiki-word-vocab-50000.txt"}[args.language]
 
 with open(char_vocab_path, "r") as inFile:
      itos = [x.split("\t")[0] for x in inFile.read().strip().split("\n")[:50000]]
@@ -296,7 +296,7 @@ def keepGenerating(encoded, length=100, backwards=False):
     return output_string if not backwards else output_string[::-1]
 
 
-vocabPath = {"german" : WIKIPEDIA_HOME+"german-wiki-word-vocab-POS.txt", "italian" : WIKIPEDIA_HOME+"itwiki/italian-wiki-word-vocab-POS.txt"}[args.language]
+vocabPath = {"german" : WIKIPEDIA_HOME+"german-wiki-word-vocab-POS.txt", "italian" : WIKIPEDIA_HOME+"italian-wiki-word-vocab-POS.txt"}[args.language]
 
 
 def detectVerb(pos):
