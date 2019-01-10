@@ -1,10 +1,11 @@
-# python detectBoundariesUnit_Hidden.py --language english  --batchSize 128 --char_dropout_prob 0.001 --char_embedding_size 200 --char_noise_prob 0.0 --hidden_dim 1024 --language english --layer_num 3 --learning_rate 3.6  --myID 282506230 --load-from wiki-english-nospaces-bptt-WHITESPACE-732605720 --weight_dropout_hidden 0.01 --weight_dropout_in 0.0
+#python detectBoundariesUnit_Hidden_NoWhitespace_RNN.py --batchSize 256 --char_dropout_prob 0.01 --char_embedding_size 50 --char_noise_prob 0.0 --hidden_dim 2048 --language german --layer_num 2 --learning_rate 0.1 --lr_decay 0.95 --nonlinearity tanh --load-from wiki-german-nospaces-bptt-rnn-237671415 --sequence_length 30 --verbose True --weight_dropout_hidden 0.0 --weight_dropout_in 0.0
+#tensor([0.4606, 0.4367, 0.4249, 0.4115, 0.3972]) tensor([ 764,  450, 1742, 1635,  752]) 
 
-# python detectBoundariesUnit_Hidden.py --batchSize 128 --char_dropout_prob 0.001 --char_embedding_size 200 --char_noise_prob 0.0 --hidden_dim 1024 --language german --layer_num 2 --learning_rate 2.0 --weight_dropout_hidden 0.05 --weight_dropout_in 0.01 --load-from wiki-german-nospaces-bptt-WHITESPACE-39149757
+#python detectBoundariesUnit_Hidden_NoWhitespace_RNN.py --batchSize 256 --char_dropout_prob 0.0 --char_embedding_size 200 --char_noise_prob 0.0 --hidden_dim 2048 --language italian --layer_num 2 --learning_rate 0.004 --lr_decay 0.98 --nonlinearity tanh --load-from wiki-italian-nospaces-bptt-rnn-557654324 --sequence_length 50 --verbose True --weight_dropout_hidden 0.15 --weight_dropout_in 0.0
+#tensor([0.5356, 0.5191, 0.4944, 0.4610, 0.4562]) tensor([1786,  309, 1421, 1050, 1961])
 
-# python detectBoundariesUnit_Hidden.py --batchSize 128 --char_dropout_prob 0.0 --char_embedding_size 100 --char_noise_prob 0.0 --hidden_dim 1024 --language italian --layer_num 3 --learning_rate 3.5  --weight_dropout_hidden 0.05 --weight_dropout_in 0.0 --load-from wiki-italian-nospaces-bptt-WHITESPACE-199575732
-
-
+#python detectBoundariesUnit_Hidden_NoWhitespace_RNN.py --batchSize 256 --char_dropout_prob 0.001 --char_embedding_size 200 --char_noise_prob 0.0 --hidden_dim 2048 --language english --layer_num 2 --learning_rate 0.01 --nonlinearity relu --load-from wiki-english-nospaces-bptt-rnn-891035072 --sequence_length 50 --weight_dropout_hidden 0.05 --weight_dropout_in 0.01
+# tensor([0.3986, 0.3965, 0.3789, 0.3696, 0.3685]) tensor([ 730,  676,  224, 1960, 2010])
 
 
 from paths import WIKIPEDIA_HOME
@@ -30,7 +31,12 @@ parser.add_argument("--char_dropout_prob", type=float, default=0.33)
 parser.add_argument("--char_noise_prob", type = float, default= 0.01)
 parser.add_argument("--learning_rate", type = float, default= 0.1)
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
-parser.add_argument("--sequence_length", type=int, default=80)
+parser.add_argument("--sequence_length", type=int, default=random.choice([50, 50, 80]))
+parser.add_argument("--verbose", type=bool, default=False)
+parser.add_argument("--lr_decay", type=float, default=random.choice([0.5, 0.7, 0.9, 0.95, 0.98, 0.98, 1.0]))
+parser.add_argument("--nonlinearity", type=str, default=random.choice(["tanh", "relu"]))
+
+
 
 
 args=parser.parse_args()
@@ -69,8 +75,8 @@ except FileNotFoundError:
     with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
-itos.append(" ")
-assert " " in itos
+#itos.append(" ")
+#assert " " in itos
 print(itos)
 stoi = dict([(itos[i],i) for i in range(len(itos))])
 
@@ -87,7 +93,7 @@ print(torch.__version__)
 from weight_drop import WeightDrop
 
 
-rnn = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num).cuda()
+rnn = torch.nn.RNN(args.char_embedding_size, args.hidden_dim, args.layer_num, args.nonlinearity).cuda()
 
 rnn_parameter_names = [name for name, _ in rnn.named_parameters()]
 print(rnn_parameter_names)
@@ -147,7 +153,7 @@ def prepareDatasetChunks(data, train=True):
            boundariesAll[len(numeric)] = currentWord
 
            currentWord = ""
-#           continue
+           continue
          else:
            if boundariesAll[len(numeric)] is None:
                boundariesAll[len(numeric)] = currentWord
@@ -218,7 +224,8 @@ def forward(numeric, train=True, printHere=False):
 
       numeric_selected = []
       for _,i,j,_ in selected:
-        numeric_selected.append(numeric[i][j-40:j+1]) # do not include the actual boundary
+        numeric_selected.append(numeric[i][j-10:j+1]) # do not include the actual boundary
+#      print(numeric_selected)
       input_tensor = Variable(torch.LongTensor(numeric_selected).transpose(0,1)[:-1].cuda(), requires_grad=False)
       target_tensor = Variable(torch.LongTensor(numeric_selected).transpose(0,1)[1:].cuda(), requires_grad=False)
 
@@ -234,7 +241,7 @@ def forward(numeric, train=True, printHere=False):
                   assert i < len(numeric_selected)
       #            print(hidden[0].size())
 #                  quit()
-                  hidden_states.append(hidden[1][:,i,:].flatten().detach().data.cpu().numpy())
+                  hidden_states.append(hidden[1][i,:].detach().data.cpu().numpy())
                   labels.append(1 if target else 0)
                   relevantWords.append(boundariesAll[i2][j])
                   relevantNextWords.append(([boundaries[i2][k] for k in range(j+1, len(boundaries[i2])) if boundaries[i2][k] is not None]+["END_OF_SEQUENCE"])[0])

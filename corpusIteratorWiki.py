@@ -2,14 +2,15 @@ from paths import WIKIPEDIA_HOME
 import random
  
 
-def load(language, partition):
+def load(language, partition, doShuffling=True):
   if language == "italian":
     chunks = []
     with open(WIKIPEDIA_HOME+"/itwiki-"+partition+".txt", "r") as inFile:
       for line in inFile:
         chunks.append(line.strip().lower())
         if len(chunks) > 20000:
-           random.shuffle(chunks)
+           if doShuffling:
+              random.shuffle(chunks)
            yield "".join(chunks)
            chunks = []
     yield "".join(chunks)
@@ -20,7 +21,8 @@ def load(language, partition):
       for line in inFile:
         chunks.append(line.strip().lower())
         if len(chunks) > 20000:
-           random.shuffle(chunks)
+           if doShuffling:
+              random.shuffle(chunks)
            yield "".join(chunks)
            chunks = []
     yield "".join(chunks)
@@ -33,8 +35,8 @@ def training(language):
 #     random.shuffle(data)
 #     print("Finished shuffling")
 #     return "".join(data)
-def dev(language):
-  return load(language, "valid")
+def dev(language, doShuffling=True):
+  return load(language, "valid", doShuffling=doShuffling)
 #   with open(WIKIPEDIA_HOME+""+language+"-valid.txt", "r") as inFile:
 #     data = inFile.read().strip().lower().split("\n")
 #     print("Shuffling")
