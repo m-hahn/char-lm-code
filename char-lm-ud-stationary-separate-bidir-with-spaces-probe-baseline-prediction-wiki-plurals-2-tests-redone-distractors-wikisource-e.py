@@ -340,7 +340,7 @@ ratioS = max([x/y if y > 0 else 0.0 for (x,y) in zip(lengths, lengthsS)])
 import random
 
 
-wordsEndingIn = {"r" : set(), "s" : set(), "n" : set(), "e" : set(), "g" : set(), "t" : set(), "l" : set()}
+wordsEndingIn = {"E" : set(), "notE" : set()}
 
 from corpusIterator import CorpusIterator
 
@@ -353,27 +353,24 @@ with open("germanNounDeclension.txt") as inFile:
        noun = {x[0] : [y.lower() for y in x[1:]] for x in noun}
        if "Nominativ Singular" in noun and "Nominativ Plural" in noun:
          for x in noun["Nominativ Singular"]:
-            if x[-1] in wordsEndingIn:
+#            if x[-1] in wordsEndingIn:
                 if x not in noun["Nominativ Plural"]:
-#                  if x in stoi:
-#                 if "e" in x[-2:]:
-                   wordsEndingIn[x[-1]].add(x)
+                  if x[-2:-1] == "e": # in x[-2:]: # or x[-1] in ["n","s","e"]:
+                     wordsEndingIn["E"].add(x)
+                  else: #if "e" not in x[-2:]:
+                     wordsEndingIn["notE"].add(x)
 
 
+print(wordsEndingIn["E"])
+#quit()
 
 for x in wordsEndingIn:
 #  print(x, len(wordsEndingIn[x]))
   print(wordsEndingIn[x])
 #quit()
 
-predictorsR = encodeListOfWords(["."+x for x in wordsEndingIn["r"]])
-predictorsS = encodeListOfWords(["."+x for x in wordsEndingIn["s"]])
-predictorsN = encodeListOfWords(["."+x for x in wordsEndingIn["n"]])
-predictorsE = encodeListOfWords(["."+x for x in wordsEndingIn["e"]])
-predictorsG = encodeListOfWords(["."+x for x in wordsEndingIn["g"]])
-predictorsT = encodeListOfWords(["."+x for x in wordsEndingIn["t"]])
-predictorsL = encodeListOfWords(["."+x for x in wordsEndingIn["l"]])
-
+predictorsE = encodeListOfWords(["."+x for x in wordsEndingIn["E"]])
+predictorsNotE = encodeListOfWords(["."+x for x in wordsEndingIn["notE"]])
 
 
 # from each type, sample N singulars and N plurals
@@ -476,58 +473,22 @@ for _ in range(30):
       # now look at other words that end in n, s, e
      
 
-     dependent = [0 for _ in predictorsR]
-     score = logisticRegr.score(predictorsR, dependent)
-     print(["r", score])
-     
-     evaluationPoints.append(("r_distract", score))
-     
-     
-     
-     dependent = [0 for _ in predictorsS]
-     score = logisticRegr.score(predictorsS, dependent)
-     print(["s", score])
-     
-     evaluationPoints.append(("s_distract", score))
-     
-
-     dependent = [0 for _ in predictorsN]
-     score = logisticRegr.score(predictorsN, dependent)
-     print(["n", score])
-     
-     evaluationPoints.append(("n_distract", score))
-     
-     
-     
-     
      dependent = [0 for _ in predictorsE]
      score = logisticRegr.score(predictorsE, dependent)
-     print(["e", score])
+     print(["E", score])
      
-     evaluationPoints.append(("e_distract", score))
-
-
-
-     dependent = [0 for _ in predictorsG]
-     score = logisticRegr.score(predictorsG, dependent)
-     print(["g", score])
+     evaluationPoints.append(("E_distract", score))
      
-     evaluationPoints.append(("g_distract", score))
-
-
-
-     dependent = [0 for _ in predictorsT]
-     score = logisticRegr.score(predictorsT, dependent)
-     print(["t", score])
      
-     evaluationPoints.append(("t_distract", score))
-
-
-     dependent = [0 for _ in predictorsL]
-     score = logisticRegr.score(predictorsL, dependent)
-     print(["l", score])
      
-     evaluationPoints.append(("l_distract", score))
+     dependent = [0 for _ in predictorsNotE]
+     score = logisticRegr.score(predictorsNotE, dependent)
+     print(["NotE", score])
+     
+     evaluationPoints.append(("NotE_distract", score))
+     
+
+
 
 
 

@@ -1,5 +1,6 @@
+# Like in the paper (1st round, but more efficient implementation).
 
-# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-redone-distractors-wikisource.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
+# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-redone-wikisource-investigate.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
 
 from paths import WIKIPEDIA_HOME
 from paths import CHAR_VOCAB_HOME
@@ -281,16 +282,69 @@ plurals = set()
 
 formations = {"e" : set(), "n" : set(), "s" : set(), "same" : set(), "r" : set()}
 
+
 for group in formations:
   with open(f"stimuli/german-plurals-{group}.txt", "r") as inFile:
-     formations[group] = [tuple(x.split(" ")) for x in inFile.read().strip().split("\n")]
+     formations[group] = set([tuple(x.split(" ")) for x in inFile.read().strip().split("\n")])
      print(len(formations[group]))
 
 
 
+with open("germanNounDeclension.txt") as inFile:
+    data = inFile.read().strip().split("###")[1:]
+    for noun in data:
+       noun = noun.strip().split("\n")[1:]
+       noun = [x.split("\t") for x in noun]
+       noun = {x[0] : [y.lower() for y in x[1:]] for x in noun}
+       if "Nominativ Plural" in noun:
+         for x in noun["Nominativ Plural"]:
+            if len(x) > 1:
+                isSingular = any([x in noun[y] for y in noun if "Singular" in y])
+                if not isSingular:
+                   nomSing = noun["Nominativ Singular"][0]
+                   if len(x) == len(nomSing) and x[-1] == nomSing[-1]:
+                      formations["same"].add((nomSing,x))
+                   elif x[-1] in formations:
+                      formations[x[-1]].add((nomSing,x))
+
+
+def counts(l):
+   c = {}
+   for x in l:
+      c[x] = c.get(x, 0)+1
+   return sorted(c.items(), key=lambda x:x[1], reverse=True)
+               
+#formations["same"] = set([x for x in formations["same"] if x[0][-1] == "l"])
+print(counts( [x[0][-1] for x in formations["same"]]))
+print([x for x in formations["same"] if x[0][-1] == "l"])
+#quit()
+
+print("Singular distribution for -r")
+print(counts( [x[0][-1] for x in formations["r"]]))
+print("")
+
+def mean(x):
+   return sum(x)/len(x)
+
+eFractionsSingulars = {}
+eFractionsPlurals = {}
+
+for x in formations:
+  print(x, counts( [x[0][-2:-1] for x in formations[x]]))
+  # Frction of Plurals with e
+  print((1-mean([1 if "e" in y[0][-2:] else 0 for y in formations[x]]) + mean([1 if "e" in y[1][-2:] else 0 for y in formations[x]]))/2)
+  eFractionsSingulars[x] = mean([1 if "e" in y[0][-2:] else 0 for y in formations[x]])
+  eFractionsPlurals[x] = mean([1 if "e" in y[1][-2:] else 0 for y in formations[x]])
+
+
+#formations["r"] = set([x for x in formations["r"] if x[0][-1] in ["n", "s", "e", "r"]])
+
+#formations["same"] = set([(x+"eg", y) for x, y in formations["same"]])
+
 
 print(formations["n"])
 print(formations["same"])
+#quit()
 
 def doChoiceList(xs):
     for x in xs:
@@ -377,7 +431,7 @@ predictorsL = encodeListOfWords(["."+x for x in wordsEndingIn["l"]])
 
 
 # from each type, sample N singulars and N plurals
-N = 15
+N = 16
 evaluationPoints = []
 
 
@@ -391,7 +445,7 @@ encodedSingularsR = encodeListOfWords(["."+x for x, y in formations["r"]])
 formationsBackup = formations
 
 random.seed(1)
-for _ in range(30):
+for _ in range(20):
      formations = {x : set(list(y)[:]) for x, y in formationsBackup.items()}
 
 
@@ -402,13 +456,19 @@ for _ in range(30):
         plurals[typ] = []
      
         formations[typ] = sorted(list(formations[typ]))
-        for _ in range(N):
+        ratioS_E = max((1/2)/eFractionsSingulars[typ], (1/2)/(1-eFractionsSingulars[typ]))
+
+        for ind in range(N):
            while True:
               index, sampledS = random.choice(list(zip(range(len(formations[typ])), formations[typ])))
               sampledS = sampledS[0]
               ratio = lengths[len(sampledS)] / (ratioS * lengthsS[len(sampledS)])
               assert 0<= ratio
               assert ratio <= 1
+              hasE = ("e" in sampledS[-2:])
+              if hasE != (ind < N/2):
+                    continue
+              #ratio2 = (0.5 / (ratios_E * (eFractionsSingulars[typ] if hasE else 1-eFractionsSingulars[typ])))
               if random.random() < ratio:
                   del formations[typ][index]
                   singulars[typ].append(sampledS)
@@ -417,6 +477,10 @@ for _ in range(30):
            while True:
               index, sampledP = random.choice(list(zip(range(len(formations[typ])), formations[typ])))
               sampledP = sampledP[1]
+              hasE = ("e" in sampledP[-2:])
+              if typ is not "e":
+                 if hasE != (ind < N/4):
+                    continue
               ratio = lengths[len(sampledP)] / (ratioP * lengthsP[len(sampledP)])
               assert 0<= ratio
               assert ratio <= 1
@@ -438,8 +502,9 @@ for _ in range(30):
      print(len(plurals)) 
      print(sum([len(x) for x in plurals])/float(len(plurals)))
      print(sum([len(x) for x in singulars])/float(len(singulars)))
-     
-     
+     print("Singulars with e", len([x for x in singulars if "e" in x[-2:]])/len(singulars))
+     print("Plurals with e", len([x for x in plurals if "e" in x[-2:]])/len(plurals))
+    
      encodedPlurals = encodeListOfWords(["."+y for y in plurals])
      encodedSingulars = encodeListOfWords(["."+x for x in singulars])
      

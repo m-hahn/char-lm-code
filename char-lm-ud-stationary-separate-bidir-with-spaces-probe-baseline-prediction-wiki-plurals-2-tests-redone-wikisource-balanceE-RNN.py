@@ -1,5 +1,8 @@
+# Like in the paper (1st round, but more efficient implementation).
 
-# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-redone-distractors-wikisource.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
+# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-redone-wikisource-balanceE-RNN.py --batchSize 256 --char_dropout_prob 0.01 --char_embedding_size 50 --char_noise_prob 0.0 --hidden_dim 2048 --language german --layer_num 2 --learning_rate 0.1 --lr_decay 0.95 --nonlinearity tanh --load-from wiki-german-nospaces-bptt-rnn-237671415 --sequence_length 30 --verbose True --weight_dropout_hidden 0.0 --weight_dropout_in 0.0
+
+
 
 from paths import WIKIPEDIA_HOME
 from paths import CHAR_VOCAB_HOME
@@ -15,17 +18,20 @@ parser.add_argument("--load-from", dest="load_from", type=str)
 
 import random
 
-parser.add_argument("--batchSize", type=int, default=16)
-parser.add_argument("--char_embedding_size", type=int, default=100)
-parser.add_argument("--hidden_dim", type=int, default=1024)
-parser.add_argument("--layer_num", type=int, default=1)
-parser.add_argument("--weight_dropout_in", type=float, default=0.01)
-parser.add_argument("--weight_dropout_hidden", type=float, default=0.1)
-parser.add_argument("--char_dropout_prob", type=float, default=0.33)
-parser.add_argument("--char_noise_prob", type = float, default= 0.01)
-parser.add_argument("--learning_rate", type = float, default= 0.1)
+parser.add_argument("--batchSize", type=int, default=random.choice([128, 128, 256]))
+parser.add_argument("--char_embedding_size", type=int, default=random.choice([50, 100, 200, 200]))
+parser.add_argument("--hidden_dim", type=int, default=random.choice([256, 512, 1024, 2048]))
+parser.add_argument("--layer_num", type=int, default=random.choice([1,2]))
+parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.0, 0.0, 0.0, 0.01, 0.05, 0.1]))
+parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.0, 0.05, 0.15, 0.2]))
+parser.add_argument("--char_dropout_prob", type=float, default=random.choice([0.0, 0.0, 0.001, 0.01, 0.01]))
+parser.add_argument("--char_noise_prob", type = float, default=random.choice([0.0, 0.0]))
+parser.add_argument("--learning_rate", type = float, default= random.choice([0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.01, 0.01, 0.1, 0.2]))
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
-parser.add_argument("--sequence_length", type=int, default=50)
+parser.add_argument("--sequence_length", type=int, default=random.choice([10, 20, 30, 50, 50, 80]))
+parser.add_argument("--verbose", type=bool, default=False)
+parser.add_argument("--lr_decay", type=float, default=random.choice([0.5, 0.7, 0.9, 0.95, 0.98, 0.98, 1.0]))
+parser.add_argument("--nonlinearity", type=str, default=random.choice(["tanh", "relu"]))
 
 
 args=parser.parse_args()
@@ -83,7 +89,7 @@ print(torch.__version__)
 from weight_drop import WeightDrop
 
 
-rnn = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num).cuda()
+rnn = torch.nn.RNN(args.char_embedding_size, args.hidden_dim, args.layer_num, args.nonlinearity).cuda()
 
 rnn_parameter_names = [name for name, _ in rnn.named_parameters()]
 print(rnn_parameter_names)
@@ -182,8 +188,8 @@ def encodeListOfWords(words):
     input_cut = input_tensor_forward[:-1]
     embedded_forward = char_embeddings(input_cut)
     out_forward, hidden_forward = rnn_drop(embedded_forward, None)
-    hidden = hidden_forward[0].data.cpu().numpy()
-    return [hidden[0][i] for i in range(len(words))]
+    hidden = hidden_forward.data.cpu().numpy()
+    return [hidden[0,i] for i in range(len(words))]
 
 
 
@@ -281,16 +287,36 @@ plurals = set()
 
 formations = {"e" : set(), "n" : set(), "s" : set(), "same" : set(), "r" : set()}
 
+
 for group in formations:
   with open(f"stimuli/german-plurals-{group}.txt", "r") as inFile:
-     formations[group] = [tuple(x.split(" ")) for x in inFile.read().strip().split("\n")]
+     formations[group] = set([tuple(x.split(" ")) for x in inFile.read().strip().split("\n")])
      print(len(formations[group]))
 
 
 
+with open("germanNounDeclension.txt") as inFile:
+    data = inFile.read().strip().split("###")[1:]
+    for noun in data:
+       noun = noun.strip().split("\n")[1:]
+       noun = [x.split("\t") for x in noun]
+       noun = {x[0] : [y.lower() for y in x[1:]] for x in noun}
+       if "Nominativ Plural" in noun:
+         for x in noun["Nominativ Plural"]:
+            if len(x) > 1:
+                isSingular = any([x in noun[y] for y in noun if "Singular" in y])
+                if not isSingular:
+                   nomSing = noun["Nominativ Singular"][0]
+                   if len(x) == len(nomSing) and x[-1] == nomSing[-1]:
+                      formations["same"].add((nomSing,x))
+                   elif x[-1] in formations:
+                      formations[x[-1]].add((nomSing,x))
+
+               
 
 print(formations["n"])
 print(formations["same"])
+#quit()
 
 def doChoiceList(xs):
     for x in xs:
@@ -339,45 +365,8 @@ ratioS = max([x/y if y > 0 else 0.0 for (x,y) in zip(lengths, lengthsS)])
 
 import random
 
-
-wordsEndingIn = {"r" : set(), "s" : set(), "n" : set(), "e" : set(), "g" : set(), "t" : set(), "l" : set()}
-
-from corpusIterator import CorpusIterator
-
-
-with open("germanNounDeclension.txt") as inFile:
-    data = inFile.read().strip().split("###")[1:]
-    for noun in data:
-       noun = noun.strip().split("\n")[1:]
-       noun = [x.split("\t") for x in noun]
-       noun = {x[0] : [y.lower() for y in x[1:]] for x in noun}
-       if "Nominativ Singular" in noun and "Nominativ Plural" in noun:
-         for x in noun["Nominativ Singular"]:
-            if x[-1] in wordsEndingIn:
-                if x not in noun["Nominativ Plural"]:
-#                  if x in stoi:
-#                 if "e" in x[-2:]:
-                   wordsEndingIn[x[-1]].add(x)
-
-
-
-for x in wordsEndingIn:
-#  print(x, len(wordsEndingIn[x]))
-  print(wordsEndingIn[x])
-#quit()
-
-predictorsR = encodeListOfWords(["."+x for x in wordsEndingIn["r"]])
-predictorsS = encodeListOfWords(["."+x for x in wordsEndingIn["s"]])
-predictorsN = encodeListOfWords(["."+x for x in wordsEndingIn["n"]])
-predictorsE = encodeListOfWords(["."+x for x in wordsEndingIn["e"]])
-predictorsG = encodeListOfWords(["."+x for x in wordsEndingIn["g"]])
-predictorsT = encodeListOfWords(["."+x for x in wordsEndingIn["t"]])
-predictorsL = encodeListOfWords(["."+x for x in wordsEndingIn["l"]])
-
-
-
 # from each type, sample N singulars and N plurals
-N = 15
+N = 16
 evaluationPoints = []
 
 
@@ -391,7 +380,7 @@ encodedSingularsR = encodeListOfWords(["."+x for x, y in formations["r"]])
 formationsBackup = formations
 
 random.seed(1)
-for _ in range(30):
+for _ in range(200):
      formations = {x : set(list(y)[:]) for x, y in formationsBackup.items()}
 
 
@@ -402,13 +391,19 @@ for _ in range(30):
         plurals[typ] = []
      
         formations[typ] = sorted(list(formations[typ]))
-        for _ in range(N):
+#        ratioS_E = max((1/2)/eFractionsSingulars[typ], (1/2)/(1-eFractionsSingulars[typ]))
+
+        for ind in range(N):
            while True:
               index, sampledS = random.choice(list(zip(range(len(formations[typ])), formations[typ])))
               sampledS = sampledS[0]
               ratio = lengths[len(sampledS)] / (ratioS * lengthsS[len(sampledS)])
               assert 0<= ratio
               assert ratio <= 1
+              hasE = ("e" in sampledS[-2:])
+              if hasE != (ind < N/2):
+                    continue
+              #ratio2 = (0.5 / (ratios_E * (eFractionsSingulars[typ] if hasE else 1-eFractionsSingulars[typ])))
               if random.random() < ratio:
                   del formations[typ][index]
                   singulars[typ].append(sampledS)
@@ -417,6 +412,10 @@ for _ in range(30):
            while True:
               index, sampledP = random.choice(list(zip(range(len(formations[typ])), formations[typ])))
               sampledP = sampledP[1]
+              hasE = ("e" in sampledP[-2:])
+              if typ is not "e":
+                 if hasE != (ind < N/4):
+                    continue
               ratio = lengths[len(sampledP)] / (ratioP * lengthsP[len(sampledP)])
               assert 0<= ratio
               assert ratio <= 1
@@ -471,74 +470,48 @@ for _ in range(30):
      
      logisticRegr.fit(x_train, y_train)
      
+     predictions = logisticRegr.predict(x_test)
+     
+     for typ in ["n", "s", "e"]:
+      indicesForType = [i for i in range(len(t_test)) if t_test[i] == typ]
+      
+      print(len(indicesForType))
+      score = logisticRegr.score([x_test[i] for i in indicesForType], [y_test[i] for i in indicesForType])
+      print([f"test on {typ}",score])
+     
+      evaluationPoints.append((typ, score))
+     
+     #print(formations["r"])
+     # test on R plurals
+     
+     predictors =  encodedSingularsR + encodedPluralsR
+     dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
+     
+     score = logisticRegr.score(predictors, dependent)
+     print(["r plurals",score])
+     
+     evaluationPoints.append(("r", score))
+
+#     predictions = logisticRegr.predict(predictors)
+ #    print(predictions)     
 
      
-      # now look at other words that end in n, s, e
+     # test on R plurals
      
-
-     dependent = [0 for _ in predictorsR]
-     score = logisticRegr.score(predictorsR, dependent)
-     print(["r", score])
+     predictors = encodedSingularsSame + encodedPluralsSame 
+     dependent = [0 for _ in encodedSingularsSame] + [1 for _ in encodedPluralsSame]
      
-     evaluationPoints.append(("r_distract", score))
+     score = logisticRegr.score(predictors, dependent)
+     print(["same length plurals", score])
      
+     evaluationPoints.append(("same", score))
+
+   #  print("Predictions for 'Same' class")
+  #   predictions = logisticRegr.predict(predictors)
+ #    print(predictions[:int(len(predictions)/2)])     
+#     print(predictions[int(len(predictions)/2):])     
+    
      
-     
-     dependent = [0 for _ in predictorsS]
-     score = logisticRegr.score(predictorsS, dependent)
-     print(["s", score])
-     
-     evaluationPoints.append(("s_distract", score))
-     
-
-     dependent = [0 for _ in predictorsN]
-     score = logisticRegr.score(predictorsN, dependent)
-     print(["n", score])
-     
-     evaluationPoints.append(("n_distract", score))
-     
-     
-     
-     
-     dependent = [0 for _ in predictorsE]
-     score = logisticRegr.score(predictorsE, dependent)
-     print(["e", score])
-     
-     evaluationPoints.append(("e_distract", score))
-
-
-
-     dependent = [0 for _ in predictorsG]
-     score = logisticRegr.score(predictorsG, dependent)
-     print(["g", score])
-     
-     evaluationPoints.append(("g_distract", score))
-
-
-
-     dependent = [0 for _ in predictorsT]
-     score = logisticRegr.score(predictorsT, dependent)
-     print(["t", score])
-     
-     evaluationPoints.append(("t_distract", score))
-
-
-     dependent = [0 for _ in predictorsL]
-     score = logisticRegr.score(predictorsL, dependent)
-     print(["l", score])
-     
-     evaluationPoints.append(("l_distract", score))
-
-
-
-
-
-
-   #  predictions =     logisticRegr.predict(predictorsS)
-#     print(predictions)
- #    print([("-",y) for x, y in zip(predictions, wordsEndingIn["e"]) if x  == 1])
-  #   print([("+",y) for x, y in zip(predictions, wordsEndingIn["e"]) if x  == 0])
-   #  print("==============")
      
 
 print("----------------")
@@ -546,14 +519,23 @@ print("----------------")
 import math
 
 firstEntries = list(set([x[0] for x in evaluationPoints]))
+accuracies = {}
+SEs = {}
 for entry in firstEntries:
    values = [x[1] for x in evaluationPoints if x[0] == entry]
    accuracy = sum(values)/len(values)
-   sd = math.sqrt(sum([x**2 for x in values])/len(values) - accuracy**2)/math.sqrt(len(values))
+   se = math.sqrt(sum([x**2 for x in values])/len(values) - accuracy**2)/math.sqrt(len(values))
    values = sorted(values)
    lower = values[int(0.05*len(values))]
    upper = values[int(0.95*len(values))]
-   print(entry, accuracy, sd, lower, upper)
+   print(entry, accuracy, se) #, lower, upper)
+   accuracies[entry] = accuracy
+   SEs[entry] = se
+
+output = ""
+for classes in [["s", "n", "e"], ["r"], ["same"]]:
+  output += f" & {round(100*sum([accuracies[x] for x in classes])/len(classes), 1)} ($\pm$ {round(100*sum([SEs[x] for x in classes])/len(classes), 1)}) "
+print(output+" \\\\")
 
 
 quit()

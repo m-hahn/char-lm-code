@@ -455,14 +455,22 @@ for sentence in data:
         assert "remove" in sentence[i]
      badIndices = [i for i in range(len(sentence)) if sentence[i]["remove"]]
 #     print(badIndices)
-     if len(badIndices) != badIndices[-1] - badIndices[0] + 1: # remove examples wit
+     if len(badIndices) != badIndices[-1] - badIndices[0] + 1: # remove examples with discontinuity
  #       print(badIndices)
+#        print(" ".join([x["word"]+("*" if x["remove"] else "") for x in sentence]))
         continue
      if badIndices[0] != mit["index"] -1:
 #        print(mit, badIndices, [(l["word"], l["head"]) for l in sentence] )
         continue
      frames.append(([x["word"] for x in sentence[:badIndices[0]]], [x["word"] for x in sentence[badIndices[-1]+1:]]))
+#quit()
 print(frames[:10])
+with open("stimuli/german-prep-case-frames.txt", "w") as outFile:
+  for frame in frames:
+ #     print(frame)
+      print(" ".join(frame[0])+"\tMIT_PP\t"+" ".join(frame[1]), file=outFile)
+#quit()
+
 # Hypothesis: the model is capable of getting this right when the adjective distinguishes the case, but not so easily when case marking on the noun is required. 
 # (Removing the noun, accuracy is even perfect in the case where the adjective helps distinguish)
 

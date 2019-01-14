@@ -1,5 +1,6 @@
+# Like in the paper (1st round, but more efficient implementation).
 
-# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-redone-distractors-wikisource.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
+# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-redone-wikisource-investigateE.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
 
 from paths import WIKIPEDIA_HOME
 from paths import CHAR_VOCAB_HOME
@@ -281,16 +282,36 @@ plurals = set()
 
 formations = {"e" : set(), "n" : set(), "s" : set(), "same" : set(), "r" : set()}
 
+
 for group in formations:
   with open(f"stimuli/german-plurals-{group}.txt", "r") as inFile:
-     formations[group] = [tuple(x.split(" ")) for x in inFile.read().strip().split("\n")]
+     formations[group] = set([tuple(x.split(" ")) for x in inFile.read().strip().split("\n")])
      print(len(formations[group]))
 
 
 
+with open("germanNounDeclension.txt") as inFile:
+    data = inFile.read().strip().split("###")[1:]
+    for noun in data:
+       noun = noun.strip().split("\n")[1:]
+       noun = [x.split("\t") for x in noun]
+       noun = {x[0] : [y.lower() for y in x[1:]] for x in noun}
+       if "Nominativ Plural" in noun:
+         for x in noun["Nominativ Plural"]:
+            if len(x) > 1:
+                isSingular = any([x in noun[y] for y in noun if "Singular" in y])
+                if not isSingular:
+                   nomSing = noun["Nominativ Singular"][0]
+                   if len(x) == len(nomSing) and x[-1] == nomSing[-1]:
+                      formations["same"].add((nomSing,x))
+                   elif x[-1] in formations:
+                      formations[x[-1]].add((nomSing,x))
+
+               
 
 print(formations["n"])
 print(formations["same"])
+#quit()
 
 def doChoiceList(xs):
     for x in xs:
@@ -321,7 +342,15 @@ lengthsP = [0 for _ in range(55)]
 for sing, plur in forNSE:
    lengthsS[len(sing)] += 1
    lengthsP[len(plur)] += 1
-   
+
+
+def meanEqual(x,y):
+  assert len(x) == len(y)
+  return sum([a==b for a, b in zip(x,y)])/len(x)   
+
+
+def mean(x):
+  return sum(x)/len(x)   
 
 lengths = [min(x,y) for x,y in zip(lengthsS, lengthsP)]
 
@@ -339,45 +368,8 @@ ratioS = max([x/y if y > 0 else 0.0 for (x,y) in zip(lengths, lengthsS)])
 
 import random
 
-
-wordsEndingIn = {"r" : set(), "s" : set(), "n" : set(), "e" : set(), "g" : set(), "t" : set(), "l" : set()}
-
-from corpusIterator import CorpusIterator
-
-
-with open("germanNounDeclension.txt") as inFile:
-    data = inFile.read().strip().split("###")[1:]
-    for noun in data:
-       noun = noun.strip().split("\n")[1:]
-       noun = [x.split("\t") for x in noun]
-       noun = {x[0] : [y.lower() for y in x[1:]] for x in noun}
-       if "Nominativ Singular" in noun and "Nominativ Plural" in noun:
-         for x in noun["Nominativ Singular"]:
-            if x[-1] in wordsEndingIn:
-                if x not in noun["Nominativ Plural"]:
-#                  if x in stoi:
-#                 if "e" in x[-2:]:
-                   wordsEndingIn[x[-1]].add(x)
-
-
-
-for x in wordsEndingIn:
-#  print(x, len(wordsEndingIn[x]))
-  print(wordsEndingIn[x])
-#quit()
-
-predictorsR = encodeListOfWords(["."+x for x in wordsEndingIn["r"]])
-predictorsS = encodeListOfWords(["."+x for x in wordsEndingIn["s"]])
-predictorsN = encodeListOfWords(["."+x for x in wordsEndingIn["n"]])
-predictorsE = encodeListOfWords(["."+x for x in wordsEndingIn["e"]])
-predictorsG = encodeListOfWords(["."+x for x in wordsEndingIn["g"]])
-predictorsT = encodeListOfWords(["."+x for x in wordsEndingIn["t"]])
-predictorsL = encodeListOfWords(["."+x for x in wordsEndingIn["l"]])
-
-
-
 # from each type, sample N singulars and N plurals
-N = 15
+N = 16
 evaluationPoints = []
 
 
@@ -387,11 +379,12 @@ encodedSingularsSame = encodeListOfWords(["."+x for x, y in formations["same"]])
 encodedPluralsR = encodeListOfWords(["."+y for x, y in formations["r"]])
 encodedSingularsR = encodeListOfWords(["."+x for x, y in formations["r"]])
 
+agreePoints = []
 
 formationsBackup = formations
 
 random.seed(1)
-for _ in range(30):
+for _ in range(200):
      formations = {x : set(list(y)[:]) for x, y in formationsBackup.items()}
 
 
@@ -448,8 +441,8 @@ for _ in range(30):
      #dependent = [0 for _ in encodedSingulars] + [1 for _ in encodedPlurals]
      
      from sklearn.model_selection import train_test_split
-     sx_train, sx_test, sy_train, sy_test, st_train, st_test = train_test_split(encodedSingulars, [0 for _ in encodedSingulars], stratify_types, test_size=0.5, shuffle=True, stratify = stratify_types, random_state=1) # random_state=random.randint(0,100), 
-     px_train, px_test, py_train, py_test, pt_train, pt_test = train_test_split(encodedPlurals, [1 for _ in encodedPlurals], stratify_types, test_size=0.5,  shuffle=True, stratify = stratify_types, random_state=1) # random_state=random.randint(0,100),
+     sx_train, sx_test, sy_train, sy_test, st_train, st_test, sw_train, sw_test = train_test_split(encodedSingulars, [0 for _ in encodedSingulars], stratify_types, singulars, test_size=0.5, shuffle=True, stratify = stratify_types, random_state=1) # random_state=random.randint(0,100), 
+     px_train, px_test, py_train, py_test, pt_train, pt_test, pw_train, pw_test = train_test_split(encodedPlurals, [1 for _ in encodedPlurals], stratify_types, plurals, test_size=0.5,  shuffle=True, stratify = stratify_types, random_state=1) # random_state=random.randint(0,100),
      
      x_train = sx_train + px_train
      x_test = sx_test + px_test
@@ -457,7 +450,7 @@ for _ in range(30):
      y_test = sy_test + py_test
      t_train = st_train + pt_train
      t_test = st_test + pt_test
-     
+     w_test = sw_test + pw_test 
      
      print(y_train)
      print(y_test)
@@ -471,89 +464,81 @@ for _ in range(30):
      
      logisticRegr.fit(x_train, y_train)
      
+     predictions = logisticRegr.predict(x_test)
+     
+     for typ in ["n", "s", "e"]:
+      indicesForType = [i for i in range(len(t_test)) if t_test[i] == typ]
+      
+      print(len(indicesForType))
+      score = logisticRegr.score([x_test[i] for i in indicesForType], [y_test[i] for i in indicesForType])
+      print([f"test on {typ}",score])
+     
+      evaluationPoints.append((typ, score))
 
-     
-      # now look at other words that end in n, s, e
-     
-
-     dependent = [0 for _ in predictorsR]
-     score = logisticRegr.score(predictorsR, dependent)
-     print(["r", score])
-     
-     evaluationPoints.append(("r_distract", score))
-     
-     
-     
-     dependent = [0 for _ in predictorsS]
-     score = logisticRegr.score(predictorsS, dependent)
-     print(["s", score])
-     
-     evaluationPoints.append(("s_distract", score))
-     
-
-     dependent = [0 for _ in predictorsN]
-     score = logisticRegr.score(predictorsN, dependent)
-     print(["n", score])
-     
-     evaluationPoints.append(("n_distract", score))
-     
-     
-     
-     
-     dependent = [0 for _ in predictorsE]
-     score = logisticRegr.score(predictorsE, dependent)
-     print(["e", score])
-     
-     evaluationPoints.append(("e_distract", score))
+      predictions = logisticRegr.predict([x_test[i] for i in indicesForType])
+      hasE = [1 if "e" in w_test[i][-2:] else 0 for i in indicesForType ]
+#      print("Agree", typ, meanEqual(predictions, hasE))
+      agreePoints.append((typ, meanEqual(predictions, hasE)))
 
 
-
-     dependent = [0 for _ in predictorsG]
-     score = logisticRegr.score(predictorsG, dependent)
-     print(["g", score])
      
-     evaluationPoints.append(("g_distract", score))
-
-
-
-     dependent = [0 for _ in predictorsT]
-     score = logisticRegr.score(predictorsT, dependent)
-     print(["t", score])
+     #print(formations["r"])
+     # test on R plurals
      
-     evaluationPoints.append(("t_distract", score))
-
-
-     dependent = [0 for _ in predictorsL]
-     score = logisticRegr.score(predictorsL, dependent)
-     print(["l", score])
+     predictors =  encodedSingularsR + encodedPluralsR
+     dependent = [0 for _ in encodedSingularsR] + [1 for _ in encodedPluralsR]
      
-     evaluationPoints.append(("l_distract", score))
+     score = logisticRegr.score(predictors, dependent)
+     print(["r plurals",score])
+     
+     evaluationPoints.append(("r", score))
 
+     predictions = logisticRegr.predict(predictors)
+#     print(predictions)     
+     hasE = [1 if "e" in x[-2:] else 0 for x, y in formations["r"]] + [1 if "e" in y[-2:] else 0 for x, y in formations["r"]] 
+#     print("Agree", "r", meanEqual(predictions, hasE))
+     agreePoints.append(("r", meanEqual(predictions, hasE)))
 
+     # test on R plurals
+     
+     predictors = encodedSingularsSame + encodedPluralsSame 
+     dependent = [0 for _ in encodedSingularsSame] + [1 for _ in encodedPluralsSame]
+     
+     score = logisticRegr.score(predictors, dependent)
+     print(["same length plurals", score])
+     
+     evaluationPoints.append(("same", score))
 
-
-
-
-   #  predictions =     logisticRegr.predict(predictorsS)
-#     print(predictions)
- #    print([("-",y) for x, y in zip(predictions, wordsEndingIn["e"]) if x  == 1])
-  #   print([("+",y) for x, y in zip(predictions, wordsEndingIn["e"]) if x  == 0])
-   #  print("==============")
+     predictions = logisticRegr.predict(predictors)
+#     print(predictions)     
+     hasE = [1 if "e" in x[-2:] else 0 for x, y in formations["same"]] + [1 if "e" in y[-2:] else 0 for x, y in formations["same"]] 
+#     print("Agree", "same", meanEqual(predictions, hasE))   
+     agreePoints.append(("same", meanEqual(predictions, hasE)))
+    
      
 
 print("----------------")
 
 import math
 
-firstEntries = list(set([x[0] for x in evaluationPoints]))
+firstEntries = list(set([x[0] for x in agreePoints]))
+accuracies = {}
+SEs = {}
 for entry in firstEntries:
-   values = [x[1] for x in evaluationPoints if x[0] == entry]
+   values = [x[1] for x in agreePoints if x[0] == entry]
    accuracy = sum(values)/len(values)
-   sd = math.sqrt(sum([x**2 for x in values])/len(values) - accuracy**2)/math.sqrt(len(values))
+   se = math.sqrt(sum([x**2 for x in values])/len(values) - accuracy**2)/math.sqrt(len(values))
    values = sorted(values)
    lower = values[int(0.05*len(values))]
    upper = values[int(0.95*len(values))]
-   print(entry, accuracy, sd, lower, upper)
+   print(entry, accuracy, se) #, lower, upper)
+   accuracies[entry] = accuracy
+   SEs[entry] = se
+
+output = ""
+for classes in [["s", "n", "e"], ["r"], ["same"]]:
+  output += f" & {round(100*sum([accuracies[x] for x in classes])/len(classes), 1)} ($\pm$ {round(100*sum([SEs[x] for x in classes])/len(classes), 1)}) "
+print(output+" \\\\")
 
 
 quit()

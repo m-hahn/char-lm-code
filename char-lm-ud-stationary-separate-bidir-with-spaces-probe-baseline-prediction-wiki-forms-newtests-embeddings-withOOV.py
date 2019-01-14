@@ -357,6 +357,9 @@ print(verbsInN[:100])
 sampleSize = 500
 
 accuracies = []
+
+
+
 for _ in range(100):
   random.shuffle(nounsInN)
   random.shuffle(verbsInN)
@@ -408,12 +411,19 @@ standardDeviation = math.sqrt(meanSquaredAccuracy - meanAccuracy**2)
 print(standardDeviation)
 
 
+
+
+
 accuracies = sorted(accuracies)
 
 ci_lower = accuracies[int(0.05 * 100)]
 ci_upper = accuracies[int(0.95 * 100)]
 
 print((ci_lower, ci_upper))
+
+
+print("OOV Ratio (balanced) ",1- 0.5 * (sum([1 if x in stoi else 0 for x in nounsInN])/len(nounsInN) + sum([1 if x in stoi else 0 for x in verbsInN])/len(verbsInN)))
+
 
 with open(f"/checkpoint/mhahn/pos/{__file__}_"+args.language+"_"+str(args.train_size)+"_"+args.load_from, "w") as outFile:
    print(args.language, file=outFile)

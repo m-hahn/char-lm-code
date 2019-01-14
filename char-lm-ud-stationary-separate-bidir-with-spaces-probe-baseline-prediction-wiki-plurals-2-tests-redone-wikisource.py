@@ -283,6 +283,13 @@ plurals = set()
 formations = {"e" : set(), "n" : set(), "s" : set(), "same" : set(), "r" : set()}
 
 
+for group in formations:
+  with open(f"stimuli/german-plurals-{group}.txt", "r") as inFile:
+     formations[group] = set([tuple(x.split(" ")) for x in inFile.read().strip().split("\n")])
+     print(len(formations[group]))
+
+
+
 with open("germanNounDeclension.txt") as inFile:
     data = inFile.read().strip().split("###")[1:]
     for noun in data:
@@ -354,7 +361,7 @@ ratioS = max([x/y if y > 0 else 0.0 for (x,y) in zip(lengths, lengthsS)])
 import random
 
 # from each type, sample N singulars and N plurals
-N = 15
+N = 16
 evaluationPoints = []
 
 
@@ -368,7 +375,7 @@ encodedSingularsR = encodeListOfWords(["."+x for x, y in formations["r"]])
 formationsBackup = formations
 
 random.seed(1)
-for _ in range(20):
+for _ in range(200):
      formations = {x : set(list(y)[:]) for x, y in formationsBackup.items()}
 
 
@@ -484,10 +491,11 @@ for _ in range(20):
      
      evaluationPoints.append(("same", score))
 
-
+   #  print("Predictions for 'Same' class")
   #   predictions = logisticRegr.predict(predictors)
-   #  print(predictions)     
-     
+ #    print(predictions[:int(len(predictions)/2)])     
+#     print(predictions[int(len(predictions)/2):])     
+    
      
      
 
@@ -496,14 +504,23 @@ print("----------------")
 import math
 
 firstEntries = list(set([x[0] for x in evaluationPoints]))
+accuracies = {}
+SEs = {}
 for entry in firstEntries:
    values = [x[1] for x in evaluationPoints if x[0] == entry]
    accuracy = sum(values)/len(values)
-   sd = math.sqrt(sum([x**2 for x in values])/len(values) - accuracy**2)
+   se = math.sqrt(sum([x**2 for x in values])/len(values) - accuracy**2)/math.sqrt(len(values))
    values = sorted(values)
    lower = values[int(0.05*len(values))]
    upper = values[int(0.95*len(values))]
-   print(entry, accuracy, sd, lower, upper)
+   print(entry, accuracy, se) #, lower, upper)
+   accuracies[entry] = accuracy
+   SEs[entry] = se
+
+output = ""
+for classes in [["s", "n", "e"], ["r"], ["same"]]:
+  output += f" & {round(100*sum([accuracies[x] for x in classes])/len(classes), 1)} ($\pm$ {round(100*sum([SEs[x] for x in classes])/len(classes), 1)}) "
+print(output+" \\\\")
 
 
 quit()

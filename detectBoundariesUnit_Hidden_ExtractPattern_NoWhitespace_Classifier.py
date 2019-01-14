@@ -289,7 +289,7 @@ scores = []
 
 examples_count = 0
 
-for _ in range(50):
+for _ in range(50): # Go through the entire remainder of the Dev set
 
      hidden_states = []
      labels = []
@@ -368,12 +368,12 @@ falseNegatives = sorted(list(falseNegatives.items()), key=lambda x:x[1])
 print(f"results/segmentation-{args.language}-frequent-errors-neuron-disjoint.txt")
 with open(f"results/segmentation-{args.language}-frequent-errors-neuron-disjoint.txt", "w") as outFile:
    print("False Positives", file=outFile)
-   for error in falsePositives[-30:]:
+   for error in falsePositives[-100:]:
       print(error[0]+"\t"+str(error[1]), file=outFile)
 
    print("", file=outFile)   
    print("False Negatives", file=outFile)
-   for error in falseNegatives[-30:]:
+   for error in falseNegatives[-100:]:
       print(error[0]+"\t"+str(error[1]), file=outFile)
 
 
