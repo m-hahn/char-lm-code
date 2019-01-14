@@ -1,4 +1,4 @@
-# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-words-distractors.py  --language german --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-words-966024846
+# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-words-distractors-wikisource.py  --language german --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-words-966024846
 
 
 from paths import WIKIPEDIA_HOME
@@ -326,20 +326,36 @@ import random
 wordsEndingIn = {"r" : set(), "s" : set(), "n" : set(), "e" : set(), "g" : set(), "t" : set()}
 
 from corpusIterator import CorpusIterator
-training = CorpusIterator("German", partition="train", storeMorph=True, removePunctuation=True)
 
-for sentence in training.iterator():
- for line in sentence:
-   if line["posUni"] == "NOUN":
-      morph = line["morph"]
-      if "Number=Plur" not in  morph and "Case=Dat" not in morph:
-        if line["word"][-1] in wordsEndingIn:
-          if line["word"].lower()  in stoi:
-             wordsEndingIn[line["word"][-1]].add(line["word"].lower())
 
-print(wordsEndingIn["r"])
-print(wordsEndingIn["e"])
-print(wordsEndingIn["s"])
+with open("germanNounDeclension.txt") as inFile:
+    data = inFile.read().strip().split("###")[1:]
+    for noun in data:
+       noun = noun.strip().split("\n")[1:]
+       noun = [x.split("\t") for x in noun]
+       noun = {x[0] : [y.lower() for y in x[1:]] for x in noun}
+       if "Nominativ Singular" in noun and "Nominativ Plural" in noun:
+         for x in noun["Nominativ Singular"]:
+            if x[-1] in wordsEndingIn:
+                if x not in noun["Nominativ Plural"]:
+                  if x in stoi:
+                   wordsEndingIn[x[-1]].add(x)
+
+
+#training = CorpusIterator("German", partition="train", storeMorph=True, removePunctuation=True)
+#
+#for sentence in training.iterator():
+# for line in sentence:
+#   if line["posUni"] == "NOUN":
+#      morph = line["morph"]
+#      if "Number=Plur" not in  morph and "Case=Dat" not in morph:
+#        if line["word"][-1] in wordsEndingIn:
+#          if line["word"].lower()  in stoi:
+#             wordsEndingIn[line["word"][-1]].add(line["word"].lower())
+
+for x in wordsEndingIn:
+  print(x, len(wordsEndingIn[x]))
+#quit()
 
 predictorsR = encodeListOfWords([x for x in wordsEndingIn["r"]])
 predictorsS = encodeListOfWords([x for x in wordsEndingIn["s"]])

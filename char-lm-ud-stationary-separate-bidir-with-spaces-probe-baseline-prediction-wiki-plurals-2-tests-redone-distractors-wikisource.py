@@ -1,7 +1,8 @@
-# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-words-distractors.py  --language german --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-words-966024846
 
+# python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-plurals-2-tests-redone-distractors-wikisource.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.35 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
 
 from paths import WIKIPEDIA_HOME
+from paths import CHAR_VOCAB_HOME
 from paths import MODELS_HOME
 
 import argparse
@@ -34,7 +35,7 @@ print(args)
 
 
 
-import corpusIteratorWikiWords
+import corpusIteratorWiki
 
 
 def plusL(its):
@@ -48,10 +49,25 @@ def plus(it1, it2):
    for x in it2:
       yield x
 
-char_vocab_path = {"german" : "vocabularies/german-wiki-word-vocab-50000.txt", "italian" : "vocabularies/italian-wiki-word-vocab-50000.txt"}[args.language]
+try:
+   with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
+     itos = inFile.read().strip().split("\n")
+except FileNotFoundError:
+    print("Creating new vocab")
+    char_counts = {}
+    # get symbol vocabulary
 
-with open(char_vocab_path, "r") as inFile:
-     itos = [x.split("\t")[0] for x in inFile.read().strip().split("\n")[:50000]]
+    with open(WIKIPEDIA_HOME+"/"+args.language+"-vocab.txt", "r") as inFile:
+      words = inFile.read().strip().split("\n")
+      for word in words:
+         for char in word.lower():
+            char_counts[char] = char_counts.get(char, 0) + 1
+    char_counts = [(x,y) for x, y in char_counts.items()]
+    itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
+    with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
+       print("\n".join(itos), file=outFile)
+#itos = sorted(itos)
+print(itos)
 stoi = dict([(itos[i],i) for i in range(len(itos))])
 
 
@@ -118,7 +134,9 @@ from torch.autograd import Variable
 #from embed_regularize import embedded_dropout
 
 def encodeWord(word):
-      numeric = ((stoi[word]+3 if word in stoi else 2) if True else 2+random.randint(0, len(itos)))
+      numeric = [[]]
+      for char in word:
+           numeric[-1].append((stoi[char]+3 if char in stoi else 2) if True else 2+random.randint(0, len(itos)))
       return numeric
 
 
@@ -153,19 +171,19 @@ def choice(numeric1, numeric2):
      return losses
 
 
-def encodeListOfWordsIn(words):
-    numeric = [encodeWord(word) for word in words]
-    input_tensor_forward = Variable(torch.LongTensor(numeric).cuda(), requires_grad=False)
-    
-    embedded_forward = char_embeddings(input_tensor_forward)
-    return [embedded_forward[i].data.cpu().numpy() for i in range(len(words))]
-
 def encodeListOfWords(words):
-    numeric = [encodeWord(word) for word in words]
-    input_tensor_forward = Variable(torch.LongTensor(numeric).cuda(), requires_grad=False)
+    numeric = [encodeWord(word)[0] for word in words]
+    maxLength = max([len(x) for x in numeric])
+    for i in range(len(numeric)):
+       numeric[i] = ([0]*(maxLength-len(numeric[i]))) + numeric[i]
+    input_tensor_forward = Variable(torch.LongTensor([[0]+x for x in numeric]).transpose(0,1).cuda(), requires_grad=False)
     
-    embedded_forward = [output.weight[word] for word in numeric] #char_embeddings(input_tensor_forward)
-    return [embedded_forward[i].data.cpu().numpy() for i in range(len(words))]
+    target = input_tensor_forward[1:]
+    input_cut = input_tensor_forward[:-1]
+    embedded_forward = char_embeddings(input_cut)
+    out_forward, hidden_forward = rnn_drop(embedded_forward, None)
+    hidden = hidden_forward[0].data.cpu().numpy()
+    return [hidden[0][i] for i in range(len(words))]
 
 
 
@@ -192,34 +210,34 @@ def choiceList(numeric):
      losses = losses.sum(0).data.cpu().numpy()
      return losses
 
-#
-#
-#def encodeSequenceBatchForward(numeric):
-#      input_tensor_forward = Variable(torch.LongTensor([[0]+x for x in numeric]).transpose(0,1).cuda(), requires_grad=False)
-#
-##      target_tensor_forward = Variable(torch.LongTensor(numeric).transpose(0,1)[2:].cuda(), requires_grad=False).view(args.sequence_length+1, len(numeric), 1, 1)
-#      embedded_forward = char_embeddings(input_tensor_forward)
-#      out_forward, hidden_forward = rnn_drop(embedded_forward, None)
-##      out_forward = out_forward.view(args.sequence_length+1, len(numeric), -1)
-# #     logits_forward = output(out_forward) 
-#  #    log_probs_forward = logsoftmax(logits_forward)
-#      return (out_forward[-1], hidden_forward)
-#
-#
-##
-#def encodeSequenceBatchBackward(numeric):
-##      print([itos[x-3] for x in numeric[0]])
-##      print([[0]+(x[::-1]) for x in numeric])
-#      input_tensor_backward = Variable(torch.LongTensor([[0]+(x[::-1]) for x in numeric]).transpose(0,1).cuda(), requires_grad=False)
-##      target_tensor_backward = Variable(torch.LongTensor([x[::-1] for x in numeric]).transpose(0,1)[:-2].cuda(), requires_grad=False).view(args.sequence_length+1, len(numeric), 1, 1)
-#      embedded_backward = char_embeddings(input_tensor_backward)
-#      out_backward, hidden_backward = rnn_backward_drop(embedded_backward, None)
-##      out_backward = out_backward.view(args.sequence_length+1, len(numeric), -1)
-##      logits_backward = output(out_backward) 
-##      log_probs_backward = logsoftmax(logits_backward)
-#
-#      return (out_backward[-1], hidden_backward)
-#
+
+
+def encodeSequenceBatchForward(numeric):
+      input_tensor_forward = Variable(torch.LongTensor([[0]+x for x in numeric]).transpose(0,1).cuda(), requires_grad=False)
+
+#      target_tensor_forward = Variable(torch.LongTensor(numeric).transpose(0,1)[2:].cuda(), requires_grad=False).view(args.sequence_length+1, len(numeric), 1, 1)
+      embedded_forward = char_embeddings(input_tensor_forward)
+      out_forward, hidden_forward = rnn_drop(embedded_forward, None)
+#      out_forward = out_forward.view(args.sequence_length+1, len(numeric), -1)
+ #     logits_forward = output(out_forward) 
+  #    log_probs_forward = logsoftmax(logits_forward)
+      return (out_forward[-1], hidden_forward)
+
+
+
+def encodeSequenceBatchBackward(numeric):
+#      print([itos[x-3] for x in numeric[0]])
+#      print([[0]+(x[::-1]) for x in numeric])
+      input_tensor_backward = Variable(torch.LongTensor([[0]+(x[::-1]) for x in numeric]).transpose(0,1).cuda(), requires_grad=False)
+#      target_tensor_backward = Variable(torch.LongTensor([x[::-1] for x in numeric]).transpose(0,1)[:-2].cuda(), requires_grad=False).view(args.sequence_length+1, len(numeric), 1, 1)
+      embedded_backward = char_embeddings(input_tensor_backward)
+      out_backward, hidden_backward = rnn_backward_drop(embedded_backward, None)
+#      out_backward = out_backward.view(args.sequence_length+1, len(numeric), -1)
+#      logits_backward = output(out_backward) 
+#      log_probs_backward = logsoftmax(logits_backward)
+
+      return (out_backward[-1], hidden_backward)
+
 
 import numpy as np
 
@@ -266,12 +284,11 @@ formations = {"e" : set(), "n" : set(), "s" : set(), "same" : set(), "r" : set()
 for group in formations:
   with open(f"stimuli/german-plurals-{group}.txt", "r") as inFile:
      formations[group] = [tuple(x.split(" ")) for x in inFile.read().strip().split("\n")]
-     formations[group] = [(x,y) for x,y in formations[group] if x in stoi and y in stoi]
      print(len(formations[group]))
 
 
-print(formations["e"])
-print(formations["s"])
+
+
 print(formations["n"])
 print(formations["same"])
 
@@ -326,28 +343,32 @@ import random
 wordsEndingIn = {"r" : set(), "s" : set(), "n" : set(), "e" : set(), "g" : set(), "t" : set()}
 
 from corpusIterator import CorpusIterator
-training = CorpusIterator("German", partition="train", storeMorph=True, removePunctuation=True)
 
-for sentence in training.iterator():
- for line in sentence:
-   if line["posUni"] == "NOUN":
-      morph = line["morph"]
-      if "Number=Plur" not in  morph and "Case=Dat" not in morph:
-        if line["word"][-1] in wordsEndingIn:
-          if line["word"].lower()  in stoi:
-             wordsEndingIn[line["word"][-1]].add(line["word"].lower())
 
-print(wordsEndingIn["r"])
-print(wordsEndingIn["e"])
-print(wordsEndingIn["s"])
+with open("germanNounDeclension.txt") as inFile:
+    data = inFile.read().strip().split("###")[1:]
+    for noun in data:
+       noun = noun.strip().split("\n")[1:]
+       noun = [x.split("\t") for x in noun]
+       noun = {x[0] : [y.lower() for y in x[1:]] for x in noun}
+       if "Nominativ Singular" in noun and "Nominativ Plural" in noun:
+         for x in noun["Nominativ Singular"]:
+            if x[-1] in wordsEndingIn:
+                if x not in noun["Nominativ Plural"]:
+#                  if x in stoi:
+                   wordsEndingIn[x[-1]].add(x)
 
-predictorsR = encodeListOfWords([x for x in wordsEndingIn["r"]])
-predictorsS = encodeListOfWords([x for x in wordsEndingIn["s"]])
-predictorsN = encodeListOfWords([x for x in wordsEndingIn["n"]])
-predictorsE = encodeListOfWords([x for x in wordsEndingIn["e"]])
-predictorsG = encodeListOfWords([x for x in wordsEndingIn["g"]])
-predictorsT = encodeListOfWords([x for x in wordsEndingIn["t"]])
 
+
+for x in wordsEndingIn:
+  print(x, len(wordsEndingIn[x]))
+
+predictorsR = encodeListOfWords(["."+x for x in wordsEndingIn["r"]])
+predictorsS = encodeListOfWords(["."+x for x in wordsEndingIn["s"]])
+predictorsN = encodeListOfWords(["."+x for x in wordsEndingIn["n"]])
+predictorsE = encodeListOfWords(["."+x for x in wordsEndingIn["e"]])
+predictorsG = encodeListOfWords(["."+x for x in wordsEndingIn["g"]])
+predictorsT = encodeListOfWords(["."+x for x in wordsEndingIn["t"]])
 
 
 
@@ -355,10 +376,18 @@ predictorsT = encodeListOfWords([x for x in wordsEndingIn["t"]])
 N = 15
 evaluationPoints = []
 
+
+encodedPluralsSame = encodeListOfWords(["."+y for x, y in formations["same"]])
+encodedSingularsSame = encodeListOfWords(["."+x for x, y in formations["same"]])
+
+encodedPluralsR = encodeListOfWords(["."+y for x, y in formations["r"]])
+encodedSingularsR = encodeListOfWords(["."+x for x, y in formations["r"]])
+
+
 formationsBackup = formations
 
 random.seed(1)
-for _ in range(20):
+for _ in range(200):
      formations = {x : set(list(y)[:]) for x, y in formationsBackup.items()}
 
 
@@ -407,8 +436,8 @@ for _ in range(20):
      print(sum([len(x) for x in singulars])/float(len(singulars)))
      
      
-     encodedPlurals = encodeListOfWords([y for y in plurals])
-     encodedSingulars = encodeListOfWords([x for x in singulars])
+     encodedPlurals = encodeListOfWords(["."+y for y in plurals])
+     encodedSingulars = encodeListOfWords(["."+x for x in singulars])
      
      #predictors = encodedSingulars + encodedPlurals
      
@@ -510,7 +539,7 @@ firstEntries = list(set([x[0] for x in evaluationPoints]))
 for entry in firstEntries:
    values = [x[1] for x in evaluationPoints if x[0] == entry]
    accuracy = sum(values)/len(values)
-   sd = math.sqrt(sum([x**2 for x in values])/len(values) - accuracy**2)
+   sd = math.sqrt(sum([x**2 for x in values])/len(values) - accuracy**2)/math.sqrt(len(values))
    values = sorted(values)
    lower = values[int(0.05*len(values))]
    upper = values[int(0.95*len(values))]
