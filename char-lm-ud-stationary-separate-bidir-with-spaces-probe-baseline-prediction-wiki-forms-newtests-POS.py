@@ -163,7 +163,7 @@ import numpy as np
 
 
 # paths of vocabularies with POS annotation
-vocabPath = {"german" : WIKIPEDIA_HOME+"german-wiki-word-vocab-POS.txt", "italian" : WIKIPEDIA_HOME+"itwiki/italian-wiki-word-vocab-POS.txt"}[args.language]
+vocabPath = {"german" : WIKIPEDIA_HOME+"german-wiki-word-vocab-POS.txt", "italian" : WIKIPEDIA_HOME+"italian-wiki-word-vocab-POS.txt"}[args.language]
 
 
 # language-specific rules for detecting verbs and nouns from the POS annotation

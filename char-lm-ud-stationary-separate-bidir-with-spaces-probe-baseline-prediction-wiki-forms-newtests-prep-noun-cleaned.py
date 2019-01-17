@@ -3,7 +3,6 @@ from paths import CHAR_VOCAB_HOME
 from paths import MODELS_HOME
 
 
-# Clear evidence that the model isn't leveraging evidence about the subcategorization of the verb.
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -405,8 +404,10 @@ with open(WIKIPEDIA_HOME+"german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as i
         wentThroughAdjectives = True
       if int(line[0]) > 100 and not line[2].endswith("r"):
          adjectives.append(line[2])
-      
+#      if line[2].endswith("r"):
+ #       print(line)      
 print(len(adjectives))
+#quit()
 
 from corpusIterator import CorpusIterator
 data = CorpusIterator("German", partition="train", removePunctuation=False).iterator()

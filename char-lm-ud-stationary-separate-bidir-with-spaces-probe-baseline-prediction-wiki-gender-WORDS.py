@@ -303,10 +303,14 @@ with open(WIKIPEDIA_HOME+"german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as i
       if int(line[0]) > 100 and not line[2].endswith("r"):
          adjectives.append(line[2])
 
+print("OOV Ratio for adjectives", sum([0 if x+"e" in stoi else 1 for x in adjectives])/len(adjectives))
+#quit()
 
 def genderTest(mode):
    training = CorpusIterator("German", partition="train", storeMorph=True, removePunctuation=True)
    genders = dict([("Gender="+x, set()) for x in ["Masc", "Fem", "Neut"]])
+
+
    for sentence in training.iterator():
        for line in sentence:
         if line["posUni"] == "NOUN" and "|" not in line["lemma"]:
@@ -316,6 +320,11 @@ def genderTest(mode):
             gender = [x for x in morph if x.startswith("Gender=")]
             if len(gender) > 0:
               genders[gender[0]].add(line["lemma"].lower())
+
+   for gender in genders:
+       print("OOV Ratio for ", gender, sum([0 if x in stoi else 1 for x in genders[gender]])/len(genders[gender]))
+   quit()
+
               
    #print(genders)
    counter = 0

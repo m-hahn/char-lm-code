@@ -294,7 +294,14 @@ with open("germanNounDeclension.txt") as inFile:
                      elif x[-1] in formations:
                         formations[x[-1]].add((nomSing,x))
 
-               
+
+invocab = [1 if (x[0] in stoi and x[1] in stoi) else 0 for x in list(formations["n"])+list(formations["s"])+list(formations["e"])]
+print("n, s, e", 1-sum(invocab)/len(invocab))
+
+for key in formations:
+   invocab = [1 if (x[0] in stoi and x[1] in stoi) else 0 for x in formations[key]]
+   print(key, 1-sum(invocab)/len(invocab))
+quit()
 
 print(formations["n"])
 print(formations["same"])

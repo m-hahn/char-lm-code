@@ -368,6 +368,10 @@ with open(WIKIPEDIA_HOME+"german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as i
 #quit()
 
 
+samplesAccepted = 0
+samplesOutOfVocab = 0
+
+
 correctDat = [0,0]
 correctGen = [0,0]
 
@@ -389,9 +393,12 @@ with open("germanNounDeclension.txt") as inFile:
                    dativeForm = dative[0].lower()
                    genitiveForm = genitive[0].lower()
                    if dativeForm not in stoi:
+                       samplesOutOfVocab += 1
                        continue
                    if genitiveForm not in stoi:
+                       samplesOutOfVocab += 1
                        continue
+                   samplesAccepted += 1
                    adjectiveChoice = "_NONE_"
                    while adjectiveChoice not in stoi:
                        adjectiveChoice = random.choice(adjectives)+"en"
@@ -405,4 +412,4 @@ with open("germanNounDeclension.txt") as inFile:
                    print(correctDat[0]/correctDat[1])
                    print(correctGen[0]/correctGen[1])
 
-
+print("OOV Ratio", samplesOutOfVocab/(samplesAccepted+samplesOutOfVocab))
