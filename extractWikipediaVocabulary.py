@@ -3,16 +3,16 @@ unigrams = {}
 
 
 if True:
- pathIn = WIKIPEDIA_HOME+"enwiki/english-train-tagged.txt"
- pathOut = WIKIPEDIA_HOME+"enwiki/english-wiki-word-vocab.txt"
+ pathIn = WIKIPEDIA_HOME+"english-train-tagged.txt"
+ pathOut = WIKIPEDIA_HOME+"english-wiki-word-vocab.txt"
 elif False:
  assert False
  pathIn = WIKIPEDIA_HOME+"german-train-tagged.txt"
- pathOut = WIKIPEDIA_HOME+"/german-wiki-word-vocab.txt"
+ pathOut = "vocabularies/german-wiki-word-vocab-50000.txt"
 else:
  assert False
- pathIn = "/checkpoint/mbaroni/char-rnn-exchange/tagged_italian_training_corpus.txt"
- pathOut = WIKIPEDIA_HOME+"/itwiki/italian-wiki-word-vocab.txt"
+ pathIn = WIKIPEDIA_HOME+"itwiki-train-tagged.txt"
+ pathOut = WIKIPEDIA_HOME+"italian-wiki-word-vocab.txt"
 
 import random
 with open(pathIn, "r") as inFile:

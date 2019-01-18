@@ -47,7 +47,7 @@ def plus(it1, it2):
       yield x
 
 try:
-   with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
+   with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
 except FileNotFoundError:
     print("Creating new vocab")
@@ -61,7 +61,7 @@ except FileNotFoundError:
             char_counts[char] = char_counts.get(char, 0) + 1
     char_counts = [(x,y) for x, y in char_counts.items()]
     itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
-    with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
+    with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
 print(itos)
@@ -362,7 +362,8 @@ evaluationPoints = []
 
 formationsBackup = formations
 
-for _ in range(200):
+random.seed(1)
+for _ in range(20):
      formations = {x : set(list(y)[:]) for x, y in formationsBackup.items()}
 
 
@@ -372,7 +373,7 @@ for _ in range(200):
         singulars[typ] = []
         plurals[typ] = []
      
-        formations[typ] = list(formations[typ])
+        formations[typ] = sorted(list(formations[typ]))
         for _ in range(N):
            while True:
               index, sampledS = random.choice(list(zip(range(len(formations[typ])), formations[typ])))
@@ -419,8 +420,8 @@ for _ in range(200):
      #dependent = [0 for _ in encodedSingulars] + [1 for _ in encodedPlurals]
      
      from sklearn.model_selection import train_test_split
-     sx_train, sx_test, sy_train, sy_test, st_train, st_test = train_test_split(encodedSingulars, [0 for _ in encodedSingulars], stratify_types, test_size=0.5, random_state=random.randint(0,100), shuffle=True, stratify = stratify_types)
-     px_train, px_test, py_train, py_test, pt_train, pt_test = train_test_split(encodedPlurals, [1 for _ in encodedPlurals], stratify_types, test_size=0.5, random_state=random.randint(0,100), shuffle=True, stratify = stratify_types)
+     sx_train, sx_test, sy_train, sy_test, st_train, st_test = train_test_split(encodedSingulars, [0 for _ in encodedSingulars], stratify_types, test_size=0.5, shuffle=True, stratify = stratify_types, random_state=1) # random_state=random.randint(0,100), 
+     px_train, px_test, py_train, py_test, pt_train, pt_test = train_test_split(encodedPlurals, [1 for _ in encodedPlurals], stratify_types, test_size=0.5,  shuffle=True, stratify = stratify_types, random_state=1) # random_state=random.randint(0,100),
      
      x_train = sx_train + px_train
      x_test = sx_test + px_test

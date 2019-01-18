@@ -46,7 +46,7 @@ def plus(it1, it2):
       yield x
 
 
-word_vocab_path = {"german" : WIKIPEDIA_HOME+"/german-wiki-word-vocab.txt", "italian" : WIKIPEDIA_HOME+"/itwiki/italian-wiki-word-vocab.txt"}[args.language]
+word_vocab_path = {"german" : "vocabularies/german-wiki-word-vocab-50000.txt", "italian" : "vocabularies/italian-wiki-word-vocab-50000.txt"}[args.language]
 
 with open(word_vocab_path, "r") as inFile:
      itos_words = [x.split("\t")[0] for x in inFile.read().strip().split("\n")[:50000]]
@@ -55,7 +55,7 @@ stoi_words = dict([(itos_words[i],i) for i in range(len(itos_words))])
 
 
 try:
-   with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
+   with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
 except FileNotFoundError:
     print("Creating new vocab")
@@ -69,7 +69,7 @@ except FileNotFoundError:
             char_counts[char] = char_counts.get(char, 0) + 1
     char_counts = [(x,y) for x, y in char_counts.items()]
     itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
-    with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
+    with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
 print(itos)

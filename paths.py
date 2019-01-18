@@ -2,10 +2,10 @@
 
 CHAR_VOCAB_HOME = "vocabularies/" # this is part of the repo, so there should be no need to set this
 
-MODELS_HOME = "/checkpoint/mhahn/"  # for storing neural network parameters
-LOG_HOME = "/checkpoint/mhahn/" # for logging validation losses
-FIGURES_HOME = "/checkpoint/mhahn/" # for storing visualizations
-WIKIPEDIA_HOME = "/private/home/mhahn/data/WIKIPEDIA/" # locaion on Wikipedia corpus
+MODELS_HOME = "/u/scr/mhahn/FAIR18/CHECKPOINTS/"  # for storing neural network parameters
+LOG_HOME = "/u/scr/mhahn/FAIR18/CHECKPOINTS/" # for logging validation losses
+FIGURES_HOME = "/u/scr/mhahn/FAIR18/CHECKPOINTS/" # for storing visualizations
+WIKIPEDIA_HOME = "/u/scr/mhahn/FAIR18/" # locaion on Wikipedia corpus
 
 
 
@@ -19,6 +19,6 @@ FIGURES_HOME += "/"
 WIKIPEDIA_HOME += "/"
 
 
-
+UD_HOME = "/u/scr/mhahn/FAIR18/UD/"
 
 

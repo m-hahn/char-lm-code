@@ -26,7 +26,7 @@ def plus(it1, it2):
       yield x
 
 try:
-   with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
+   with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
 except FileNotFoundError:
     print("Creating new vocab")
@@ -40,7 +40,7 @@ except FileNotFoundError:
             char_counts[char] = char_counts.get(char, 0) + 1
     char_counts = [(x,y) for x, y in char_counts.items()]
     itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
-    with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
+    with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 print("".join(itos))
 #quit()

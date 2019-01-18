@@ -2,11 +2,11 @@ from paths import WIKIPEDIA_HOME
 import random
  
 
-def load(language, partition):
+def load(language, partition, removeMarkup=True):
   if language == "italian":
-    path = WIKIPEDIA_HOME+"itwiki/itwiki-"+partition+"-tagged.txt"
+    path = WIKIPEDIA_HOME+"/itwiki-"+partition+"-tagged.txt"
   elif language == "english":
-    path = WIKIPEDIA_HOME+"enwiki/english-"+partition+"-tagged.txt"
+    path = WIKIPEDIA_HOME+"/english-"+partition+"-tagged.txt"
   elif language == "german":
     path = WIKIPEDIA_HOME+""+language+"-"+partition+"-tagged.txt"
   else:
@@ -16,7 +16,10 @@ def load(language, partition):
     for line in inFile:
       index = line.find("\t")
       if index == -1:
+        if removeMarkup:
           continue
+        else:
+          index = len(line)-1
       word = line[:index]
       chunk.append(word.lower())
       if len(chunk) > 40000:
@@ -33,8 +36,8 @@ def training(language):
 #     random.shuffle(data)
 #     print("Finished shuffling")
 #     return "".join(data)
-def dev(language):
-  return load(language, "valid")
+def dev(language, removeMarkup=True):
+  return load(language, "valid", removeMarkup=removeMarkup)
 #   with open(WIKIPEDIA_HOME+""+language+"-valid.txt", "r") as inFile:
 #     data = inFile.read().strip().lower().split("\n")
 #     print("Shuffling")

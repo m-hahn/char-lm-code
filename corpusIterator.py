@@ -6,7 +6,7 @@ import sys
   
 header = ["index", "word", "lemma", "posUni", "posFine", "morph", "head", "dep", "_", "_"]
 
-from config import UD_HOME
+from paths import UD_HOME
   
 def readUDCorpus(language, partition):
       basePaths = [UD_HOME]

@@ -51,7 +51,7 @@ def plus(it1, it2):
    for x in it2:
       yield x
 
-char_vocab_path = {"german" : WIKIPEDIA_HOME+"/german-wiki-word-vocab.txt", "italian" : WIKIPEDIA_HOME+"/itwiki/italian-wiki-word-vocab.txt"}[args.language]
+char_vocab_path = {"german" : "vocabularies/german-wiki-word-vocab-50000.txt", "italian" : "vocabularies/italian-wiki-word-vocab-50000.txt"}[args.language]
 
 with open(char_vocab_path, "r") as inFile:
      itos = [x.split("\t")[0] for x in inFile.read().strip().split("\n")[:50000]]
@@ -368,6 +368,10 @@ with open(WIKIPEDIA_HOME+"german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as i
 #quit()
 
 
+samplesAccepted = 0
+samplesOutOfVocab = 0
+
+
 correctDat = [0,0]
 correctGen = [0,0]
 
@@ -389,9 +393,12 @@ with open("germanNounDeclension.txt") as inFile:
                    dativeForm = dative[0].lower()
                    genitiveForm = genitive[0].lower()
                    if dativeForm not in stoi:
+                       samplesOutOfVocab += 1
                        continue
                    if genitiveForm not in stoi:
+                       samplesOutOfVocab += 1
                        continue
+                   samplesAccepted += 1
                    adjectiveChoice = "_NONE_"
                    while adjectiveChoice not in stoi:
                        adjectiveChoice = random.choice(adjectives)+"en"
@@ -405,4 +412,4 @@ with open("germanNounDeclension.txt") as inFile:
                    print(correctDat[0]/correctDat[1])
                    print(correctGen[0]/correctGen[1])
 
-
+print("OOV Ratio", samplesOutOfVocab/(samplesAccepted+samplesOutOfVocab))

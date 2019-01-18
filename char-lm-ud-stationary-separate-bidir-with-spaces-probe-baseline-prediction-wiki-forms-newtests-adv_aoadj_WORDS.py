@@ -2,6 +2,9 @@ from paths import WIKIPEDIA_HOME
 from paths import MODELS_HOME
 
 
+#python char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-forms-newtests-adv_aoadj_WORDS.py --language italian --batchSize 128 --char_dropout_prob 0.01 --char_embedding_size 200 --char_noise_prob 0.0 --hidden_dim 1024 --language italian --layer_num 2 --learning_rate 1.2 --lr_decay 0.98 --load-from wiki-italian-nospaces-bptt-words-316412710 --sequence_length 50 --verbose True --weight_dropout_hidden 0.05 --weight_dropout_in 0.0
+
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--language", dest="language", type=str)
@@ -49,7 +52,7 @@ def plus(it1, it2):
    for x in it2:
       yield x
 
-char_vocab_path = {"german" : WIKIPEDIA_HOME+"/german-wiki-word-vocab.txt", "italian" : WIKIPEDIA_HOME+"/itwiki/italian-wiki-word-vocab.txt"}[args.language]
+char_vocab_path = {"german" : "vocabularies/german-wiki-word-vocab-50000.txt", "italian" : "vocabularies/italian-wiki-word-vocab-50000.txt"}[args.language]
 
 with open(char_vocab_path, "r") as inFile:
      itos = [x.split("\t")[0] for x in inFile.read().strip().split("\n")[:50000]]
@@ -301,15 +304,17 @@ def doChoice(x, y):
 
 
 
-with open("/checkpoint/mbaroni/char-rnn-exchange/candidate_adv_aoadj_testset.txt", "r") as inFile:
+with open("stimuli/candidate_adv_aoadj_testset.txt", "r") as inFile:
     dataset = [tuple(x.split("\t")) for x in inFile.read().strip().split("\n")]
 
 choiceMasc = [0,0]
 choiceFem = [0,0]
 
+rejectedDueToOOV = 0
 for adverb, adjective in dataset:
     adjectiveA = adjective[:-1]+"a"
     if adverb not in stoi or adjective not in stoi or adjectiveA not in stoi:
+        rejectedDueToOOV += 1
         continue
     masculine = [f". il {adverb} {adjective} .", f". il {adverb} {adjectiveA} ."]
     choiceMasc[doChoiceList(masculine)] += 1
@@ -318,16 +323,18 @@ for adverb, adjective in dataset:
     choiceFem[doChoiceList(feminine)] += 1
     print(choiceFem[0] / sum(choiceFem))
 
-
-with open("/checkpoint/mbaroni/char-rnn-exchange/candidate_adv_aeadj_testset.txt", "r") as inFile:
+with open("stimuli/candidate_adv_aeadj_testset.txt", "r") as inFile:
    dataset = [tuple(x.split("\t")) for x in inFile.read().strip().split("\n")]
 
 choiceSg = [0,0]
 choicePl = [0,0]
 
+rejectedDueToOOV = 0
+
 for adverb, adjective in dataset:
     adjectiveE = adjective[:-1]+"e"
     if adverb not in stoi or adverb not in stoi or adjectiveE not in stoi:
+      rejectedDueToOOV += 1
       continue
     singular = [f". la {adverb} {adjective} .", f". la {adverb} {adjectiveE} ."]
     choiceSg[doChoiceList(singular)] += 1
@@ -338,16 +345,19 @@ for adverb, adjective in dataset:
 
 
 
-
-with open("/checkpoint/mbaroni/char-rnn-exchange/candidate_eadj_aonoun_testset.txt", "r") as inFile:
+with open("stimuli/candidate_eadj_aonoun_testset.txt", "r") as inFile:
    dataset = [tuple(x.split(" ")) for x in inFile.read().strip().split("\n")]
 
 choice2Masc = [0,0]
 choice2Fem = [0,0]
 
+rejectedDueToOOV = 0
+
+
 for adjective, noun in dataset:
     nounA = noun[:-1]+"a"
     if adjective not in stoi or noun not in stoi or nounA not in stoi:
+       rejectedDueToOOV += 1
        continue
     masc = [f". il {adjective} {noun} .", f". la {adjective} {noun} ."]
     choice2Masc[doChoiceList(masc)] += 1
@@ -356,14 +366,18 @@ for adjective, noun in dataset:
     choice2Fem[doChoiceList(fem)] += 1
     print(choice2Fem[1] / sum(choice2Fem))
 
+print("OOV Stimuli", rejectedDueToOOV/len(dataset))
+quit()
 
-print("/checkpoint/mbaroni/char-rnn-exchange/candidate_adv_aoadj_testset.txt")
+
+
+print("stimuli/candidate_adv_aoadj_testset.txt")
 print(choiceMasc[0] / sum(choiceMasc))
 print(choiceFem[0] / sum(choiceFem))
-print("/checkpoint/mbaroni/char-rnn-exchange/candidate_adv_aeadj_testset.txt")
+print("stimuli/candidate_adv_aeadj_testset.txt")
 print(choiceSg[0] / sum(choiceSg))
 print(choicePl[0] / sum(choicePl))
-print("/checkpoint/mbaroni/char-rnn-exchange/candidate_eadj_aonoun_testset.txt")
+print("stimuli/candidate_eadj_aonoun_testset.txt")
 print(choice2Masc[0] / sum(choice2Masc))
 print(choice2Fem[1] / sum(choice2Fem))
 

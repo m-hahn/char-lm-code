@@ -19,7 +19,7 @@ for name in files:
         for i in range(len(content)):
             line = content[i]
             if "/checkpoint/mhahn/char-vocab-wiki-" in line:
-                line = line.replace('"/checkpoint/mhahn/char-vocab-wiki-', 'CHARS_VOCAB_HOME+"/char-vocab-wiki-')
+                line = line.replace('"/checkpoint/mhahn/char-vocab-wiki-', 'CHAR_VOCAB_HOME+"/char-vocab-wiki-')
                 required.add("CHAR_VOCAB_HOME")
             if '"/checkpoint/mhahn/"+args.save_to' in line:
                 line = line.replace('"/checkpoint/mhahn/"+args.save_to', 'MODELS_HOME+"/"+args.save_to')

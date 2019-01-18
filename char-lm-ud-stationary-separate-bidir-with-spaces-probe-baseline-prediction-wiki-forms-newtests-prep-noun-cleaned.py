@@ -3,7 +3,6 @@ from paths import CHAR_VOCAB_HOME
 from paths import MODELS_HOME
 
 
-# Clear evidence that the model isn't leveraging evidence about the subcategorization of the verb.
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -46,7 +45,7 @@ def plus(it1, it2):
       yield x
 
 try:
-   with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
+   with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
 except FileNotFoundError:
     print("Creating new vocab")
@@ -60,7 +59,7 @@ except FileNotFoundError:
             char_counts[char] = char_counts.get(char, 0) + 1
     char_counts = [(x,y) for x, y in char_counts.items()]
     itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
-    with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
+    with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
 print(itos)
@@ -405,8 +404,10 @@ with open(WIKIPEDIA_HOME+"german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as i
         wentThroughAdjectives = True
       if int(line[0]) > 100 and not line[2].endswith("r"):
          adjectives.append(line[2])
-      
+#      if line[2].endswith("r"):
+ #       print(line)      
 print(len(adjectives))
+#quit()
 
 from corpusIterator import CorpusIterator
 data = CorpusIterator("German", partition="train", removePunctuation=False).iterator()
@@ -455,14 +456,22 @@ for sentence in data:
         assert "remove" in sentence[i]
      badIndices = [i for i in range(len(sentence)) if sentence[i]["remove"]]
 #     print(badIndices)
-     if len(badIndices) != badIndices[-1] - badIndices[0] + 1: # remove examples wit
+     if len(badIndices) != badIndices[-1] - badIndices[0] + 1: # remove examples with discontinuity
  #       print(badIndices)
+#        print(" ".join([x["word"]+("*" if x["remove"] else "") for x in sentence]))
         continue
      if badIndices[0] != mit["index"] -1:
 #        print(mit, badIndices, [(l["word"], l["head"]) for l in sentence] )
         continue
      frames.append(([x["word"] for x in sentence[:badIndices[0]]], [x["word"] for x in sentence[badIndices[-1]+1:]]))
+#quit()
 print(frames[:10])
+with open("stimuli/german-prep-case-frames.txt", "w") as outFile:
+  for frame in frames:
+ #     print(frame)
+      print(" ".join(frame[0])+"\tMIT_PP\t"+" ".join(frame[1]), file=outFile)
+#quit()
+
 # Hypothesis: the model is capable of getting this right when the adjective distinguishes the case, but not so easily when case marking on the noun is required. 
 # (Removing the noun, accuracy is even perfect in the case where the adjective helps distinguish)
 

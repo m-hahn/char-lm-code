@@ -52,7 +52,7 @@ def plus(it1, it2):
 
 # Open the character vocabulary
 try:
-   with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
+   with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
 except FileNotFoundError: # Create it from scratch if it doesn't exist yet
     print("Creating new vocab")
@@ -66,7 +66,7 @@ except FileNotFoundError: # Create it from scratch if it doesn't exist yet
             char_counts[char] = char_counts.get(char, 0) + 1
     char_counts = [(x,y) for x, y in char_counts.items()]
     itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
-    with open(CHARS_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
+    with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
 print(itos)
@@ -163,7 +163,7 @@ import numpy as np
 
 
 # paths of vocabularies with POS annotation
-vocabPath = {"german" : WIKIPEDIA_HOME+"german-wiki-word-vocab-POS.txt", "italian" : WIKIPEDIA_HOME+"itwiki/italian-wiki-word-vocab-POS.txt"}[args.language]
+vocabPath = {"german" : WIKIPEDIA_HOME+"german-wiki-word-vocab-POS.txt", "italian" : WIKIPEDIA_HOME+"italian-wiki-word-vocab-POS.txt"}[args.language]
 
 
 # language-specific rules for detecting verbs and nouns from the POS annotation
