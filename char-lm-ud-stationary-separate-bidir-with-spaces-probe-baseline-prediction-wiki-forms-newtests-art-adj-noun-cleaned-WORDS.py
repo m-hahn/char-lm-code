@@ -367,49 +367,55 @@ with open(WIKIPEDIA_HOME+"german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as i
 #print(len(adjectives))
 #quit()
 
+correctDatCond = {}
+correctGenCond = {}
 
-samplesAccepted = 0
-samplesOutOfVocab = 0
+for condition in ["none", "adjective", "sehr_adjective", "sehr_extrem_adjective"]:
+ if condition == "none" or condition == "adjective":
+   adverbs = [] #"sehr", "extrem"]
+ elif condition == "sehr_adjective":
+   adverbs = ["sehr"]
+ elif condition == "sehr_extrem_adjective":
+   adverbs = ["sehr", "extrem"]
+ else:
+   assert False
+
+ print(condition)
+ correctDat = [0,0]
+ correctGen = [0,0]
+ correctDatCond[condition] = correctDat
+ correctGenCond[condition] = correctGen
 
 
-correctDat = [0,0]
-correctGen = [0,0]
+ #with open("germanNounDeclension.txt") as inFile:
+ with open(f"stimuli/german-case-dative-{condition}-noOOVs.txt", "r") as inFileDative:
+   with open(f"stimuli/german-case-genitive-{condition}-noOOVs.txt", "r") as inFileGenitive:
+#    data = inFile.read().strip().split("###")[1:]
+    while True:
+#    for noun in data:
+                   try:
+                      stimulusDemDative = next(inFileDative).strip()
+                   except StopIteration:
+                      break
+                   stimulusDesDative = next(inFileDative).strip()
+                   stimulusDemGenitive = next(inFileGenitive).strip()
+                   stimulusDesGenitive = next(inFileGenitive).strip()
 
-adverbs = [] #["sehr", "extrem", ""] #"sehr", "extrem"]
-adverbChain = "" if len(adverbs) == 0 else " ".join(adverbs)
-with open("germanNounDeclension.txt") as inFile:
-    data = inFile.read().strip().split("###")[1:]
-    for noun in data:
-       noun = noun.strip().split("\n")[1:]
-       noun = [x.split("\t") for x in noun]
-       noun = {x[0] : x[1:] for x in noun}
-       if "Genus" in noun:
-         if "m" in noun["Genus"] or "n" in noun["Genus"]:
-#           print(noun)
-           dative = noun["Dativ Singular"]
-           genitive = noun["Genitiv Singular"]
-           if len(dative) > 0 and len(genitive) > 0:
-               if len(set(dative).intersection(set(genitive))) == 0:
-                   dativeForm = dative[0].lower()
-                   genitiveForm = genitive[0].lower()
-                   if dativeForm not in stoi:
-                       samplesOutOfVocab += 1
-                       continue
-                   if genitiveForm not in stoi:
-                       samplesOutOfVocab += 1
-                       continue
-                   samplesAccepted += 1
-                   adjectiveChoice = "_NONE_"
-                   while adjectiveChoice not in stoi:
-                       adjectiveChoice = random.choice(adjectives)+"en"
-                   intermediate = "" #adverbChain+adjectiveChoice+" " #"karminroten" #"kleinen" #informationstechnologischen" #"massivstextremsttotalunglaublichklitzekleinsten"
-                   correctDat[0] += (1 if 0 == doChoiceList([f". dem {intermediate}{dativeForm} .", f". des {intermediate}{dativeForm} ."], printHere=True) else 0)
-                   correctGen[0] += (1 if 1 == doChoiceList([f". dem {intermediate}{genitiveForm} .", f". des {intermediate}{genitiveForm} ."], printHere=True) else 0)
+
+                   correctDat[0] += (1 if 0 == doChoiceList([f". {stimulusDemDative} .", f". {stimulusDesDative} ."], printHere=True) else 0)
+                   correctGen[0] += (1 if 1 == doChoiceList([f". {stimulusDemGenitive} .", f". {stimulusDesGenitive} ."], printHere=True) else 0)
 
 
                    correctDat[1] += 1
                    correctGen[1] += 1
                    print(correctDat[0]/correctDat[1])
                    print(correctGen[0]/correctGen[1])
+ correctDat.append(  correctDat[0]/correctDat[1])
+ correctGen.append(  correctGen[0]/correctGen[1])
 
-print("OOV Ratio", samplesOutOfVocab/(samplesAccepted+samplesOutOfVocab))
+print("Dative")
+print(correctDatCond)
+print("Genitive")
+print(correctGenCond)
+
+

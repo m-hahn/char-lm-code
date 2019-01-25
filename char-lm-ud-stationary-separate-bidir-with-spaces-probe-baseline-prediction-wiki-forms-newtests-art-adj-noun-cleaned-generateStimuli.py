@@ -382,23 +382,39 @@ for condition in ["none", "adjective", "sehr_adjective", "sehr_extrem_adjective"
  correctGenCond[condition] = correctGen
 
 
- #with open("germanNounDeclension.txt") as inFile:
- with open(f"stimuli/german-case-dative-{condition}.txt", "r") as inFileDative:
-   with open(f"stimuli/german-case-genitive-{condition}.txt", "r") as inFileGenitive:
-#    data = inFile.read().strip().split("###")[1:]
-    while True:
-#    for noun in data:
-                   try:
-                      stimulusDemDative = next(inFileDative).strip().replace(" ","")
-                   except StopIteration:
-                      break
-                   stimulusDesDative = next(inFileDative).strip().replace(" ","")
-                   stimulusDemGenitive = next(inFileGenitive).strip().replace(" ","")
-                   stimulusDesGenitive = next(inFileGenitive).strip().replace(" ","")
+ with open("germanNounDeclension.txt") as inFile:
+  with open(f"stimuli/german-case-dative-{condition}.txt", "w") as outFileDative:
+   with open(f"stimuli/german-case-genitive-{condition}.txt", "w") as outFileGenitive:
+    data = inFile.read().strip().split("###")[1:]
+    for noun in data:
+       noun = noun.strip().split("\n")[1:]
+       noun = [x.split("\t") for x in noun]
+       noun = {x[0] : x[1:] for x in noun}
+       if "Genus" in noun:
+         if "m" in noun["Genus"] or "n" in noun["Genus"]:
+#           print(noun)
+           dative = noun["Dativ Singular"]
+           genitive = noun["Genitiv Singular"]
+           if len(dative) > 0 and len(genitive) > 0:
+               if len(set(dative).intersection(set(genitive))) == 0:
+                   dativeForm = dative[0].lower()
+                   genitiveForm = genitive[0].lower()
+#                   intermediate = "".join(adverbs)+adjective #"karminroten" #"kleinen" #informationstechnologischen" #"massivstextremsttotalunglaublichklitzekleinsten"
+                   intermediate = adverbs[:]
+                   if condition != "none":
+                       adjective = random.choice(adjectives)+"en"
+                       intermediate += [adjective]
+
+                   print(" ".join(["dem"] + intermediate + [dativeForm]), file=outFileDative)
+                   print(" ".join(["des"] + intermediate + [dativeForm]), file=outFileDative)
+                   print(" ".join(["dem"] + intermediate + [genitiveForm]), file=outFileGenitive)
+                   print(" ".join(["des"] + intermediate + [genitiveForm]), file=outFileGenitive)
+
+                   intermediate = "".join(intermediate)
 
 
-                   correctDat[0] += (1 if 0 == doChoiceList([f".{stimulusDemDative}.", f".{stimulusDesDative}."], printHere=True) else 0)
-                   correctGen[0] += (1 if 1 == doChoiceList([f".{stimulusDemGenitive}.", f".{stimulusDesGenitive}."], printHere=True) else 0)
+                   correctDat[0] += (1 if 0 == doChoiceList([f".dem{intermediate}{dativeForm}.", f".des{intermediate}{dativeForm}."], printHere=True) else 0)
+                   correctGen[0] += (1 if 1 == doChoiceList([f".dem{intermediate}{genitiveForm}.", f".des{intermediate}{genitiveForm}."], printHere=True) else 0)
 
 
                    correctDat[1] += 1
