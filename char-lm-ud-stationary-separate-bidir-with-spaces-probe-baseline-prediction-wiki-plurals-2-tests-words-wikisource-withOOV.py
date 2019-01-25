@@ -295,12 +295,19 @@ with open("germanNounDeclension.txt") as inFile:
                         formations[x[-1]].add((nomSing,x))
 
 
-invocab = [1 if (x[0] in stoi and x[1] in stoi) else 0 for x in list(formations["n"])+list(formations["s"])+list(formations["e"])]
-print("n, s, e", 1-sum(invocab)/len(invocab))
+invocabSing = [1 if (x[0] in stoi) else 0 for x in list(formations["n"])+list(formations["s"])+list(formations["e"])]
+invocabPlur = [1 if (x[1] in stoi) else 0 for x in list(formations["n"])+list(formations["s"])+list(formations["e"])]
+print("Sing", "n, s, e", 1-sum(invocabSing)/len(invocabSing))
+print("Plur", "n, s, e", 1-sum(invocabPlur)/len(invocabPlur))
+print("Total", "n, s, e", 1-sum(invocabSing+invocabPlur)/len(invocabSing+invocabPlur))
 
 for key in formations:
-   invocab = [1 if (x[0] in stoi and x[1] in stoi) else 0 for x in formations[key]]
-   print(key, 1-sum(invocab)/len(invocab))
+   invocabSing = [1 if (x[0] in stoi) else 0 for x in formations[key]]
+   invocabPlur = [1 if (x[1] in stoi) else 0 for x in formations[key]]
+   print("Sing", key, 1-sum(invocabSing)/len(invocabSing))
+   print("Plur", key, 1-sum(invocabPlur)/len(invocabPlur))
+   print("Total", key, 1-sum(invocabSing+invocabPlur)/len(invocabSing+invocabPlur))
+
 quit()
 
 print(formations["n"])

@@ -1,15 +1,26 @@
+# This is for oversegmentations.
+
+# python lm-wiki-segmentation-tokenized-syntax-neuron.py --batchSize 128 --char_dropout_prob 0.001 --char_embedding_size 100 --char_noise_prob 0.0 --hidden_dim 1024 --language german --layer_num 2 --learning_rate 2.0 --weight_dropout_hidden 0.05 --weight_dropout_in 0.01 --load-from wiki-german-nospaces-bptt-910515909
+
+
+# Neuron selected using detectBoundariesUnit_Hidden.py
+
+import numpy as np
+
 from paths import WIKIPEDIA_HOME
+from paths import LOG_HOME
 from paths import CHAR_VOCAB_HOME
 from paths import FIGURES_HOME
 from paths import MODELS_HOME
+import sys
 errors = 0
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--language", dest="language", type=str)
 parser.add_argument("--load-from", dest="load_from", type=str)
-#parser.add_argument("--save-to", dest="save_to", type=str)
 
 import random
+random.seed(1) # May nonetheless not be reproducible, since the classifier library doesn't seem to allow setting the seed
 
 parser.add_argument("--batchSize", type=int, default=16)
 parser.add_argument("--char_embedding_size", type=int, default=100)
@@ -21,14 +32,24 @@ parser.add_argument("--char_dropout_prob", type=float, default=0.33)
 parser.add_argument("--char_noise_prob", type = float, default= 0.01)
 parser.add_argument("--learning_rate", type = float, default= 0.1)
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
-parser.add_argument("--sequence_length", type=int, default=random.choice([50, 50, 80]))
-parser.add_argument("--verbose", type=bool, default=False)
 parser.add_argument("--lr_decay", type=float, default=random.choice([0.5, 0.7, 0.9, 0.95, 0.98, 0.98, 1.0]))
+parser.add_argument("--sequence_length", type = int, default= 80)
 
 import math
 
 args=parser.parse_args()
 print(args)
+
+if args.language == "english":
+  # Engish:
+  neuron = [2044, 2517, 2841, 2331, 2611]
+elif args.language == "german":
+  # German
+  neuron = [1519, 2029, 1094, 1379, 1451]
+else:
+  # Italian
+  neuron = [1508, 1746, 1598, 1637, 1814]
+
 
 
 assert args.language == "german"
@@ -50,6 +71,7 @@ try:
    with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
 except FileNotFoundError:
+    assert False
     print("Creating new vocab")
     char_counts = {}
     # get symbol vocabulary
@@ -271,34 +293,30 @@ future_surprisal_without = [None for _ in numeric_full]
 char_surprisal = [None for _ in numeric_full]
 char_entropy = [None for _ in numeric_full]
 
-for start in range(0, len(numeric_full)-args.sequence_length, args.batchSize):
-      numeric = [([0] + numeric_full[b:b+args.sequence_length]) for b in range(start, start+args.batchSize)]
-      maxLength = max([len(x) for x in numeric])
-      for i in range(len(numeric)):
-        numeric[i] = numeric[i] + [0]*(maxLength-len(numeric[i]))
+hiddenStates = [None for _ in numeric_full]
+
+for start in range(0, len(numeric_full)-args.sequence_length, args.batchSize*args.sequence_length):
+      if start > 10000:
+        break
+      print(start, len(numeric_full))
+      numeric = [([0] + numeric_full[b:b+args.sequence_length]) for b in range(start, start+args.batchSize*args.sequence_length, args.sequence_length)]
+#      maxLength = max([len(x) for x in numeric])
+#      for i in range(len(numeric)):
+#        numeric[i] = numeric[i] + [0]*(maxLength-len(numeric[i]))
 
       input_tensor = Variable(torch.LongTensor(numeric).transpose(0,1)[:-1].cuda(), requires_grad=False)
       target_tensor = Variable(torch.LongTensor(numeric).transpose(0,1)[1:].cuda(), requires_grad=False)
       embedded = char_embeddings(input_tensor)
 
-      out, _ = rnn_drop(embedded, None)
-      logits = output(out) 
-      log_probs = logsoftmax(logits)
+      hidden = None
+      for j in range(len(embedded)):
+         _, hidden = rnn_drop(embedded[j].unsqueeze(0), hidden)
+#         hiddenStates.append()
+#         print(hidden[1].size())
+         for k in range(args.batchSize):
+             neuronActivation = float((hidden[1][:,k,:].flatten()[neuron[0]]).unsqueeze(0).cpu().detach().numpy())
+             hiddenStates[start+(k*args.sequence_length)+j] = neuronActivation
 
-      entropy = (- log_probs * torch.exp(log_probs)).sum(2).view((maxLength-1), args.batchSize).data.cpu().numpy()
-
-      loss = print_loss(log_probs.view(-1, sizeOfVocabularyRelevant), target_tensor.view(-1)).view((maxLength-1), args.batchSize)
-      losses = loss.data.cpu().numpy()
-
-      for i in range(start, start+args.batchSize):
-         surprisalAtStart = losses[:halfSequenceLength,i-start].sum()
-         surprisalAtMid = losses[halfSequenceLength:, i-start].sum()
-         if i+halfSequenceLength < len(future_surprisal_with):
-            future_surprisal_with[i+halfSequenceLength] = surprisalAtMid
-            char_surprisal[i+halfSequenceLength] = losses[halfSequenceLength, i-start]
-            char_entropy[i+halfSequenceLength] = entropy[halfSequenceLength, i-start]
-         if i < len(future_surprisal_without):
-            future_surprisal_without[i] = surprisalAtStart
              
 def mi(x,y):
   return   x-y if x is not None and y is not None else None
@@ -319,7 +337,9 @@ boundaries_index = 0
 height_dependent = []
 
 for i in range(len(numeric_full)):
-   assert conflicts < 100 or conflicts/(1+boundaries_index) < 0.1, conflicts
+   if i > 10000:
+     break
+   assert conflicts < 100 or conflicts/(1+boundaries_index) < 0.5, conflicts
    if boundaries_index < len(boundaries) and i == boundaries[boundaries_index]:
       boundary = True
       boundaries_index += 1
@@ -337,41 +357,25 @@ for i in range(len(numeric_full)):
    print((i, boundary, heights[i], conflicts, conflicts/(1+boundaries_index)))
 
 
-   pmiFuturePast = mi(future_surprisal_without[i], future_surprisal_with[i])
-#   print((itos[numeric_full[i]-3], char_surprisal[i], pmiFuturePast, pmiFuturePast < 0 if pmiFuturePast is not None else None, boundary)) # pmiFuturePast < 2 if pmiFuturePast is not None else None,
-   if pmiFuturePast is not None:
+
+
+   if True:
      character = itos[numeric_full[i]-3] if numeric_full[i] != 2 else itos[-3]
      assert character != " "
      if character == "\n":
         lastWasUtteranceBoundary = True
      else:
        chars.append(character)
-       predictor.append([pmiFuturePast, char_surprisal[i], char_entropy[i], 1 if lastWasUtteranceBoundary else 0]) #char_surprisal[i], pmiFuturePast]) #pmiFuturePast])
+       predictor.append(hiddenStates[i]) #char_surprisal[i], pmiFuturePast]) #pmiFuturePast])
        dependent.append(1 if boundary else 0)
        lastWasUtteranceBoundary = False
        height_dependent.append(heights[i])
 
-#assert len(height_dependent) == len(dependent)
-#print(1234)
+predictor = [x if x is not None else 0 for x in predictor[:10000]]
 
-#quit()
+predictorOnly = predictor
 
-#joint = list(zip(height_dependent, dependent))[:200]
-#for a in joint:
-#  print(a)
-#quit()
-
-# TODO exclude utterance boundaries from the logistic classification, and record where they were
-
-
-# , char_surprisal[i], char_entropy[i]
-
-# char_surprisal[i], 
-
-#print(predictor)
-#print(dependent)
-
-zeroPredictor = [0]*len(predictor[0])
+zeroPredictor = 0
 
 predictorShiftedP1 = predictor[1:]+[zeroPredictor]
 predictorShiftedP2 = predictor[2:]+[zeroPredictor,zeroPredictor]
@@ -383,7 +387,7 @@ predictorShiftedM2 = [zeroPredictor,zeroPredictor]+predictor[:-2]
 predictorShiftedM3 = [zeroPredictor,zeroPredictor,zeroPredictor]+predictor[:-3]
 predictorShiftedM4 = [zeroPredictor,zeroPredictor,zeroPredictor,zeroPredictor]+predictor[:-4]
 
-predictor = [a+b+c+d+e+f+g for a, b, c, d, e, f, g in zip(predictor, predictorShiftedP1, predictorShiftedP2, predictorShiftedP3, predictorShiftedM1, predictorShiftedM2, predictorShiftedM3)]
+predictor = [[a, b, c, d, e, f, g] for a, b, c, d, e, f, g in zip(predictor, predictorShiftedP1, predictorShiftedP2, predictorShiftedP3, predictorShiftedM1, predictorShiftedM2, predictorShiftedM3)]
 
 
 
@@ -393,24 +397,35 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
 import numpy as np
- 
+
+def mean(x):
+   return sum(x)/len(x)
 
 for height in range(0,10):
+#   predictor1 = [predictorOnly[i-1] for i in range(1,len(predictor)) if height_dependent[i] == height and predictorOnly[i-1] is not None]
+#   print(height, mean(predictor1), len(predictor1))
+#   continue
+
    predictor1 = [predictor[i] for i in range(len(predictor)) if height_dependent[i] == height]
+#   print(height, mean(predictor1))
+#   continue
+
    if  len(predictor1) < 50:
       break
    print(len(predictor1))   
    
 #   print(len(predictor1))
 #   print(len(predictor2))
+#   print(predictor1)
    predictor1 = np.array(predictor1, dtype=np.float32)
    
-   predictor1 = predictor1.reshape((-1, 7, 4))
+   predictor1 = predictor1.reshape((-1, 7))
    
    
 #   print(predictor1)
 #   print(type(predictor1))
    average1 = np.array(predictor1.mean(axis=0))
+   print(average1)
 #   print(type(average1))
 #   print(average1)
 #   print(average1)
@@ -418,9 +433,7 @@ for height in range(0,10):
    index = [0, 1, 2, 3, -1, -2, -3]
    
    
-   pmis1 = predictor1[:,:,0]
-   surprisals1 = predictor1[:,:,1]
-   entropies1 = predictor1[:,:,2]
+   pmis1 = predictor1[:,:]
    
 #   print(pmis1)
  #  print(surprisals1)
@@ -440,7 +453,9 @@ for height in range(0,10):
 
 plt.legend()
 plt.show()
-plt.savefig(FIGURES_HOME+"/segmentation-profile-pmis-"+args.language+"-all-heights.png")
+figurePath = FIGURES_HOME+"/segmentation-profile-neuron-"+args.language+"-all-heights.png"
+print(figurePath)
+plt.savefig(figurePath)
 plt.close()
    
    

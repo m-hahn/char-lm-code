@@ -1,12 +1,5 @@
 from paths import WIKIPEDIA_HOME
-from paths import CHAR_VOCAB_HOME
 from paths import MODELS_HOME
-
-
-
-# Stimuli are created using
-# char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-gender-generateStimuli.py
-# (this requires the UD corpus and german-wiki-word-vocab-lemmas-POS-uniq.txt)
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -18,27 +11,34 @@ parser.add_argument("--load-from", dest="load_from", type=str)
 
 import random
 
-parser.add_argument("--batchSize", type=int, default=16)
-parser.add_argument("--char_embedding_size", type=int, default=100)
-parser.add_argument("--hidden_dim", type=int, default=1024)
-parser.add_argument("--layer_num", type=int, default=1)
-parser.add_argument("--weight_dropout_in", type=float, default=0.01)
-parser.add_argument("--weight_dropout_hidden", type=float, default=0.1)
-parser.add_argument("--char_dropout_prob", type=float, default=0.33)
-parser.add_argument("--char_noise_prob", type = float, default= 0.01)
-parser.add_argument("--learning_rate", type = float, default= 0.1)
+parser.add_argument("--batchSize", type=int, default=random.choice([128, 128, 256]))
+parser.add_argument("--char_embedding_size", type=int, default=random.choice([100, 200, 300]))
+parser.add_argument("--hidden_dim", type=int, default=random.choice([1024]))
+parser.add_argument("--layer_num", type=int, default=random.choice([2]))
+parser.add_argument("--weight_dropout_in", type=float, default=random.choice([0.0, 0.0, 0.0, 0.01, 0.05, 0.1]))
+parser.add_argument("--weight_dropout_hidden", type=float, default=random.choice([0.0, 0.05, 0.15, 0.2]))
+parser.add_argument("--char_dropout_prob", type=float, default=random.choice([0.0, 0.0, 0.001, 0.01, 0.01]))
+parser.add_argument("--char_noise_prob", type = float, default=random.choice([0.0, 0.0]))
+parser.add_argument("--learning_rate", type = float, default= random.choice([0.8, 0.9, 1.0,1.0,  1.1, 1.1, 1.2, 1.2, 1.2, 1.2, 1.3, 1.3, 1.4, 1.5]))
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
-parser.add_argument("--sequence_length", type=int, default=50)
+parser.add_argument("--sequence_length", type=int, default=random.choice([50, 50, 80]))
+parser.add_argument("--verbose", type=bool, default=False)
+parser.add_argument("--lr_decay", type=float, default=random.choice([0.5, 0.7, 0.9, 0.95, 0.98, 0.98, 1.0]))
 
+
+import math
 
 args=parser.parse_args()
 print(args)
 
 
+assert "word" in args.load_from, args.load_from
+
+print(args)
 
 
 
-import corpusIteratorWiki
+import corpusIteratorWikiWords
 
 
 
@@ -48,25 +48,10 @@ def plus(it1, it2):
    for x in it2:
       yield x
 
-try:
-   with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
-     itos = inFile.read().strip().split("\n")
-except FileNotFoundError:
-    print("Creating new vocab")
-    char_counts = {}
-    # get symbol vocabulary
+char_vocab_path = {"german" : "vocabularies/german-wiki-word-vocab-50000.txt", "italian" : "vocabularies/italian-wiki-word-vocab-50000.txt"}[args.language]
 
-    with open(WIKIPEDIA_HOME+"/"+args.language+"-vocab.txt", "r") as inFile:
-      words = inFile.read().strip().split("\n")
-      for word in words:
-         for char in word.lower():
-            char_counts[char] = char_counts.get(char, 0) + 1
-    char_counts = [(x,y) for x, y in char_counts.items()]
-    itos = [x for x,y in sorted(char_counts, key=lambda z:(z[0],-z[1])) if y > 50]
-    with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
-       print("\n".join(itos), file=outFile)
-#itos = sorted(itos)
-print(itos)
+with open(char_vocab_path, "r") as inFile:
+     itos = [x.split("\t")[0] for x in inFile.read().strip().split("\n")[:50000]]
 stoi = dict([(itos[i],i) for i in range(len(itos))])
 
 
@@ -107,7 +92,12 @@ def parameters():
        for param in module.parameters():
             yield param
 
-optim = torch.optim.SGD(parameters(), lr=args.learning_rate, momentum=0.0) # 0.02, 0.9
+parameters_cached = [x for x in parameters()]
+
+
+learning_rate = args.learning_rate
+
+optim = torch.optim.SGD(parameters(), lr=learning_rate, momentum=0.0) # 0.02, 0.9
 
 named_modules = {"rnn" : rnn, "output" : output, "char_embeddings" : char_embeddings, "optim" : optim}
 
@@ -267,7 +257,7 @@ def doChoiceList(xs, printHere=True):
     if printHere:
       for x in xs:
          print(x)
-    losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
+    losses = choiceList([encodeWord(x.split(" ")) for x in xs]) #, encodeWord(y))
     if printHere:
       print(losses)
     return np.argmin(losses)
@@ -275,7 +265,7 @@ def doChoiceListLosses(xs, printHere=True):
     if printHere:
       for x in xs:
          print(x)
-    losses = choiceList([encodeWord(x) for x in xs]) #, encodeWord(y))
+    losses = choiceList([encodeWord(x.split(" ")) for x in xs]) #, encodeWord(y))
     if printHere:
       print(losses)
     return losses
@@ -285,41 +275,100 @@ def doChoiceListLosses(xs, printHere=True):
 def doChoice(x, y):
     print(x)
     print(y)
-    losses = choice(encodeWord(x), encodeWord(y))
+    losses = choice(encodeWord(x.split(" ")), encodeWord(y.split(" ")))
     print(losses)
     return 0 if losses[0] < losses[1] else 1
 
 from corpusIterator import CorpusIterator
 
+adjectives = []
+wentThroughAdjectives = False
+with open(WIKIPEDIA_HOME+"german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as inFile:
+    adjectives = []
+    for line in inFile:
+      line = line.strip().split(" ")
+      if len(line) != 3:
+        continue
+      if line[1] != "ADJA":
+          if wentThroughAdjectives:
+             continue
+      else:
+        wentThroughAdjectives = True
+      if line[2] == "<unknown>":
+         continue
+      if len(line[2]) == 1:
+        continue
+      if "." in line[2]:
+        continue
+      if int(line[0]) > 100 and not line[2].endswith("r"):
+         adjectives.append(line[2])
+
+print("OOV Ratio for adjectives", sum([0 if x+"e" in stoi else 1 for x in adjectives])/len(adjectives))
+#quit()
 
 def genderTest(mode):
+   training = CorpusIterator("German", partition="train", storeMorph=True, removePunctuation=True)
    genders = dict([("Gender="+x, set()) for x in ["Masc", "Fem", "Neut"]])
+
+
+   for sentence in training.iterator():
+       for line in sentence:
+        if line["posUni"] == "NOUN" and "|" not in line["lemma"]:
+        
+           morph = line["morph"]
+           if "Number=Sing" in morph and "Case=Nom" in morph:
+            gender = [x for x in morph if x.startswith("Gender=")]
+            if len(gender) > 0:
+              genders[gender[0]].add(line["lemma"].lower())
+
+   for gender in genders:
+       print("OOV Ratio for ", gender, sum([0 if x in stoi else 1 for x in genders[gender]])/len(genders[gender]))
+
               
    #print(genders)
    counter = 0
 
    results = [[0,0,0] for _ in range(3)]
    for genderIndex, gender in enumerate(["Gender="+x for x in ["Masc", "Fem", "Neut"]]):
-     with open(f"stimuli/german-gender-{gender}-{mode}.txt", "r") as inFile:
+     with open(f"stimuli/german-gender-{gender}-{mode}-noOOVs.txt", "w") as outFile:
        counter = 0
-       while True:
+       for noun in genders[gender]:
+         if noun not in stoi:
+            continue
          counter += 1
      #    adverbs = ["sehr"]
       #   adjective = "" #"".join(adverbs)+random.choice(adjectives)+"e"
+         chosenAdjective = "_NONE_"
+         while chosenAdjective not in stoi:
+              chosenAdjective = random.choice(adjectives)+"e"
 
-         try:
-            stimulusDer = next(inFile).strip().replace(" ","")
-         except StopIteration:
-            break
-         stimulusDie = next(inFile).strip().replace(" ","")
-         stimulusDas = next(inFile).strip().replace(" ","")
+         if mode == "nothing":
+           noun = noun
+           nounStimulus = [noun]
+         elif mode == "adjective":
+            adjective = chosenAdjective
+            nounStimulus = [adjective, noun]
+            noun = adjective+noun
+         elif mode == "sehr + adjective":
+            adjective = chosenAdjective
+            nounStimulus = ["sehr", adjective, noun]
+            noun = "sehr"+adjective+noun
+         elif mode == "sehr + extrem + adjective":
+            adjective = chosenAdjective
+            nounStimulus = ["sehr", "extrem", adjective, noun]
+            noun = "sehr"+"extrem"+adjective+noun
+
 
  
-  #       noun = f"{adjective}{noun}"
-         results[genderIndex][doChoiceList([f".{stimulusDer}.", f".{stimulusDie}.", f".{stimulusDas}."], printHere=(random.random() > 0.98))] += 1
-  #       results[doChoiceList([".ein"+noun+".", ".eine"+noun+"."])] += 1
+         stimuli = []
+         print(" ".join(["der"] + nounStimulus), file=outFile)
+         print(" ".join(["die"] + nounStimulus), file=outFile)
+         print(" ".join(["das"] + nounStimulus), file=outFile)
+         
+ 
+         results[genderIndex][doChoiceList([f". der "+" ".join(nounStimulus)+" .", f". die "+" ".join(nounStimulus)+" .", f". das "+" ".join(nounStimulus)+" ."], printHere=(random.random() > 0.98))] += 1
          if random.random() > 0.98:
-            print([[round(x/(counter if genderIndex == i else 1), 2) for x in results[i]] for i in range(len(results))])
+           print([[round(x/(counter if genderIndex == i else 1), 2) for x in results[i]] for i in range(len(results))])
        results[genderIndex] = [x/counter for x in results[genderIndex]]
    return results
 
@@ -348,7 +397,7 @@ print(confusion4)
 
 
 import numpy as np
-losses  = (doChoiceListLosses([".der", ".die", ".das"]))
+losses  = (doChoiceListLosses([". der", ". die", ". das"]))
 losses = np.exp(-losses)
 print(losses/np.sum(losses))
 

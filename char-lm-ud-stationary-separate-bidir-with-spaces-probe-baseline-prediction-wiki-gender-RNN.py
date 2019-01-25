@@ -2,6 +2,12 @@ from paths import WIKIPEDIA_HOME
 from paths import CHAR_VOCAB_HOME
 from paths import MODELS_HOME
 
+
+
+# Stimuli are created using
+# char-lm-ud-stationary-separate-bidir-with-spaces-probe-baseline-prediction-wiki-gender-generateStimuli.py
+# (this requires the UD corpus and german-wiki-word-vocab-lemmas-POS-uniq.txt)
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--language", dest="language", type=str)
@@ -291,79 +297,32 @@ def doChoice(x, y):
 
 from corpusIterator import CorpusIterator
 
-adjectives = []
-wentThroughAdjectives = False
-with open(WIKIPEDIA_HOME+"german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as inFile:
-    adjectives = []
-    for line in inFile:
-      line = line.strip().split(" ")
-      if len(line) != 3:
-        continue
-      if line[1] != "ADJA":
-          if wentThroughAdjectives:
-             continue
-      else:
-        wentThroughAdjectives = True
-      if line[2] == "<unknown>":
-         continue
-      if len(line[2]) == 1:
-        continue
-      if "." in line[2]:
-        continue
-      if int(line[0]) > 100 and not line[2].endswith("r"):
-         adjectives.append(line[2])
-
 
 def genderTest(mode):
-   training = CorpusIterator("German", partition="train", storeMorph=True, removePunctuation=True)
    genders = dict([("Gender="+x, set()) for x in ["Masc", "Fem", "Neut"]])
-   for sentence in training.iterator():
-       for line in sentence:
-        if line["posUni"] == "NOUN" and "|" not in line["lemma"]:
-        
-           morph = line["morph"]
-           if "Number=Sing" in morph and "Case=Nom" in morph:
-            gender = [x for x in morph if x.startswith("Gender=")]
-            if len(gender) > 0:
-              genders[gender[0]].add(line["lemma"].lower())
               
    #print(genders)
    counter = 0
 
    results = [[0,0,0] for _ in range(3)]
    for genderIndex, gender in enumerate(["Gender="+x for x in ["Masc", "Fem", "Neut"]]):
-     with open(f"stimuli/german-gender-{gender}-{mode}.txt", "w") as outFile:
+     with open(f"stimuli/german-gender-{gender}-{mode}.txt", "r") as inFile:
        counter = 0
-       for noun in genders[gender]:
+       while True:
          counter += 1
      #    adverbs = ["sehr"]
       #   adjective = "" #"".join(adverbs)+random.choice(adjectives)+"e"
-         if mode == "nothing":
-           noun = noun
-           nounStimulus = [noun]
-         elif mode == "adjective":
-            adjective = random.choice(adjectives)+"e"
-            nounStimulus = [adjective, noun]
-            noun = adjective+noun
-         elif mode == "sehr + adjective":
-            adjective = random.choice(adjectives)+"e"
-            nounStimulus = ["sehr", adjective, noun]
-            noun = "sehr"+adjective+noun
-         elif mode == "sehr + extrem + adjective":
-            adjective = random.choice(adjectives)+"e"
-            nounStimulus = ["sehr", "extrem", adjective, noun]
-            noun = "sehr"+"extrem"+adjective+noun
 
+         try:
+            stimulusDer = next(inFile).strip().replace(" ","")
+         except StopIteration:
+            break
+         stimulusDie = next(inFile).strip().replace(" ","")
+         stimulusDas = next(inFile).strip().replace(" ","")
 
- 
-         stimuli = []
-         print(" ".join(["der"] + nounStimulus), file=outFile)
-         print(" ".join(["die"] + nounStimulus), file=outFile)
-         print(" ".join(["das"] + nounStimulus), file=outFile)
-         
  
   #       noun = f"{adjective}{noun}"
-         results[genderIndex][doChoiceList([f".der{noun}.", f".die{noun}.", f".das{noun}."], printHere=(random.random() > 0.98))] += 1
+         results[genderIndex][doChoiceList([f".{stimulusDer}.", f".{stimulusDie}.", f".{stimulusDas}."], printHere=(random.random() > 0.98))] += 1
   #       results[doChoiceList([".ein"+noun+".", ".eine"+noun+"."])] += 1
          if random.random() > 0.98:
             print([[round(x/(counter if genderIndex == i else 1), 2) for x in results[i]] for i in range(len(results))])
