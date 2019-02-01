@@ -458,7 +458,7 @@ for sentence in data:
 #     print(badIndices)
      if len(badIndices) != badIndices[-1] - badIndices[0] + 1: # remove examples with discontinuity
  #       print(badIndices)
-#        print(" ".join([x["word"]+("*" if x["remove"] else "") for x in sentence]))
+        print(" ".join([x["word"]+("*" if x["remove"] else "") for x in sentence]))
         continue
      if badIndices[0] != mit["index"] -1:
 #        print(mit, badIndices, [(l["word"], l["head"]) for l in sentence] )

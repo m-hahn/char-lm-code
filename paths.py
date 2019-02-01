@@ -7,6 +7,7 @@ LOG_HOME = "/u/scr/mhahn/FAIR18/CHECKPOINTS/" # for logging validation losses
 FIGURES_HOME = "/u/scr/mhahn/FAIR18/CHECKPOINTS/" # for storing visualizations
 WIKIPEDIA_HOME = "/u/scr/mhahn/FAIR18/" # locaion on Wikipedia corpus
 
+MSR_COMP_HOME = "/u/scr/mhahn/FAIR18/"
 
 
 

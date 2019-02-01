@@ -38,6 +38,10 @@ def training(language):
 #     return "".join(data)
 def dev(language, removeMarkup=True):
   return load(language, "valid", removeMarkup=removeMarkup)
+
+def test(language, removeMarkup=True):
+  return load(language, "test", removeMarkup=removeMarkup)
+
 #   with open(WIKIPEDIA_HOME+""+language+"-valid.txt", "r") as inFile:
 #     data = inFile.read().strip().lower().split("\n")
 #     print("Shuffling")

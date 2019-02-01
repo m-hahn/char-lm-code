@@ -10,7 +10,7 @@
 
 
 
-TRAINING_SIZE = 10000
+TRAINING_SIZE = 1000
 
 from paths import WIKIPEDIA_HOME
 from paths import LOG_HOME
@@ -297,7 +297,7 @@ scores = []
 
 examples_count = 0
 
-for _ in range(300):
+for _ in range(50):
 
      hidden_states = []
      labels = []

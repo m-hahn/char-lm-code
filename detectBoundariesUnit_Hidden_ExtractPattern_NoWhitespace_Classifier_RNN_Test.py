@@ -1,20 +1,14 @@
-assert False
+#python detectBoundariesUnit_Hidden_ExtractPattern_NoWhitespace_Classifier_RNN_Test.py --batchSize 32 --char_dropout_prob 0.01 --char_embedding_size 50 --char_noise_prob 0.0 --hidden_dim 2048 --language german --layer_num 2 --learning_rate 0.1 --lr_decay 0.95 --nonlinearity tanh --load-from wiki-german-nospaces-bptt-rnn-237671415 --sequence_length 30 --verbose True --weight_dropout_hidden 0.0 --weight_dropout_in 0.0
+#python detectBoundariesUnit_Hidden_ExtractPattern_NoWhitespace_Classifier_RNN_Test.py --batchSize 32 --char_dropout_prob 0.0 --char_embedding_size 200 --char_noise_prob 0.0 --hidden_dim 2048 --language italian --layer_num 2 --learning_rate 0.004 --lr_decay 0.98 --nonlinearity tanh --load-from wiki-italian-nospaces-bptt-rnn-557654324 --sequence_length 50 --verbose True --weight_dropout_hidden 0.15 --weight_dropout_in 0.0
+#python detectBoundariesUnit_Hidden_ExtractPattern_NoWhitespace_Classifier_RNN_Test.py --batchSize 32 --char_dropout_prob 0.001 --char_embedding_size 200 --char_noise_prob 0.0 --hidden_dim 2048 --language english --layer_num 2 --learning_rate 0.01 --nonlinearity relu --load-from wiki-english-nospaces-bptt-rnn-891035072 --sequence_length 50 --weight_dropout_hidden 0.05 --weight_dropout_in 0.01
 
-# Enforces balancing in the training set, and enforces disjointness of training and test sets
-# (This should be used for evaluation)
-
-
-# python char-lm-ud-wiki-classify-boundaries-report-errors-upToEndOnly-tokenized-nobalance-separate-hidden.py --language english  --batchSize 128 --char_dropout_prob 0.001 --char_embedding_size 200 --char_noise_prob 0.0 --hidden_dim 1024 --language english --layer_num 3 --learning_rate 3.6  --myID 282506230 --load-from wiki-english-nospaces-bptt-282506230 --weight_dropout_hidden 0.01 --weight_dropout_in 0.0
-
-# python char-lm-ud-wiki-classify-boundaries-report-errors-upToEndOnly-tokenized-nobalance-separate-hidden.py --language german --batchSize 128 --char_embedding_size 100 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-german-nospaces-bptt-910515909
-
-# python char-lm-ud-wiki-classify-boundaries-report-errors-upToEndOnly-tokenized-nobalance-separate-hidden.py --language italian --batchSize 128 --char_embedding_size 200 --hidden_dim 1024 --layer_num 2 --weight_dropout_in 0.1 --weight_dropout_hidden 0.2 --char_dropout_prob 0.0 --char_noise_prob 0.01 --learning_rate 0.2 --load-from wiki-italian-nospaces-bptt-855947412
 
 
 from paths import WIKIPEDIA_HOME
 from paths import LOG_HOME
 from paths import CHAR_VOCAB_HOME
 from paths import MODELS_HOME
+import sys
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -34,12 +28,28 @@ parser.add_argument("--char_dropout_prob", type=float, default=0.33)
 parser.add_argument("--char_noise_prob", type = float, default= 0.01)
 parser.add_argument("--learning_rate", type = float, default= 0.1)
 parser.add_argument("--myID", type=int, default=random.randint(0,1000000000))
-parser.add_argument("--sequence_length", type=int, default=100)
+parser.add_argument("--sequence_length", type=int, default=random.choice([50, 50, 80]))
+parser.add_argument("--verbose", type=bool, default=False)
+parser.add_argument("--lr_decay", type=float, default=random.choice([0.5, 0.7, 0.9, 0.95, 0.98, 0.98, 1.0]))
+parser.add_argument("--nonlinearity", type=str, default=random.choice(["tanh", "relu"]))
+
+
 
 
 args=parser.parse_args()
 print(args)
-args.sequence_length = 80
+
+if args.language == "english":
+  # Engish:
+  neuron = [ 730,  676,  224, 1960, 2010]
+elif args.language == "german":
+  # German
+  neuron = [ 764,  450, 1742, 1635,  752]
+else:
+  # Italian
+  neuron = [1786,  309, 1421, 1050, 1961]
+
+
 
 
 #assert args.language == "german"
@@ -59,6 +69,7 @@ try:
    with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "r") as inFile:
      itos = inFile.read().strip().split("\n")
 except FileNotFoundError:
+    assert False
     print("Creating new vocab")
     char_counts = {}
     # get symbol vocabulary
@@ -73,6 +84,8 @@ except FileNotFoundError:
     with open(CHAR_VOCAB_HOME+"/char-vocab-wiki-"+args.language, "w") as outFile:
        print("\n".join(itos), file=outFile)
 #itos = sorted(itos)
+#itos.append(" ")
+#assert " " in itos
 print(itos)
 stoi = dict([(itos[i],i) for i in range(len(itos))])
 
@@ -89,7 +102,7 @@ print(torch.__version__)
 from weight_drop import WeightDrop
 
 
-rnn = torch.nn.LSTM(args.char_embedding_size, args.hidden_dim, args.layer_num).cuda()
+rnn = torch.nn.RNN(args.char_embedding_size, args.hidden_dim, args.layer_num, args.nonlinearity).cuda()
 
 rnn_parameter_names = [name for name, _ in rnn.named_parameters()]
 print(rnn_parameter_names)
@@ -179,88 +192,51 @@ def forward(numeric, train=True, printHere=False, enforceBalancing=True):
       global labels_sum
       numeric, boundaries, boundariesAll = zip(*numeric)
 
-
-      selected = []
-      for i in range(len(boundaries)): # for each batch sample
-         target = (labels_sum + 10 < len(labels)*0.7) or (random.random() < 0.5) # decide whether to get positive or negative sample
-         true = sum([((x == None) if target == False else (x is not None and y not in wordsSoFar)) for x, y in list(zip(boundaries[i], boundariesAll[i]))[int(args.sequence_length/2):-10]]) # condidates
- #        print(target, true)
-         if true == 0:
-            continue
-         soFar = 0
-         for j in range(int(len(boundaries[i])/2), len(boundaries[i])-10):
-           if (lambda x, y:((x is None if target == False else (x is not None and y not in wordsSoFar))))(boundaries[i][j], boundariesAll[i][j]):
-              if random.random() < 1/(true-soFar):
-                  selected.append((len(selected),i,j,target))
-                  assert (boundaries[i][j] is not None) == target, (boundaries[i][j], boundariesAll[i][j], target)
-                  break
-              soFar += 1
-         assert soFar < true
-
-      if len(selected) == 0:
-         return
-
-      numeric_selected = []
-      for _,i,j,_ in selected:
-        numeric_selected.append(numeric[i][j-40:j+1]) # do not include the actual boundary
+      numeric_selected = numeric
       input_tensor = Variable(torch.LongTensor(numeric_selected).transpose(0,1)[:-1].cuda(), requires_grad=False)
       target_tensor = Variable(torch.LongTensor(numeric_selected).transpose(0,1)[1:].cuda(), requires_grad=False)
 
       embedded = char_embeddings(input_tensor)
-      if train:
-         #assert False
-         embedded = char_dropout(embedded)
 
-#      print(embedded.size())
-      out, hidden = rnn_drop(embedded, None)
+      hidden = None
+      print(len(embedded))
+      for i in range(10, len(embedded)):
+            out, hidden = rnn_drop(embedded[i].unsqueeze(0), hidden)
+            for j in range(len(embedded[0])):
+                 nextRelevantWord = ([boundaries[j][k] for k in range(i+2, len(boundaries[j])) if boundaries[j][k] is not None]+["END_OF_SEQUENCE"])[0]
+#                 print(i,j,[boundariesAll[j][k] for k in range(i+2, len(boundariesAll[j])) if boundariesAll[j][k] is not None]+["END_OF_SEQUENCE"])
+                 if nextRelevantWord == "END_OF_SEQUENCE":
+ #                   print("end",i,j)
+                    continue
+                 target = 1 if boundaries[j][i+1] is not None else 0
+                 if abs(target+labels_sum - len(labels)/2) > 2:
+#                    print("stop for balance")
+                    continue
+                 hidden_states.append((hidden[1][j,:][neuron[0]]).unsqueeze(0).cpu().detach().numpy())
+#                 hidden_states.append((hidden[1][:,j,:].flatten()[neuron]).cpu().detach().numpy())
 
-      for i,i2,j,target in selected:
-                  assert i < len(numeric_selected)
-      #            print(hidden[0].size())
-#                  quit()
-                  hidden_states.append(out[-1,i,:].flatten().detach().data.cpu().numpy())
-                  labels.append(1 if target else 0)
-                  relevantWords.append(boundariesAll[i2][j])
-                  relevantNextWords.append(([boundaries[i2][k] for k in range(j+1, len(boundaries[i2])) if boundaries[i2][k] is not None]+["END_OF_SEQUENCE"])[0])
-#                  print(target, relevantWords[-1], relevantNextWords[-1])
-                  assert boundariesAll[i2][j] is not None
+                 labels.append(target)
+                 labels_sum += labels[-1]
 
-                  labels_sum += labels[-1]
-                  if enforceBalancing:
-                     wordsSoFar.add(boundariesAll[i2][j])
-##      print(hidden_states)
-##      print(labels)
-#
-#      logits = output(out) 
-#      log_probs = logsoftmax(logits)
-#   #   print(logits)
-#  #    print(log_probs)
-# #     print(target_tensor)
-#
-#      loss = train_loss(log_probs.view(-1, len(itos)+3), target_tensor.view(-1))
-#
-#      if printHere:
-#         lossTensor = print_loss(log_probs.view(-1, len(itos)+3), target_tensor.view(-1)).view(args.sequence_length, len(numeric_selected))
-#         losses = lossTensor.data.cpu().numpy()
-##         boundaries_index = [0 for _ in numeric]
-#         for i in range((args.sequence_length-1)-1):
-# #           if boundaries_index[0] < len(boundaries[0]) and i+1 == boundaries[0][boundaries_index[0]]:
-#  #             boundary = True
-#   #            boundaries_index[0] += 1
-#    #        else:
-#     #          boundary = False
-#            print((losses[i][0], itos[numeric[0][i+1]-3], "read:", itos[numeric[0][i]-3], boundariesAll[0][i], boundariesAll[0][i+1] if i < args.sequence_length-2 else "EOS"))
-#         print((labels_sum, len(labels)))
-     # return loss, len(numeric) * args.sequence_length
-
-
+                 relevantWords.append(boundariesAll[j][i+1])
+                 
+                 relevantNextWords.append(nextRelevantWord)
+                 assert boundariesAll[j][i+1] is not None
+                 if j == 0:
+                   print(hidden_states[-1], labels[-1], relevantWords[-1], relevantNextWords[-1])  
+                 if (labels[-1] == 0) and not relevantNextWords[-1].startswith(relevantWords[-1]):
+                     assert False, (relevantWords[-1], relevantNextWords[-1], list(zip(boundaries[j][i:], boundariesAll[j][i:])))
+                 if (labels[-1] == 1) and relevantNextWords[-1].startswith(relevantWords[-1]): # this is actually not a hard assertion, it should just be quite unlikely in languages such as English
+                     print("WARNING", list(zip(boundaries[j][i:], boundariesAll[j][i:])))
+#                     if len(relevantWords[-1]) > 1:
+ #                       assert False 
 
 import time
 
 devLosses = []
 #for epoch in range(10000):
 if True:
-   training_data = corpusIteratorWikiWords.dev(args.language)
+   training_data = corpusIteratorWikiWords.test(args.language)
    print("Got data")
    training_chars = prepareDatasetChunks(training_data, train=True)
 
@@ -293,7 +269,7 @@ predictors = hidden_states
 dependent = labels
 
 
-TEST_FRACTION = 0.9
+TEST_FRACTION = 0.0
 
 from sklearn.model_selection import train_test_split
 x_train, x_test, y_train, y_test, words_train, words_test, next_words_train, next_words_test = train_test_split(predictors, dependent, relevantWords, relevantNextWords, test_size=TEST_FRACTION, random_state=random.randint(1,100), shuffle=True)
@@ -384,11 +360,13 @@ for error in errors:
    elif error[0] == 1:
       record = error[1][0]+" "+error[1][1]
       falseNegatives[record] = falseNegatives.get(record, 0)+1
+      #assert error[1][0] != error[1][1], error
 
 falsePositives = sorted(list(falsePositives.items()), key=lambda x:x[1])
 falseNegatives = sorted(list(falseNegatives.items()), key=lambda x:x[1])
 
-with open(f"results/segmentation-{args.language}-frequent-errors-disjoint.txt", "w") as outFile:
+print(f"results/segmentation-{args.language}-frequent-errors-neuron-disjoint-rnn.txt")
+with open(f"results/segmentation-{args.language}-frequent-errors-neuron-disjoint-rnn.txt", "w") as outFile:
    print("False Positives", file=outFile)
    for error in falsePositives[-30:]:
       print(error[0]+"\t"+str(error[1]), file=outFile)

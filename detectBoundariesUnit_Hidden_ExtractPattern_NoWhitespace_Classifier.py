@@ -191,7 +191,7 @@ relevantWords = []
 relevantNextWords = []
 labels_sum = 0
 
-def forward(numeric, train=True, printHere=False, enforceBalancing=True):
+def forward(numeric, train=True, printHere=False):
       global labels_sum
       numeric, boundaries, boundariesAll = zip(*numeric)
 
@@ -289,7 +289,7 @@ scores = []
 
 examples_count = 0
 
-for _ in range(50): # Go through the entire remainder of the Dev set
+for batch in range(100): # Go through the entire remainder of the Dev set
 
      hidden_states = []
      labels = []
@@ -314,7 +314,7 @@ for _ in range(50): # Go through the entire remainder of the Dev set
            except StopIteration:
               break
            printHere = (counter % 50 == 0)
-           forward(numeric, printHere=printHere, train=True, enforceBalancing=False)
+           forward(numeric, printHere=printHere, train=True)
            #backward(loss, printHere)
            if printHere:
                print((counter))
@@ -380,5 +380,5 @@ with open(f"results/segmentation-{args.language}-frequent-errors-neuron-disjoint
 print(examples_count)
 score = sum(scores)/len(scores)
 print(score)
-
+print(batch)
 
