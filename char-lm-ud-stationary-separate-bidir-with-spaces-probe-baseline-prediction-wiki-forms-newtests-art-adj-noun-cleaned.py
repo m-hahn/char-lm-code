@@ -338,28 +338,28 @@ def doChoice(x, y):
 
 
 
-wentThroughAdjectives = False
-with open(WIKIPEDIA_HOME+"german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as inFile:
-    adjectives = []
-    for line in inFile:
-      line = line.strip().split(" ")
-      if len(line) != 3:
-        continue
-      if line[1] != "ADJA":
-          if wentThroughAdjectives:
-             continue
-      else:
-        wentThroughAdjectives = True
-      if line[2] == "<unknown>":
-         continue
-      if len(line[2]) == 1:
-        continue
-      if "." in line[2]:
-        continue
-      if int(line[0]) > 100 and not line[2].endswith("r"):
-         adjectives.append(line[2])
-#print(adjectives) 
-#print(len(adjectives))
+#wentThroughAdjectives = False
+#with open(WIKIPEDIA_HOME+"german-wiki-word-vocab-lemmas-POS-uniq.txt", "r") as inFile:
+#    adjectives = []
+#    for line in inFile:
+#      line = line.strip().split(" ")
+#      if len(line) != 3:
+#        continue
+#      if line[1] != "ADJA":
+#          if wentThroughAdjectives:
+#             continue
+#      else:
+#        wentThroughAdjectives = True
+#      if line[2] == "<unknown>":
+#         continue
+#      if len(line[2]) == 1:
+#        continue
+#      if "." in line[2]:
+#        continue
+#      if int(line[0]) > 100 and not line[2].endswith("r"):
+#         adjectives.append(line[2])
+##print(adjectives) 
+##print(len(adjectives))
 #quit()
 
 correctDatCond = {}
