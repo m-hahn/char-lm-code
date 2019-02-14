@@ -203,9 +203,13 @@ def forward(numeric, train=True, printHere=False):
 
       hidden = None
       print(len(embedded))
+      hiddens = list(range(200))
       for i in range(40, len(embedded)):
             out, hidden = rnn_drop(embedded[i].unsqueeze(0), hidden)
-            for j in range(len(embedded[0])-1):
+            hiddens[i] = hidden
+      for i in range(41, len(embedded)-1):
+#            out, hidden = rnn_drop(embedded[i].unsqueeze(0), hidden)
+            for j in range(len(embedded[0])):
                  nextRelevantWord = ([boundaries[j][k] for k in range(i+2, len(boundaries[j])) if boundaries[j][k] is not None]+["END_OF_SEQUENCE"])[0]
                  if nextRelevantWord == "END_OF_SEQUENCE":
                     continue
@@ -213,11 +217,11 @@ def forward(numeric, train=True, printHere=False):
                  if abs(target+labels_sum - len(labels)/2) > 2:
                     continue
 
-                 hiddenBefore = (hidden[1][:,j-1,:].flatten()[neuron[0]]).unsqueeze(0).cpu().detach().numpy()
-                 hiddenHere = (hidden[1][:,j,:].flatten()[neuron[0]]).unsqueeze(0).cpu().detach().numpy()
-                 hiddenAfter = (hidden[1][:,j+1,:].flatten()[neuron[0]]).unsqueeze(0).cpu().detach().numpy()
+                 hiddenBefore = (hiddens[i-1][1][:,j,:].flatten()[neuron[0]]).unsqueeze(0).cpu().detach().numpy()
+                 hiddenHere = (hiddens[i][1][:,j,:].flatten()[neuron[0]]).unsqueeze(0).cpu().detach().numpy()
+                 hiddenAfter = (hiddens[i+1][1][:,j,:].flatten()[neuron[0]]).unsqueeze(0).cpu().detach().numpy()
 
-                 hidden_states.append(max(abs(hiddenBefore-hiddenHere), abs(hiddenAfter-hiddenHere)))
+                 hidden_states.append(max(-(hiddenBefore-hiddenHere), -(hiddenAfter-hiddenHere)))
 #                 hidden_states.append((hidden[1][:,j,:].flatten()[neuron]).cpu().detach().numpy())
 
                  labels.append(target)
