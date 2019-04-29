@@ -129,10 +129,6 @@ if args.load_from is not None:
 from torch.autograd import Variable
 
 
-# ([0] + [stoi[training_data[x]]+1 for x in range(b, b+sequence_length) if x < len(training_data)]) 
-
-#from embed_regularize import embedded_dropout
-
 
 def prepareDatasetChunks(data, train=True):
       numeric = [0]
@@ -167,25 +163,6 @@ def prepareDatasetChunks(data, train=True):
             boundariesAll = [None for _ in range(args.sequence_length+1)]
 
 
-
-
-
-#def prepareDataset(data, train=True):
-#      numeric = [0]
-#      count = 0
-#      for char in data:
-#         if char == " ":
-#           continue
-#         count += 1
-##         if count % 100000 == 0:
-##             print(count/len(data))
-#         numeric.append((stoi[char]+3 if char in stoi else 2) if (not train) or random.random() > args.char_noise_prob else 2+random.randint(0, len(itos)))
-#         if len(numeric) > args.sequence_length:
-#            yield numeric
-#            numeric = [0]
-#
-
-# from each bath element, get one positive example OR one negative example
 
 wordsSoFar = set()
 hidden_states = []
@@ -227,49 +204,19 @@ def forward(numeric, train=True, printHere=False):
 
       embedded = char_embeddings(input_tensor)
       if train:
-         #assert False
          embedded = char_dropout(embedded)
 
-#      print(embedded.size())
       out, hidden = rnn_drop(embedded, None)
 
       for i,i2,j,target in selected:
                   assert i < len(numeric_selected)
-      #            print(hidden[0].size())
-#                  quit()
                   hidden_states.append(hidden[1][:,i,:].flatten().detach().data.cpu().numpy())
                   labels.append(1 if target else 0)
                   relevantWords.append(boundariesAll[i2][j])
                   relevantNextWords.append(([boundaries[i2][k] for k in range(j+1, len(boundaries[i2])) if boundaries[i2][k] is not None]+["END_OF_SEQUENCE"])[0])
-#                  print(target, relevantWords[-1], relevantNextWords[-1])
                   assert boundariesAll[i2][j] is not None
 
                   labels_sum += labels[-1]
-##      print(hidden_states)
-##      print(labels)
-#
-#      logits = output(out) 
-#      log_probs = logsoftmax(logits)
-#   #   print(logits)
-#  #    print(log_probs)
-# #     print(target_tensor)
-#
-#      loss = train_loss(log_probs.view(-1, len(itos)+3), target_tensor.view(-1))
-#
-#      if printHere:
-#         lossTensor = print_loss(log_probs.view(-1, len(itos)+3), target_tensor.view(-1)).view(args.sequence_length, len(numeric_selected))
-#         losses = lossTensor.data.cpu().numpy()
-##         boundaries_index = [0 for _ in numeric]
-#         for i in range((args.sequence_length-1)-1):
-# #           if boundaries_index[0] < len(boundaries[0]) and i+1 == boundaries[0][boundaries_index[0]]:
-#  #             boundary = True
-#   #            boundaries_index[0] += 1
-#    #        else:
-#     #          boundary = False
-#            print((losses[i][0], itos[numeric[0][i+1]-3], "read:", itos[numeric[0][i]-3], boundariesAll[0][i], boundariesAll[0][i+1] if i < args.sequence_length-2 else "EOS"))
-#         print((labels_sum, len(labels)))
-     # return loss, len(numeric) * args.sequence_length
-
 
 
 import time
